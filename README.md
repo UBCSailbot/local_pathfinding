@@ -1,2 +1,3 @@
-# local_pathfinding
-UBC Sailbot's local pathfinding repository
+# Local Pathfinding
+
+UBC Sailbot's local pathfinding ROS package
