@@ -7,7 +7,7 @@ from launch import LaunchDescription
 
 
 def generate_launch_description():
-    config = os.path.join(get_package_share_directory('local_pathfinding'), 'globals.yaml')
+    global_config = os.path.join(get_package_share_directory('local_pathfinding'), 'globals.yaml')
 
     return LaunchDescription(
         [
@@ -17,7 +17,7 @@ def generate_launch_description():
                 name='sailbot_launch',
                 output='screen',
                 emulate_tty=True,
-                parameters=[config],
+                parameters=[global_config],
             )
         ]
     )
