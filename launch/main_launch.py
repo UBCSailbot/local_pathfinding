@@ -14,7 +14,7 @@ def generate_launch_description():
             Node(
                 package='local_pathfinding',
                 executable='sailbot',
-                name='sailbot_launch',
+                name='sailbot_main',
                 output='screen',
                 emulate_tty=True,
                 parameters=[global_config],
