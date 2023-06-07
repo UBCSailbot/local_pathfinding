@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'sailbot = local_pathfinding.sailbot:main',
+            'sailbot = local_pathfinding.sailbot_node:main',
         ],
     },
 )
