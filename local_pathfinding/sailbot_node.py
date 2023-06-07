@@ -14,8 +14,7 @@ def main(args=None):
 
 
 class SailbotNode(Node):
-    """
-    Stores, updates, and maintains the state of our autonomous sailboat.
+    """Stores, updates, and maintains the state of our autonomous sailboat.
 
     Subscribers:
         ais_ships_sub (Subscription): Subscribes to a `AIS` msg.
@@ -23,15 +22,15 @@ class SailbotNode(Node):
         global_path_sub (Subscription): Subscribes to a `GlobalPath` msg.
         wind_sensors_sub (Subscription): Subscribes to a `Wind` msg.
 
-    Data from subscribers:
+    Publishers and their timers:
+        desired_heading_pub (Publisher): Publishes the desired heading in a `Heading` msg.
+        desired_heading_timer (Timer): Calls the desired heading callback function.
+
+    Attributes from subscribers:
         ais_ships (AIS): Data from other boats.
         gps (GPS): Data from GPS sensor.
         global_path (GlobalPath): Path that we are following.
         wind_sensors (Wind): Data from wind sensors.
-
-    Publishers and their timers:
-        desired_heading_pub (Publisher): Publishes the desired heading in a `Heading` msg.
-        desired_heading_timer (Timer): Calls the desired heading callback function.
     """
 
     def __init__(self):
@@ -71,6 +70,12 @@ class SailbotNode(Node):
             timer_period_sec=pub_period_sec, callback=self.desired_heading_call
         )
 
+        # attributes from subscribers
+        self.ais_ships = None
+        self.gps = None
+        self.global_path = None
+        self.wind_sensors = None
+
     # subscriber callbacks
 
     def ais_ships_call(self, msg: AIS):
@@ -92,11 +97,43 @@ class SailbotNode(Node):
     # publisher callbacks
 
     def desired_heading_call(self):
+        """Get and publish the desired heading.
+
+        Warn if not following the heading conventions in custom_interfaces/msg/Heading.msg.
+        """
+        desired_heading = self.get_desired_heading()
+        if desired_heading < 0 or 360 <= desired_heading:
+            self.get_logger().warning(f'Heading {desired_heading} not in [0, 360)')
+
         msg = Heading()
-        msg.heading_degrees = 0.0
+        msg.heading_degrees = desired_heading
 
         self.desired_heading_pub.publish(msg)
         self.get_logger().info(f'Publishing to {self.desired_heading_pub.topic}: {msg}')
+
+    # get_desired_heading and its helper functions
+
+    def get_desired_heading(self) -> float:
+        """
+        Get the desired heading.
+
+        Returns:
+            float: The desired heading if all subscribers are active, else a number that violates
+                the heading convention.
+        """
+        if not self.all_subs_active():
+            self.log_inactive_subs_warning()
+            return -1.0
+
+        return 0.0
+
+    def all_subs_active(self) -> bool:
+        return True  # TODO: this line is a placeholder, delete when mocks can be run
+        return self.ais_ships and self.gps and self.global_path and self.wind_sensors
+
+    def log_inactive_subs_warning(self):
+        # TODO: log which subscribers are inactive
+        self.get_logger().warning('There are inactive subscribers')
 
 
 if __name__ == '__main__':
