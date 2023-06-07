@@ -14,17 +14,17 @@ def main(args=None):
 
 
 class SailbotNode(Node):
-    """Stores, updates, and maintains the state of our autonomous sailboat.
+    """Store, update, and maintain the state of our autonomous sailboat.
 
     Subscribers:
-        ais_ships_sub (Subscription): Subscribes to a `AIS` msg.
-        gps_sub (Subscription): Subscribes to a `GPS` msg.
-        global_path_sub (Subscription): Subscribes to a `GlobalPath` msg.
-        wind_sensors_sub (Subscription): Subscribes to a `Wind` msg.
+        ais_ships_sub (Subscription): Subscribe to a `AIS` msg.
+        gps_sub (Subscription): Subscribe to a `GPS` msg.
+        global_path_sub (Subscription): Subscribe to a `GlobalPath` msg.
+        wind_sensors_sub (Subscription): Subscribe to a `Wind` msg.
 
     Publishers and their timers:
-        desired_heading_pub (Publisher): Publishes the desired heading in a `Heading` msg.
-        desired_heading_timer (Timer): Calls the desired heading callback function.
+        desired_heading_pub (Publisher): Publish the desired heading in a `Heading` msg.
+        desired_heading_timer (Timer): Call the desired heading callback function.
 
     Attributes from subscribers:
         ais_ships (AIS): Data from other boats.
