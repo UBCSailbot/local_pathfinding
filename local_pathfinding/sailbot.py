@@ -38,7 +38,10 @@ class SailbotNode(Node):
         super().__init__(node_name='sailbot')
 
         self.declare_parameters(
-            namespace='', parameters=[('pub_period_sec', rclpy.Parameter.Type.DOUBLE)]
+            namespace='',
+            parameters=[
+                ('pub_period_sec', rclpy.Parameter.Type.DOUBLE),
+            ],
         )
 
         # subscribers
