@@ -7,7 +7,7 @@ from local_pathfinding.local_path import LocalPath
 
 def main(args=None):
     rclpy.init(args=args)
-    sailbot = SailbotNode()
+    sailbot = Sailbot()
 
     rclpy.spin(node=sailbot)
 
@@ -15,7 +15,7 @@ def main(args=None):
     rclpy.shutdown()
 
 
-class SailbotNode(Node):
+class Sailbot(Node):
     """Store, update, and maintain the state of our autonomous sailboat.
 
     Subscribers:
@@ -36,7 +36,7 @@ class SailbotNode(Node):
     """
 
     def __init__(self):
-        super().__init__(node_name='sailbot')
+        super().__init__(node_name='navigate')
 
         self.declare_parameters(
             namespace='',

@@ -22,15 +22,15 @@ def generate_launch_description():
             ),
             Node(
                 package='local_pathfinding',
-                executable='sailbot',
-                name='sailbot_main',
+                executable='navigate',
+                name='navigate_main',
                 output='screen',
                 emulate_tty=True,
                 parameters=[global_config],
                 arguments=[
                     "--ros-args",
                     "--log-level",
-                    ["sailbot_main:=", log_level],
+                    ["navigate_main:=", log_level],
                 ],
             ),
         ]
