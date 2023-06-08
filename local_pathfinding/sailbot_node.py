@@ -2,6 +2,8 @@ import rclpy
 from custom_interfaces.msg import AIS, GPS, GlobalPath, Heading, Wind
 from rclpy.node import Node
 
+from local_pathfinding.local_path import LocalPath
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -60,7 +62,7 @@ class SailbotNode(Node):
             msg_type=Wind, topic='wind_sensors', callback=self.wind_sensors_call, qos_profile=10
         )
 
-        # publishers
+        # publishers and their timers
         self.desired_heading_pub = self.create_publisher(
             msg_type=Heading, topic='desired_heading', qos_profile=10
         )
@@ -75,6 +77,9 @@ class SailbotNode(Node):
         self.gps = None
         self.global_path = None
         self.wind_sensors = None
+
+        # attributes
+        self.local_path = LocalPath(logger=self.get_logger())
 
     # subscriber callbacks
 
@@ -114,8 +119,7 @@ class SailbotNode(Node):
     # get_desired_heading and its helper functions
 
     def get_desired_heading(self) -> float:
-        """
-        Get the desired heading.
+        """Get the desired heading.
 
         Returns:
             float: The desired heading if all subscribers are active, else a number that violates
@@ -124,6 +128,8 @@ class SailbotNode(Node):
         if not self.all_subs_active():
             self.log_inactive_subs_warning()
             return -1.0
+
+        self.local_path.update_if_needed()
 
         return 0.0
 
