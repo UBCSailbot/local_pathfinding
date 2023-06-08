@@ -82,7 +82,7 @@ class Sailbot(Node):
         self.wind_sensors = None
 
         # attributes
-        self.local_path = LocalPath(logger=self.get_logger())
+        self.local_path = LocalPath(parent_logger=self.get_logger())
 
     # subscriber callbacks
 

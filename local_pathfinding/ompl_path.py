@@ -5,8 +5,8 @@ from rclpy.impl.rcutils_logger import RcutilsLogger
 
 
 class OMPLPath:
-    def __init__(self, logger: RcutilsLogger):
-        self.logger = logger
+    def __init__(self, parent_logger: RcutilsLogger):
+        self.logger = parent_logger.get_child(name='ompl_path')
         # self.ref_latlon = None
         self.simple_setup = None
 
