@@ -33,6 +33,9 @@ class Sailbot(Node):
         gps (GPS): Data from GPS sensor.
         global_path (GlobalPath): Path that we are following.
         wind_sensors (Wind): Data from wind sensors.
+
+    Attributes:
+        local_path (LocalPath): The path that `Sailbot` is following.
     """
 
     def __init__(self):
