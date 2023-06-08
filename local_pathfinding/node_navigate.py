@@ -129,7 +129,7 @@ class Sailbot(Node):
                 the heading convention.
         """
         if not self.all_subs_active():
-            self.log_inactive_subs_warning()
+            self._log_inactive_subs_warning()
             return -1.0
 
         self.local_path.update_if_needed()
@@ -137,11 +137,11 @@ class Sailbot(Node):
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
-    def all_subs_active(self) -> bool:
+    def _all_subs_active(self) -> bool:
         return True  # TODO: this line is a placeholder, delete when mocks can be run
         return self.ais_ships and self.gps and self.global_path and self.wind_sensors
 
-    def log_inactive_subs_warning(self):
+    def _log_inactive_subs_warning(self):
         # TODO: log which subscribers are inactive
         self.get_logger().warning('There are inactive subscribers')
 
