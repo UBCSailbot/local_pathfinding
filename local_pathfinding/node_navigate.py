@@ -134,6 +134,7 @@ class Sailbot(Node):
 
         self.local_path.update_if_needed()
 
+        # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
     def all_subs_active(self) -> bool:

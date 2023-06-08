@@ -3,23 +3,38 @@ from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+# OMPL logging: only log warnings and above
+ou.setLogLevel(ou.LOG_WARN)
+
 
 class OMPLPath:
-    def __init__(self, parent_logger: RcutilsLogger):
+    def __init__(self, parent_logger: RcutilsLogger, max_runtime: float):
         self.logger = parent_logger.get_child(name='ompl_path')
-        # self.ref_latlon = None
-        self.simple_setup = None
+        self.simple_setup = self._init_simple_setup()
+        self.solved = self.simple_setup.solve(time=max_runtime)  # time is in seconds
 
-        # only log OMPL warnings and above
-        ou.setLogLevel(ou.LOG_WARN)
+        # TODO: play around with simplifySolution()
+        # if self.solved:
+        #     # try to shorten the path
+        #     simple_setup.simplifySolution()
 
     def get_cost(self):
-        pass
+        raise NotImplementedError
+
+    def get_waypoints(self):
+        if not self.solved:
+            self.logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
+            return []
+
+        waypoints = []
+        solution_path = self.simple_setup.getSolutionPath()
+        waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
+        return waypoints
 
     def update_objectives(self):
-        pass
+        raise NotImplementedError
 
-    def plan(self):
+    def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
         space = ob.SE2StateSpace()
 
@@ -40,8 +55,8 @@ class OMPLPath:
         space.setBounds(bounds)
 
         # create a simple setup object
-        ss = og.SimpleSetup(space)
-        ss.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
+        simple_setup = og.SimpleSetup(space)
+        simple_setup.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
 
         # set the goal and start states of the simple setup object
         start = ob.State(space)
@@ -53,28 +68,20 @@ class OMPLPath:
             f'start=({start().getX()}, {start().getY()}); '
             f'goal=({goal().getX()}, {goal().getY()})'
         )
-        ss.setStartAndGoalStates(start, goal)
+        simple_setup.setStartAndGoalStates(start, goal)
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        # ss.setOptimizationObjective(objective)
+        # simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
-        # ss.setPlanner(planner)
+        # simple_setup.setPlanner(planner)
 
-        # this will automatically choose a default planner with default parameters
-        solved = ss.solve(time=1.0)  # time is in seconds
-        if not solved:
-            raise RuntimeError('Could not find solution path')
-
-        # try to shorten the path
-        ss.simplifySolution()
-
-        # update attributes
-        self.simple_setup = ss
+        return simple_setup
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
+    # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
     return state.getX() < 0.6
