@@ -16,6 +16,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            # put node log files in same directory as launch log files
             # ref: https://github.com/ros2/launch/issues/551#issuecomment-982146452
             SetEnvironmentVariable('ROS_LOG_DIR', launch_config.log_dir),
             # ref: https://answers.ros.org/question/311471/selecting-log-level-in-ros2-launch-file/

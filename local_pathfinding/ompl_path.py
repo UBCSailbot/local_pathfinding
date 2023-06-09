@@ -1,3 +1,11 @@
+"""The local_pathfinding<->OMPL interface, represented by the OMPLPath class.
+
+OMPL is written in C++, but Python bindings were generated to interface with OMPL in Python.
+VS Code currently can't read these bindings, so LSP features (autocomplete, go to definition, etc.
+won't work). The C++ API is documented on the OMPL website:
+https://ompl.kavrakilab.org/api_overview.html.
+"""
+
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
@@ -9,9 +17,9 @@ ou.setLogLevel(ou.LOG_WARN)
 
 class OMPLPath:
     def __init__(self, parent_logger: RcutilsLogger, max_runtime: float):
-        self.logger = parent_logger.get_child(name='ompl_path')
-        self.simple_setup = self._init_simple_setup()
-        self.solved = self.simple_setup.solve(time=max_runtime)  # time is in seconds
+        self._logger = parent_logger.get_child(name='ompl_path')
+        self._simple_setup = self._init_simple_setup()
+        self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
         # TODO: play around with simplifySolution()
         # if self.solved:
@@ -23,11 +31,11 @@ class OMPLPath:
 
     def get_waypoints(self):
         if not self.solved:
-            self.logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
+            self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
             return []
 
         waypoints = []
-        solution_path = self.simple_setup.getSolutionPath()
+        solution_path = self._simple_setup.getSolutionPath()
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
@@ -46,7 +54,7 @@ class OMPLPath:
         bounds.setLow(index=1, value=y_min)
         bounds.setHigh(index=0, value=x_max)
         bounds.setHigh(index=1, value=y_max)
-        self.logger.debug(
+        self._logger.debug(
             'state space bounds: '
             f'x=[{bounds.low[0]}, {bounds.high[0]}]; '
             f'y=[{bounds.low[1]}, {bounds.high[1]}]'
@@ -63,7 +71,7 @@ class OMPLPath:
         goal = ob.State(space)
         start().setXY(x=0.5, y=0.4)
         goal().setXY(x=-0.5, y=-0.4)
-        self.logger.debug(
+        self._logger.debug(
             'start and goal state: '
             f'start=({start().getX()}, {start().getY()}); '
             f'goal=({goal().getX()}, {goal().getY()})'
