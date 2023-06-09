@@ -1,3 +1,5 @@
+"""The path to the next global waypoint, represented by the `LocalPath` class."""
+
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 from local_pathfinding.ompl_path import OMPLPath

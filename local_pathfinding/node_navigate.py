@@ -1,3 +1,5 @@
+"""The main node of the local_pathfinding package, represented by the `Sailbot` class."""
+
 import rclpy
 from custom_interfaces.msg import AIS, GPS, GlobalPath, Heading, Wind
 from rclpy.node import Node

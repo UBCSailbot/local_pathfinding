@@ -1,3 +1,11 @@
+"""The local_pathfinding<->OMPL interface, represented by the OMPLPath class.
+
+OMPL is written in C++, but Python bindings were generated to interface with OMPL in Python.
+VS Code currently can't read these bindings, so LSP features (autocomplete, go to definition, etc.
+won't work). The C++ API is documented on the OMPL website:
+https://ompl.kavrakilab.org/api_overview.html.
+"""
+
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
