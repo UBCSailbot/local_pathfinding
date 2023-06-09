@@ -130,7 +130,7 @@ class Sailbot(Node):
             float: The desired heading if all subscribers are active, else a number that violates
                 the heading convention.
         """
-        if not self.all_subs_active():
+        if not self._all_subs_active():
             self._log_inactive_subs_warning()
             return -1.0
 
