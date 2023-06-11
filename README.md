@@ -6,7 +6,7 @@ UBC Sailbot's local pathfinding ROS package
 
 Using main launch file: `ros2 launch local_pathfinding main_launch.py`
 
-## Launch Parameters
+### Launch Parameters
 
 Launch arguments are added to the run command in the format `<name>:=<value>`.
 
