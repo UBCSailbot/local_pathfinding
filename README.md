@@ -1,5 +1,7 @@
 # Local Pathfinding
 
+[![Tests](https://github.com/UBCSailbot/local_pathfinding/actions/workflows/tests.yml/badge.svg)](https://github.com/UBCSailbot/local_pathfinding/actions/workflows/tests.yml)
+
 UBC Sailbot's local pathfinding ROS package
 
 ## Run
