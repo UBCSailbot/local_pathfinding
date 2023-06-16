@@ -16,7 +16,21 @@ ou.setLogLevel(ou.LOG_WARN)
 
 
 class OMPLPath:
+    """Represents the general OMPL Path.
+
+    Attributes
+        _logger (RcutilsLogger): Logger of the parent class.
+        _simple_setup (og.SimpleSetup): OMPL Simple Setup object.
+        solved (bool): The variable to denote if path is solved or not.
+    """
+
     def __init__(self, parent_logger: RcutilsLogger, max_runtime: float):
+        """Initialize the OMPL Path Class. Attempts to solve for a path.
+
+        Args:
+            parent_logger (RcutilsLogger): Logger of the parent class.
+            max_runtime (float): Maximum runtime to solve for a path.
+        """
         self._logger = parent_logger.get_child(name='ompl_path')
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
@@ -27,9 +41,20 @@ class OMPLPath:
         #     simple_setup.simplifySolution()
 
     def get_cost(self):
+        """Get the cost of the path generated.
+
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
-    def get_waypoints(self):
+    def get_waypoints(self) -> list[tuple[float, float]]:
+        """Get a list of waypoints for the boat to follow.
+
+        Returns:
+            list: A list of tuples representing the x and y coordinates of the waypoints.
+                  Output an empty list and print a warning message if path not solved.
+        """
         if not self.solved:
             self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
             return []
@@ -40,9 +65,19 @@ class OMPLPath:
         return waypoints
 
     def update_objectives(self):
+        """Update the objectives on the basis of which the path is optimized.
+
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
     def _init_simple_setup(self) -> og.SimpleSetup:
+        """Initialize and configure the OMPL SimpleSetup object.
+
+        Returns:
+            og.SimpleSetup: Configured SimpleSetup object based on the problem.
+        """
         # create an SE2 state space: rotation and translation in a plane
         space = ob.SE2StateSpace()
 
@@ -90,6 +125,14 @@ class OMPLPath:
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
+    """Determine if the state is valid.
+
+    Args:
+        state (ob.SE2StateSpace): State to check.
+
+    Returns:
+        bool: True if state is valid else False.
+    """
     # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
     return state.getX() < 0.6
