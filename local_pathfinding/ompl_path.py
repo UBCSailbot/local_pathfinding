@@ -10,6 +10,7 @@ from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
+from local_pathfinding.path_objective import getSailingObjective
 
 # OMPL logging: only log warnings and above
 ou.setLogLevel(ou.LOG_WARN)
@@ -39,8 +40,8 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self):
-        raise NotImplementedError
+    def update_objectives(self, simple_setup, headingDegrees, WindDirectiondegrees):
+        return getSailingObjective(simple_setup, headingDegrees, WindDirectiondegrees)
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -64,6 +65,9 @@ class OMPLPath:
 
         # create a simple setup object
         simple_setup = og.SimpleSetup(space)
+
+        # Constructs a space information instance for this simple setup
+        space_information = simple_setup.getSpaceInformation()
         simple_setup.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
 
         # set the goal and start states of the simple setup object
@@ -80,7 +84,13 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        # simple_setup.setOptimizationObjective(objective)
+        headingDegrees = 0
+        WindDirectiondegrees = 1
+
+        objective = self.update_objectives(space_information, headingDegrees, WindDirectiondegrees)
+        simple_setup.setOptimizationObjective(objective)
+
+
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
@@ -88,6 +98,8 @@ class OMPLPath:
 
         return simple_setup
 
+    def getSpaceInformation(self):
+        return self._omplPath.getSpaceInformation()
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
     # TODO: implement obstacle avoidance here
