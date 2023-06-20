@@ -137,7 +137,9 @@ class Sailbot(Node):
             self._log_inactive_subs_warning()
             return -1.0
 
-        self.local_path.update_if_needed()
+        self.local_path.update_if_needed(
+            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
+        )
 
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
