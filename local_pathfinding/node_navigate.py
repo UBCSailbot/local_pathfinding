@@ -1,7 +1,7 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
 import rclpy
-from custom_interfaces.msg import GPS, AISShips, GlobalPath, Heading, WindSensors
+from custom_interfaces.msg import GPS, AISShips, GlobalPath, Heading, WindSensor
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -18,13 +18,13 @@ def main(args=None):
 
 
 class Sailbot(Node):
-    """Store, update, and maintain the state of our autonomous sailboat.
+    """Stores, updates, and maintains the state of our autonomous sailboat.
 
     Subscribers:
         ais_ships_sub (Subscription): Subscribe to a `AISShips` msg.
         gps_sub (Subscription): Subscribe to a `GPS` msg.
         global_path_sub (Subscription): Subscribe to a `GlobalPath` msg.
-        wind_sensors_sub (Subscription): Subscribe to a `WindSensors` msg.
+        filtered_wind_sensor_sub (Subscription): Subscribe to a `WindSensor` msg.
 
     Publishers and their timers:
         desired_heading_pub (Publisher): Publish the desired heading in a `Heading` msg.
@@ -32,9 +32,9 @@ class Sailbot(Node):
 
     Attributes from subscribers:
         ais_ships (AISShips): Data from other boats.
-        gps (GPS): Data from GPS sensor.
+        gps (GPS): Data from the GPS sensor.
         global_path (GlobalPath): Path that we are following.
-        wind_sensors (WindSensors): Data from wind sensors.
+        filtered_wind_sensor (WindSensor): Filtered data from the wind sensors.
 
     Attributes:
         local_path (LocalPath): The path that `Sailbot` is following.
@@ -63,10 +63,10 @@ class Sailbot(Node):
             callback=self.global_path_callback,
             qos_profile=10,
         )
-        self.wind_sensors_sub = self.create_subscription(
-            msg_type=WindSensors,
-            topic='wind_sensors',
-            callback=self.wind_sensors_callback,
+        self.filtered_wind_sensor_sub = self.create_subscription(
+            msg_type=WindSensor,
+            topic='filtered_wind_sensor',
+            callback=self.filtered_wind_sensor_callback,
             qos_profile=10,
         )
 
@@ -84,7 +84,7 @@ class Sailbot(Node):
         self.ais_ships = None
         self.gps = None
         self.global_path = None
-        self.wind_sensors = None
+        self.filtered_wind_sensor = None
 
         # attributes
         self.local_path = LocalPath(parent_logger=self.get_logger())
@@ -103,9 +103,9 @@ class Sailbot(Node):
         self.get_logger().info(f'Received data from {self.global_path_sub.topic}: {msg}')
         self.global_path = msg
 
-    def wind_sensors_callback(self, msg: WindSensors):
-        self.get_logger().info(f'Received data from {self.wind_sensors_sub.topic}: {msg}')
-        self.wind_sensors = msg
+    def filtered_wind_sensor_callback(self, msg: WindSensor):
+        self.get_logger().info(f'Received data from {self.filtered_wind_sensor_sub.topic}: {msg}')
+        self.filtered_wind_sensor = msg
 
     # publisher callbacks
 
@@ -137,14 +137,16 @@ class Sailbot(Node):
             self._log_inactive_subs_warning()
             return -1.0
 
-        self.local_path.update_if_needed()
+        self.local_path.update_if_needed(
+            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
+        )
 
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
     def _all_subs_active(self) -> bool:
         return True  # TODO: this line is a placeholder, delete when mocks can be run
-        return self.ais_ships and self.gps and self.global_path and self.wind_sensors
+        return self.ais_ships and self.gps and self.global_path and self.filtered_wind_sensor
 
     def _log_inactive_subs_warning(self):
         # TODO: log which subscribers are inactive

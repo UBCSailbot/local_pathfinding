@@ -1,8 +1,27 @@
 """The path to the next global waypoint, represented by the `LocalPath` class."""
 
+from custom_interfaces.msg import GPS, AISShips, GlobalPath, WindSensor
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 from local_pathfinding.ompl_path import OMPLPath
+
+
+class LocalPathState:
+    def __init__(
+        self,
+        gps: GPS,
+        ais_ships: AISShips,
+        global_path: GlobalPath,
+        filtered_wind_sensor: WindSensor,
+    ):
+        if gps:  # TODO: remove when mocks can be run
+            self.position = gps.lat_lon
+            self.speed = gps.speed
+            self.heading = gps.heading
+            self.ais_ships = ais_ships
+            self.global_path = global_path
+            self.wind_speed = filtered_wind_sensor.speed
+            self.wind_direction = filtered_wind_sensor.direction_degrees
 
 
 class LocalPath:
@@ -11,9 +30,15 @@ class LocalPath:
         self._ompl_path = None
         self.waypoints = None
 
-    def update_if_needed(self):
-        ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0)
-
+    def update_if_needed(
+        self,
+        gps: GPS,
+        ais_ships: AISShips,
+        global_path: GlobalPath,
+        filtered_wind_sensor: WindSensor,
+    ):
+        state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
+        ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
         if ompl_path.solved:
             self._logger.info('Updating local path')
             self._update(ompl_path)
