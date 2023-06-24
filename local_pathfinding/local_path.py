@@ -10,13 +10,13 @@ class LocalPathState:
     """Gathers and stores the state of the Sailbot.
 
     Attributes:
-        postion (GPS): The latitude (float32) and longitudinal (float32) coordinates of the Sailbot.
-        speed (GPS): The speed (float32) of the Sailbot at that position. Units: km/hr.
-        heading (GPS): The direction (float32) in which the Sailbot is Sailing at. Units: Degrees.
-        ais_ships (AISShips): Objects of all the ships (Ask Patrick) that surrounds the Sailbot.
-        global_path (GlobalPath): Objects of all the global way points which the Sailbot will travel to.
-        wind_speed (WindSensor): The wind speed. Units: km/hr (Check with Patrick).
-        wind_direction (WindSensor): The wind direction towards the boat. Units: Degrees.
+        `postion` (GPS): The latitude (float32) and longitudinal (float32) coordinates of the Sailbot.
+        `speed` (GPS): The speed (float32) of the Sailbot at that position. Units: km/hr.
+        `heading` (GPS): The direction (float32) in which the Sailbot is Sailing at. Units: Degrees.
+        `ais_ships` (AISShips): List of ships.
+        `global_path` (GlobalPath): Objects of all the global way points which the Sailbot will travel to.
+        `wind_speed` (WindSensor): The wind speed. Units: km/hr.
+        `wind_direction` (WindSensor): The wind direction (int16) towards the boat. Units: Degrees.
     """
 
     def __init__(
@@ -26,6 +26,14 @@ class LocalPathState:
         global_path: GlobalPath,
         filtered_wind_sensor: WindSensor,
     ):
+        """Initializes the local path state.
+
+        Args:
+            `gps` (GPS): Contains the Sailbot's position, speed and heading.
+            `ais_ships` (AISShips): List of ships id, lat_lon, speed and heading.
+            `global_path` (GlobalPath): List of latitude and longitude.
+            `filtered_wind_sensor` (WindSensor): Wind's speed and direction.
+        """
         if gps:  # TODO: remove when mocks can be run
             self.position = gps.lat_lon
             self.speed = gps.speed
@@ -40,9 +48,9 @@ class LocalPath:
     """The LocalPath sets and updates the local waypoints in between the
 
     Attributes:
-        _logger (RcutilsLogger): The ROS logger of LocalPath.
-        _ompl_path (OMPLPath): ompl path object.
-        waypoints (List): Returns a list of waypoints coordinates (x,y)
+        `_logger` (RcutilsLogger): The ROS logger of LocalPath.
+        `_ompl_path` (OMPLPath): ompl path object.
+        `waypoints` (List): Returns a list of coordinates (tuples (x, y)).
     """
     def __init__(self, parent_logger: RcutilsLogger):
         self._logger = parent_logger.get_child(name='local_path')
@@ -69,4 +77,4 @@ class LocalPath:
         self._ompl_path = ompl_path
         self.waypoints = self._ompl_path.get_waypoints()
 
-        print(type(self.waypoints))
+        
