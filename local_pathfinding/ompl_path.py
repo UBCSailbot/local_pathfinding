@@ -55,7 +55,6 @@ class OMPLPath:
             self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
             return []
 
-        waypoints = []
         solution_path = self._simple_setup.getSolutionPath()
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints

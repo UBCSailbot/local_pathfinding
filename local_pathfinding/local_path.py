@@ -14,13 +14,21 @@ class LocalPathState:
         global_path: GlobalPath,
         filtered_wind_sensor: WindSensor,
     ):
-        if gps:  # TODO: remove when mocks can be run
-            self.position = gps.lat_lon
-            self.speed = gps.speed
-            self.heading = gps.heading
-            self.ais_ships = ais_ships
-            self.global_path = global_path
-            self.wind_speed = filtered_wind_sensor.speed
+        if gps:  # TODO: remove when mock can be run
+            self.position = (gps.lat_lon.latitude, gps.lat_lon.longitude)
+            self.speed = gps.speed.speed_kmph
+            self.heading = gps.heading.heading_degrees
+
+        if ais_ships:  # TODO: remove when mock can be run
+            self.ais_ships = [ship for ship in ais_ships.ships]
+
+        if global_path:  # TODO: remove when mock can be run
+            self.global_path = [
+                (waypoint.latitude, waypoint.longitude) for waypoint in global_path.waypoints
+            ]
+
+        if filtered_wind_sensor:  # TODO: remove when mock can be run
+            self.wind_speed = filtered_wind_sensor.speed.speed_kmph
             self.wind_direction = filtered_wind_sensor.direction_degrees
 
 
