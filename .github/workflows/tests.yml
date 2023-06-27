@@ -31,3 +31,10 @@ jobs:
     # 2. Uncomment the 2 lines below
     secrets:
       gh-token: ${{ secrets.PAT_TOKEN }}
+
+  print-repo-name:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Print Repository Name
+      run: |
+          echo ${{ github.event.repository.name }}
