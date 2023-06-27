@@ -1,7 +1,7 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
 import rclpy
-from custom_interfaces.msg import GPS, AISShips, GlobalPath, Heading, WindSensor
+from custom_interfaces.msg import GPS, AISShips, DesiredHeading, GlobalPath, WindSensor
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -27,7 +27,7 @@ class Sailbot(Node):
         filtered_wind_sensor_sub (Subscription): Subscribe to a `WindSensor` msg.
 
     Publishers and their timers:
-        desired_heading_pub (Publisher): Publish the desired heading in a `Heading` msg.
+        desired_heading_pub (Publisher): Publish the desired heading in a `DesiredHeading` msg.
         desired_heading_timer (Timer): Call the desired heading callback function.
 
     Attributes from subscribers:
@@ -72,7 +72,7 @@ class Sailbot(Node):
 
         # publishers and their timers
         self.desired_heading_pub = self.create_publisher(
-            msg_type=Heading, topic='desired_heading', qos_profile=10
+            msg_type=DesiredHeading, topic='desired_heading', qos_profile=10
         )
         pub_period_sec = self.get_parameter('pub_period_sec').get_parameter_value().double_value
         self.get_logger().info(f'Got parameter: {pub_period_sec=}')
@@ -112,14 +112,14 @@ class Sailbot(Node):
     def desired_heading_callback(self):
         """Get and publish the desired heading.
 
-        Warn if not following the heading conventions in custom_interfaces/msg/Heading.msg.
+        Warn if not following the heading conventions in custom_interfaces/msg/HelperHeading.msg.
         """
         desired_heading = self.get_desired_heading()
         if desired_heading < 0 or 360 <= desired_heading:
             self.get_logger().warning(f'Heading {desired_heading} not in [0, 360)')
 
-        msg = Heading()
-        msg.heading_degrees = desired_heading
+        msg = DesiredHeading()
+        msg.heading.heading_degrees = desired_heading
 
         self.desired_heading_pub.publish(msg)
         self.get_logger().info(f'Publishing to {self.desired_heading_pub.topic}: {msg}')
