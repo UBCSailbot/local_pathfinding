@@ -29,10 +29,10 @@ class LocalPathState:
         """Initializes the local path state.
 
         Args:
-            `gps` (GPS): Contains the Sailbot's position, speed and heading.
-            `ais_ships` (AISShips): List of ships id, lat_lon, speed and heading.
-            `global_path` (GlobalPath): List of latitude and longitude.
-            `filtered_wind_sensor` (WindSensor): Wind's speed and direction.
+            `gps` (GPS): Data from the GPS sensors.
+            `ais_ships` (AISShips): Data from the AIS receiver.
+            `global_path` (GlobalPath): Data from the Globalpath server.
+            `filtered_wind_sensor` (WindSensor): Data from the windsensors.
         """
         if gps:  # TODO: remove when mocks can be run
             self.position = gps.lat_lon
@@ -45,12 +45,12 @@ class LocalPathState:
 
 
 class LocalPath:
-    """The LocalPath sets and updates the local waypoints in between the
+    """Sets and updates the OMPL path and the local waypoints
 
     Attributes:
         `_logger` (RcutilsLogger): The ROS logger of LocalPath.
-        `_ompl_path` (OMPLPath): ompl path object.
-        `waypoints` (List): Returns a list of coordinates (tuples (x, y)).
+        `_ompl_path` (OMPLPath): The raw representation of the path from OMPL.
+        `waypoints` (List): A list of coordinates that form the path.
     """
     def __init__(self, parent_logger: RcutilsLogger):
         self._logger = parent_logger.get_child(name='local_path')
@@ -65,7 +65,13 @@ class LocalPath:
         filtered_wind_sensor: WindSensor,
     ):
         """Updates the LocalPath with an updated OMPLPath and new local waypoints.
+           The path is updated if a new path is found.
 
+        Args:
+            `gps` (GPS): Data from the GPS sensors.
+            `ais_ships` (AISShips): Data from the AIS receiver.
+            `global_path` (GlobalPath): Data from the Globalpath server.
+            `filtered_wind_sensor` (WindSensor): Data from the windsensors.
         """
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
         ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
@@ -76,5 +82,3 @@ class LocalPath:
     def _update(self, ompl_path: OMPLPath):
         self._ompl_path = ompl_path
         self.waypoints = self._ompl_path.get_waypoints()
-
-        
