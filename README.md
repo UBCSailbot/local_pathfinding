@@ -6,7 +6,7 @@ UBC Sailbot's local pathfinding ROS package
 
 ## Run
 
-Using main launch file: `ros2 launch local_pathfinding main_launch.py`
+Using main launch file: `ros2 launch local_pathfinding local_pathfinding_launch.py`
 
 ### Launch Parameters
 
