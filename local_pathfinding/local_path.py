@@ -11,15 +11,15 @@ class LocalPathState:
     """Gathers and stores the state of the Sailbot.
 
     Attributes:
-        `position` (GPS) (Tuple[float, float]): The latitude and longitudinal coordinates of the
+        `position` (Tuple[float, float]): The latitude and longitudinal coordinates of the
          Sailbot.
-        `speed` (GPS) (float): The speed of the Sailbot at that position.
-        `heading` (GPS) (float): The direction in which the Sailbot is Sailing at.
-        `ais_ships` (AISShips) (List): List of ships.
-        `global_path` (GlobalPath) (List): Objects of all the global way points which the Sailbot will
+        `speed` (float): The speed of the Sailbot at that position.
+        `heading` (float): The direction in which the Sailbot is Sailing at.
+        `ais_ships` (List[HelperAISShip]): List of ships.
+        `global_path` (List[Tuple[float, float]]): Objects of all the global way points which the Sailbot will
          travel to.
-        `wind_speed` (WindSensor) (float): The wind speed.
-        `wind_direction` (WindSensor) (int): The wind direction towards the boat.
+        `wind_speed` (float): The wind speed.
+        `wind_direction` (int): The wind direction towards the boat.
         The attributes' units and conventions can be found in the ROS msgs, which are derived from
         custom_interfaces.
     """
