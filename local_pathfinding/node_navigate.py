@@ -119,7 +119,7 @@ class Sailbot(Node):
             self.get_logger().warning(f'Heading {desired_heading} not in [0, 360)')
 
         msg = DesiredHeading()
-        msg.heading.heading_degrees = desired_heading
+        msg.heading.heading = desired_heading
 
         self.desired_heading_pub.publish(msg)
         self.get_logger().info(f'Publishing to {self.desired_heading_pub.topic}: {msg}')
