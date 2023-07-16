@@ -4,7 +4,6 @@ from custom_interfaces.msg import GPS, AISShips, GlobalPath, WindSensor
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 from local_pathfinding.ompl_path import OMPLPath
-from typing import List, Tuple
 
 
 class LocalPathState:
@@ -16,8 +15,8 @@ class LocalPathState:
         `speed` (float): The speed of the Sailbot at that position.
         `heading` (float): The direction in which the Sailbot is Sailing at.
         `ais_ships` (List[HelperAISShip]): List of ships.
-        `global_path` (List[Tuple[float, float]]): Objects of all the global way points which the Sailbot will
-         travel to.
+        `global_path` (List[Tuple[float, float]]): Objects of all the global way points which the
+            Sailbot will travel to.
         `wind_speed` (float): The wind speed.
         `wind_direction` (int): The wind direction towards the boat.
         The attributes' units and conventions can be found in the ROS msgs, which are derived from
@@ -46,7 +45,6 @@ class LocalPathState:
 
         if ais_ships:  # TODO: remove when mock can be run
             self.ais_ships = [ship for ship in ais_ships.ships]
-
 
         if global_path:  # TODO: remove when mock can be run
             self.global_path = [
