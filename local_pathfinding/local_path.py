@@ -16,8 +16,8 @@ class LocalPathState:
     ):
         if gps:  # TODO: remove when mock can be run
             self.position = (gps.lat_lon.latitude, gps.lat_lon.longitude)
-            self.speed = gps.speed.speed_kmph
-            self.heading = gps.heading.heading_degrees
+            self.speed = gps.speed.speed
+            self.heading = gps.heading.heading
 
         if ais_ships:  # TODO: remove when mock can be run
             self.ais_ships = [ship for ship in ais_ships.ships]
@@ -28,8 +28,8 @@ class LocalPathState:
             ]
 
         if filtered_wind_sensor:  # TODO: remove when mock can be run
-            self.wind_speed = filtered_wind_sensor.speed.speed_kmph
-            self.wind_direction = filtered_wind_sensor.direction_degrees
+            self.wind_speed = filtered_wind_sensor.speed.speed
+            self.wind_direction = filtered_wind_sensor.direction
 
 
 class LocalPath:
