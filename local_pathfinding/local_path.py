@@ -7,6 +7,21 @@ from local_pathfinding.ompl_path import OMPLPath
 
 
 class LocalPathState:
+    """Gathers and stores the state of Sailbot.
+    The attributes' units and conventions can be found in the ROS msgs they are derived from in the
+    custom_interfaces repository.
+
+    Attributes:
+        `position` (Tuple[float, float]): Latitude and longitude of Sailbot.
+        `speed` (float): Speed of Sailbot.
+        `heading` (float): Direction that Sailbot is pointing.
+        `ais_ships` (List[HelperAISShip]): Information about nearby ships.
+        `global_path` (List[Tuple[float, float]]): Path to the destination that Sailbot is
+            navigating along.
+        `wind_speed` (float): Wind speed.
+        `wind_direction` (int): Wind direction.
+    """
+
     def __init__(
         self,
         gps: GPS,
@@ -14,6 +29,7 @@ class LocalPathState:
         global_path: GlobalPath,
         filtered_wind_sensor: WindSensor,
     ):
+        """Initializes the state from ROS msgs."""
         if gps:  # TODO: remove when mock can be run
             self.position = (gps.lat_lon.latitude, gps.lat_lon.longitude)
             self.speed = gps.speed.speed
@@ -33,6 +49,14 @@ class LocalPathState:
 
 
 class LocalPath:
+    """Sets and updates the OMPL path and the local waypoints
+
+    Attributes:
+        `_logger` (RcutilsLogger): ROS logger.
+        `_ompl_path` (OMPLPath): Raw representation of the path from OMPL.
+        `waypoints` (List): List of coordinates that form the path to the next global waypoint.
+    """
+
     def __init__(self, parent_logger: RcutilsLogger):
         self._logger = parent_logger.get_child(name='local_path')
         self._ompl_path = None
@@ -45,6 +69,14 @@ class LocalPath:
         global_path: GlobalPath,
         filtered_wind_sensor: WindSensor,
     ):
+        """Updates the OMPL path and waypoints. The path is updated if a new path is found.
+
+        Args:
+            `gps` (GPS): GPS data.
+            `ais_ships` (AISShips): AIS ships data.
+            `global_path` (GlobalPath): Path to the destination.
+            `filtered_wind_sensor` (WindSensor): Wind data.
+        """
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
         ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
         if ompl_path.solved:
