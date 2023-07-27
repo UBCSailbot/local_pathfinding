@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
@@ -25,14 +26,9 @@ def generate_launch_description():
                 default_value=['info'],
                 description='Logging level',
             ),
-            Node(
-                package='local_pathfinding',
-                executable='navigate',
-                name='navigate_main',
-                output='screen',
-                emulate_tty=True,
-                parameters=[global_config],
-                arguments=[
+            *get_nodes(
+                global_parameters=[global_config],
+                global_arguments=[
                     "--ros-args",
                     "--log-level",
                     ["navigate_main:=", log_level],
@@ -40,3 +36,17 @@ def generate_launch_description():
             ),
         ]
     )
+
+
+def get_nodes(global_parameters: List = [], global_arguments: List = []) -> List[Node]:
+    return [
+        Node(
+            package='local_pathfinding',
+            executable='navigate',
+            name='navigate_main',
+            output='screen',
+            emulate_tty=True,
+            parameters=[*global_parameters],
+            arguments=[*global_arguments],
+        ),
+    ]
