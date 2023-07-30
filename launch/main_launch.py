@@ -61,7 +61,7 @@ def get_nodes(common_parameters: List, common_ros_arguments: List, mode: str) ->
     navigate_main_parameters = [*common_parameters]
     navigate_main_ros_arguments = [*common_ros_arguments]
 
-    return [
+    nodes = [
         Node(
             package="local_pathfinding",
             executable="navigate",
@@ -72,3 +72,5 @@ def get_nodes(common_parameters: List, common_ros_arguments: List, mode: str) ->
             ros_arguments=navigate_main_ros_arguments,
         ),
     ]
+
+    return nodes
