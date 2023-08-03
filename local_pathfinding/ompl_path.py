@@ -14,6 +14,8 @@ from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+from local_pathfinding.path_objective import Distanceobjective
+
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
 
@@ -24,9 +26,9 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
-        self.state_domain = (-1, 1)
-        self.state_range = (-1, 1)
-        self.start_state = (0.5, 0.4)
+        self.state_domain = (-0.6, 0.6)
+        self.state_range = (-0.6, 0.6)
+        self.start_state = (0, 0)
         self.goal_state = (0.5, -0.4)
 
 
@@ -59,8 +61,16 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self):
-        raise NotImplementedError
+    def update_objectives(self, space_information):
+        distance_ob = Distanceobjective(space_information)
+
+        distance_objective = distance_ob.get_path_length_objective()
+        # euclidean_objective = distance_ob.get_euclidean_path_length_objective()
+
+        print(distance_objective)
+
+        return distance_objective
+
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -86,6 +96,9 @@ class OMPLPath:
         simple_setup = og.SimpleSetup(space)
         simple_setup.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
 
+        # Constructs a space information instance for this simple setup
+        space_information = simple_setup.getSpaceInformation()
+
         # set the goal and start states of the simple setup object
         start = ob.State(space)
         goal = ob.State(space)
@@ -102,11 +115,26 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        # simple_setup.setOptimizationObjective(objective)
+        objective = self.update_objectives(space_information)
+        simple_setup.setOptimizationObjective(objective)
+
+
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
-        # simple_setup.setPlanner(planner)
+        planner = og.RRTstar(space_information)
+        simple_setup.setPlanner(planner)
+
+        solve = simple_setup.solve(20)
+
+        if solve:
+            with open("path.txt", "w") as f:
+                f.write(simple_setup.getSolutionPath().printAsMatrix())
+                f.close()
+
+            # if ss is a ompl::geometric::SimpleSetup object
+            print(simple_setup.getSolutionPath().printAsMatrix())
+
 
         return simple_setup
 
