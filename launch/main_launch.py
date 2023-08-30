@@ -13,14 +13,13 @@ from launch.substitutions import LaunchConfiguration
 
 # Local launch arguments and constants
 PACKAGE_NAME = "local_pathfinding"
-NAVIGATE_NODE_NAME = "navigate_main"
 
 # Add args with DeclareLaunchArguments object(s) and utilize in setup_launch()
 LOCAL_LAUNCH_ARGUMENTS = []
 
 
 def generate_launch_description() -> LaunchDescription:
-    """The launch file entry point. Generates the launch description for the `network_systems`
+    """The launch file entry point. Generates the launch description for the `local_pathfinding`
     package.
 
     Returns:
@@ -45,7 +44,7 @@ def get_global_launch_arguments() -> List[LaunchDescriptionEntity]:
         List[LaunchDescriptionEntity]: List of global launch argument objects.
     """
     global_main_launch = os.path.join(
-        os.getenv("ROS_WORKSPACE"), "src", "global_launch", "main_launch.py"
+        os.getenv("ROS_WORKSPACE"), "global_launch", "main_launch.py"
     )
     spec = importlib.util.spec_from_file_location("global_launch", global_main_launch)
     module = importlib.util.module_from_spec(spec)
@@ -90,16 +89,17 @@ def get_navigate_node_description(context: LaunchContext) -> Node:
     Returns:
         Node: The node object that launches the navigate_main node.
     """
+    node_name = "navigate_main"
     ros_parameters = [LaunchConfiguration("config").perform(context)]
     ros_arguments = [
         "--log-level",
-        [f"{NAVIGATE_NODE_NAME}:=", LaunchConfiguration("log_level")],
+        [f"{node_name}:=", LaunchConfiguration("log_level")],
     ]
 
     node = Node(
         package=PACKAGE_NAME,
         executable="navigate",
-        name=NAVIGATE_NODE_NAME,
+        name=node_name,
         output="screen",
         emulate_tty=True,
         parameters=ros_parameters,
