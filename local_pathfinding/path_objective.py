@@ -21,7 +21,7 @@ class Distanceobjective:
         s1 = (start_x, start_y)
         s2 = (goal_x, goal_y)
 
-        return ((goal_y - start_y)**2 + (goal_x - start_x)**2)**(0.5)
+        return ((goal_y - start_y) ** 2 + (goal_x - start_x) ** 2) ** (0.5)
 
     def get_latlon_path_length_objective(self, state):
         """
@@ -39,6 +39,18 @@ class Distanceobjective:
         s1 = (start_lat, start_lon)
         s2 = (goal_lat, goal_lon)
 
-        return math.acos(math.sin(start_lat)*math.sin(goal_lat) + math.cos(start_lat)*math.cos(goal_lat)*math.cos(start_lon - goal_lon)) * 6371
+        return (
+            math.acos(
+                math.sin(start_lat) * math.sin(goal_lat)
+                + math.cos(start_lat) * math.cos(goal_lat) * math.cos(start_lon - goal_lon)
+            )
+            * 6371
+        )
 
 
+class HeadingObjective:
+    def __init__(self, si, windDirectionDegrees):
+        self.si = si
+        self.windDirectionDegrees = windDirectionDegrees
+
+    

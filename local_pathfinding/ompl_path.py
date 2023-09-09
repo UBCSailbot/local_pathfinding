@@ -64,16 +64,12 @@ class OMPLPath:
     def update_objectives(self):
         simple_setup = og.SimpleSetup(ob.SE2StateSpace())
         space_information = simple_setup.getSpaceInformation()
+
         distance_ob = Distanceobjective(space_information)
 
-        # distance_objective = distance_ob.get_path_length_objective()
-        euclidean_objective = distance_ob.get_euclidean_path_length_objective(self.state)
-        print(euclidean_objective)
+        latlon_objective = distance_ob.get_latlon_path_length_objective(self.state)
 
-        lat_lon_objective = distance_ob.get_latlon_path_length_objective(self.state)
-        print(lat_lon_objective)
-
-        return euclidean_objective
+        return latlon_objective
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -119,14 +115,14 @@ class OMPLPath:
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
         objective = self.update_objectives()
-        # simple_setup.setOptimizationObjective(objective)
+        simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
         planner = og.RRTstar(space_information)
         simple_setup.setPlanner(planner)
 
-        solve = simple_setup.solve(20)
+        solve = simple_setup.solve(10)
 
         if solve:
             with open("path.txt", "w") as f:
