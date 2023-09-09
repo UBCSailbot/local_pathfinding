@@ -39,7 +39,7 @@ class OMPLPath:
         max_runtime: float,
         local_path_state: LocalPathState,
     ):
-        self._logger = parent_logger.get_child(name='ompl_path')
+        self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
@@ -54,23 +54,26 @@ class OMPLPath:
 
     def get_waypoints(self):
         if not self.solved:
-            self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
+            self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self, space_information):
+    def update_objectives(self):
+        simple_setup = og.SimpleSetup(ob.SE2StateSpace())
+        space_information = simple_setup.getSpaceInformation()
         distance_ob = Distanceobjective(space_information)
 
-        distance_objective = distance_ob.get_path_length_objective()
-        # euclidean_objective = distance_ob.get_euclidean_path_length_objective()
+        # distance_objective = distance_ob.get_path_length_objective()
+        euclidean_objective = distance_ob.get_euclidean_path_length_objective(self.state)
+        print(euclidean_objective)
 
-        print(distance_objective)
+        lat_lon_objective = distance_ob.get_latlon_path_length_objective(self.state)
+        print(lat_lon_objective)
 
-        return distance_objective
-
+        return euclidean_objective
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -85,9 +88,9 @@ class OMPLPath:
         bounds.setHigh(index=0, value=x_max)
         bounds.setHigh(index=1, value=y_max)
         self._logger.debug(
-            'state space bounds: '
-            f'x=[{bounds.low[0]}, {bounds.high[0]}]; '
-            f'y=[{bounds.low[1]}, {bounds.high[1]}]'
+            "state space bounds: "
+            f"x=[{bounds.low[0]}, {bounds.high[0]}]; "
+            f"y=[{bounds.low[1]}, {bounds.high[1]}]"
         )
         bounds.check()  # check if bounds are valid
         space.setBounds(bounds)
@@ -107,18 +110,16 @@ class OMPLPath:
         start().setXY(start_x, start_y)
         goal().setXY(goal_x, goal_y)
         self._logger.debug(
-            'start and goal state: '
-            f'start=({start().getX()}, {start().getY()}); '
-            f'goal=({goal().getX()}, {goal().getY()})'
+            "start and goal state: "
+            f"start=({start().getX()}, {start().getY()}); "
+            f"goal=({goal().getX()}, {goal().getY()})"
         )
         simple_setup.setStartAndGoalStates(start, goal)
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        objective = self.update_objectives(space_information)
-        simple_setup.setOptimizationObjective(objective)
-
-
+        objective = self.update_objectives()
+        # simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
@@ -134,7 +135,6 @@ class OMPLPath:
 
             # if ss is a ompl::geometric::SimpleSetup object
             print(simple_setup.getSolutionPath().printAsMatrix())
-
 
         return simple_setup
 

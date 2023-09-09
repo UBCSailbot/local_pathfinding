@@ -15,3 +15,14 @@ def test_LocalPath_update_if_needed():
     )
     assert PATH.waypoints is not None, 'waypoints is not initialized'
     assert len(PATH.waypoints) > 1, 'waypoints length <= 1'
+
+def test_basic_distance():
+    PATH.update_if_needed(
+        gps=GPS(),
+        ais_ships=AISShips(),
+        global_path=GlobalPath(),
+        filtered_wind_sensor=WindSensor(),
+    )
+
+    assert PATH.waypoints is not None, 'waypoints is not initialized'
+    assert len(PATH.waypoints) > 1, 'waypoints length <= 1'

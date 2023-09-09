@@ -3,6 +3,7 @@ from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.ompl_path as ompl_path
+from local_pathfinding.path_objective import Distanceobjective
 
 PATH = ompl_path.OMPLPath(parent_logger=RcutilsLogger(), max_runtime=1, local_path_state=None)
 
@@ -38,10 +39,17 @@ def test_OMPLPath_get_waypoint():
     ), 'last waypoint should be goal state'
 
 
-def test_OMPLPath_update_objectives():
-    with pytest.raises(NotImplementedError):
-        PATH.update_objectives()
+# def test_OMPLPath_update_objectives():
+#     with pytest.raises(NotImplementedError):
+#         PATH.update_objectives()
 
+def test_basic_euclidean_distance():
+    space_information = PATH.update_objectives()
+    distance_ob = Distanceobjective(space_information)
+
+    distance_objective = distance_ob.get_path_length_objective()
+    # euclidean_objective = distance_ob.get_euclidean_path_length_objective()
+    
 
 @pytest.mark.parametrize(
     "x,y,is_valid",
