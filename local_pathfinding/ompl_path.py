@@ -14,7 +14,7 @@ from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
-from local_pathfinding.path_objective import Distanceobjective
+from local_pathfinding import path_objective as po
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
@@ -61,15 +61,19 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self):
-        simple_setup = og.SimpleSetup(ob.SE2StateSpace())
-        space_information = simple_setup.getSpaceInformation()
+    def update_objectives(self, space_information):
+        # distance_ob = po.Distanceobjective(space_information)
+        # # latlon_objective = distance_ob.get_latlon_path_length_objective(self.state)
+        # heading_ob = po.HeadingObjective(space_information, heading_degrees=45, initial_heading_degrees=0)
+        # wind_ob = po.WindObjective(space_information, windDirectionDegrees=10)
 
-        distance_ob = Distanceobjective(space_information)
+        # opt = ob.MultiOptimizationObjective(space_information)
+        # opt.addObjective(distance_ob, 1.0)
+        # opt.addObjective(heading_ob, 100.0)
+        # opt.addObjective(wind_ob, 1.0)
 
-        latlon_objective = distance_ob.get_latlon_path_length_objective(self.state)
+        return po.allocate_objective(space_information, heading_degrees=45, initial_heading_degrees=0, windDirectionDegrees=10)
 
-        return latlon_objective
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -114,7 +118,7 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        objective = self.update_objectives()
+        objective = self.update_objectives(space_information)
         simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object

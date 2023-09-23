@@ -44,12 +44,12 @@ def test_OMPLPath_get_waypoint():
 #         PATH.update_objectives()
 
 def test_basic_euclidean_distance():
-    space_information = PATH.update_objectives()
+    space_information = PATH.update_objectives(space_information)
     distance_ob = Distanceobjective(space_information)
 
     distance_objective = distance_ob.get_path_length_objective()
     # euclidean_objective = distance_ob.get_euclidean_path_length_objective()
-    
+
 
 @pytest.mark.parametrize(
     "x,y,is_valid",
