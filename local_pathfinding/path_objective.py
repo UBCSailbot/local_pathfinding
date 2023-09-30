@@ -66,8 +66,7 @@ class HeadingObjective(ob.StateCostIntegralObjective):
         self.heading_degrees = heading_degrees
 
     def motionCost(self, s1, s2):
-
-        #Calculate the mininum turning cost between s1-goal and heading
+        # Calculate the mininum turning cost between s1-goal and heading
         turn_cost = self.goalHeadingTurnCost(s1)
 
         # Calculate the minimum turning cost between s1-s1 and s1-goal
@@ -178,7 +177,7 @@ class WindObjective(ob.StateCostIntegralObjective):
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1, s2):
         """
-        1. Convert the meausred wind direction to radians
+        1. Convert the measured wind direction to radians
         2. Convert the measured wind direction to true wind direction
         3. Check if the angle between the true wind direction and the North direction is greater than 180 degrees
         4. If the angle is greater than 180 degrees, then subtract 360 degrees from the angle
@@ -189,7 +188,7 @@ class WindObjective(ob.StateCostIntegralObjective):
         RANGE: [-180, 180]
 
         """
-        distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s2.getY()) ** 2) ** 0.5
+        distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s1.getX()) ** 2) ** 0.5
         boatDirectionRadians = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
 
         if isUpwind(math.radians(self.windDirectionDegrees), boatDirectionRadians):
@@ -211,6 +210,8 @@ def isDownwind(windDirectionRadians, boatDirectionRadians):
 
 
 def abs_angle_dist_radians(a1, a2):
+    """What is the output of this function?"""
+
     """Computes the absolute difference between two angles in radians"""
     return abs((a1 - a2 + math.pi) % (2 * math.pi) - math.pi)
 
@@ -219,7 +220,9 @@ def allocate_objective(space_information, simple_setup, heading_degrees, windDir
     """Allocates a SO2 objective function with the given weight for each of the components of the objective function"""
     objective = ob.MultiOptimizationObjective(space_information)
     objective.addObjective(Distanceobjective(space_information), 1.0)
-    objective.addObjective(HeadingObjective(space_information, simple_setup, heading_degrees=45), 100.0)
-    # objective.addObjective(WindObjective(space_information, windDirectionDegrees=8), 1.0)
+    objective.addObjective(
+        HeadingObjective(space_information, simple_setup, heading_degrees=45), 100.0
+    )
+    objective.addObjective(WindObjective(space_information, windDirectionDegrees=8), 1.0)
 
     return objective
