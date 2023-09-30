@@ -90,17 +90,17 @@ class HeadingObjective(ob.StateCostIntegralObjective):
         large_turn_threshold = math.pi / 2
 
         # Calculate the angle of the s1-s2 line segment from North
-        path_direction = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
+        path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
         # Calculate the angle from s1-goal line segment from North
-        global_goal_direction = math.atan2(self.goal_y - s1.getY(), self.goal_x - s1.getX())
+        global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
         # Calculate the uncorrected turn size [0, 2pi]
         turn_size_bias = math.fabs(global_goal_direction - path_direction)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - math.pi
+            turn_size_unbias = turn_size_bias - 2 * math.pi
         else:
             turn_size_unbias = turn_size_bias
 
@@ -122,14 +122,14 @@ class HeadingObjective(ob.StateCostIntegralObjective):
         large_turn_threshold = math.pi / 2
 
         # Calculate the angle from s1-goal line segment from North
-        global_goal_direction = math.atan2(self.goal_y - s1.getY(), self.goal_x - s1.getX())
+        global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
         # Calculate the uncorrected turn size [0, 2pi]
         turn_size_bias = math.fabs(global_goal_direction - self.heading_degrees)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - math.pi
+            turn_size_unbias = turn_size_bias - 2 * math.pi
         else:
             turn_size_unbias = turn_size_bias
 
@@ -151,14 +151,14 @@ class HeadingObjective(ob.StateCostIntegralObjective):
         large_turn_threshold = math.pi / 2
 
         # Calculate the angle of the s1-s2 line segment from North
-        path_direction = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
+        path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
         # Calculate turn size
         turn_size_bias = math.fabs(path_direction - self.heading_degrees)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - math.pi
+            turn_size_unbias = turn_size_bias - 2 * math.pi
         else:
             turn_size_unbias = turn_size_bias
 
@@ -189,7 +189,7 @@ class WindObjective(ob.StateCostIntegralObjective):
 
         """
         distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s1.getX()) ** 2) ** 0.5
-        boatDirectionRadians = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
+        boatDirectionRadians = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
         if isUpwind(math.radians(self.windDirectionDegrees), boatDirectionRadians):
             return UPWIND_MULTIPLIER * distance
