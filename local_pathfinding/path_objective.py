@@ -58,39 +58,115 @@ class Distanceobjective(ob.StateCostIntegralObjective):
 
 
 class HeadingObjective(ob.StateCostIntegralObjective):
-    def __init__(self, si, initial_heading_degrees, heading_degrees):
+    def __init__(self, si, ss, heading_degrees):
         super(HeadingObjective, self).__init__(si, True)
         self.si = si
-        self.last_direction_radians = math.radians(heading_degrees)
-        self.initial_direction_radians = math.radians(initial_heading_degrees)
+        self.goal_x = ss.getGoal().getState().getX()
+        self.goal_y = ss.getGoal().getState().getY()
+        self.heading_degrees = heading_degrees
 
-    def desiredHeadingTurnCost(self, s1, s2):
+    def motionCost(self, s1, s2):
 
-        direction_radians = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
+        #Calculate the mininum turning cost between s1-goal and heading
+        turn_cost = self.goalHeadingTurnCost(s1)
+
+        # Calculate the minimum turning cost between s1-s1 and s1-goal
+        #   turn_cost = self.goalHeadingTurnCost(s1, s2)
+
+        # Calculate the minimum turning cost from sl-s2 and heading
+        #   turn_cost = self.headingPathTurnCost(s1, s2)
+
+        return turn_cost
+
+    def goalPathTurnCost(self, s1, s2):
+        """Determine the smallest turn angle between s1-s2 and s1-goal
+
+        Args:
+            s1 (class): coordinates in the form (x, y) of the start state
+            s2 (_type_): coordinates in the form (x, y) of the local goal state
+
+        Returns:
+            int: the turning cost from s2 to s1
+        """
+        large_turn_threshold = math.pi / 2
+
+        # Calculate the angle of the s1-s2 line segment from North
+        path_direction = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
+
+        # Calculate the angle from s1-goal line segment from North
+        global_goal_direction = math.atan2(self.goal_y - s1.getY(), self.goal_x - s1.getX())
+
+        # Calculate the uncorrected turn size [0, 2pi]
+        turn_size_bias = math.fabs(global_goal_direction - path_direction)
+
+        # Correct the angle in between [0, pi]
+        if turn_size_bias > math.pi:
+            turn_size_unbias = turn_size_bias - math.pi
+        else:
+            turn_size_unbias = turn_size_bias
+
+        if turn_size_unbias > large_turn_threshold:
+            return 500 * turn_size_unbias
+        else:
+            return 10 * turn_size_unbias
+
+    def goalHeadingTurnCost(self, s1):
+        """Determine the smallest turn angle between s1-s2 and heading
+
+        Args:
+            s1 (class): coordinates in the form (x, y) of the start state
+            s2 (_type_): coordinates in the form (x, y) of the local goal state
+
+        Returns:
+            int: the turning cost from s2 to s1
+        """
+        large_turn_threshold = math.pi / 2
+
+        # Calculate the angle from s1-goal line segment from North
+        global_goal_direction = math.atan2(self.goal_y - s1.getY(), self.goal_x - s1.getX())
+
+        # Calculate the uncorrected turn size [0, 2pi]
+        turn_size_bias = math.fabs(global_goal_direction - self.heading_degrees)
+
+        # Correct the angle in between [0, pi]
+        if turn_size_bias > math.pi:
+            turn_size_unbias = turn_size_bias - math.pi
+        else:
+            turn_size_unbias = turn_size_bias
+
+        if turn_size_unbias > large_turn_threshold:
+            return 500 * turn_size_unbias
+        else:
+            return 10 * turn_size_unbias
+
+    def headingPathTurnCost(self, s1, s2):
+        """Generates the turning cost between s1-s2 and heading of the sailbot
+
+        Args:
+            s1 (class): The coordinates of the initial state in the form (x, y)
+            s2 (_type_): The coordinates of the local goal state in the form (x, y)
+
+        Returns:
+            int: The minimum turning cost between s1-s2 and heading
+        """
+        large_turn_threshold = math.pi / 2
+
+        # Calculate the angle of the s1-s2 line segment from North
+        path_direction = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
 
         # Calculate turn size
-        turn_size_radians = abs(direction_radians - self.last_direction_radians)
+        turn_size_bias = math.fabs(path_direction - self.heading_degrees)
 
-        large_turn_threshold = math.radians(2 * max(40, 20))
-        if turn_size_radians > large_turn_threshold:
-            return 500 * turn_size_radians
+        # Correct the angle in between [0, pi]
+        if turn_size_bias > math.pi:
+            turn_size_unbias = turn_size_bias - math.pi
         else:
-            return 10 * turn_size_radians
+            turn_size_unbias = turn_size_bias
 
-    def initialHeadingTurnCost(self, s1, s2):
-
-        direction_radians = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
-
-        # Calculate turn size
-        turn_size_radians = abs_angle_dist_radians(
-            self.initial_direction_radians, direction_radians
-        )
-
-        large_turn_threshold = math.radians(2 * max(40, 20))
-        if turn_size_radians > large_turn_threshold:
-            return 500 * turn_size_radians
+        if turn_size_bias > large_turn_threshold:
+            return 500 * turn_size_unbias
         else:
-            return 10 * turn_size_radians
+            return 10 * turn_size_unbias
 
 
 class WindObjective(ob.StateCostIntegralObjective):
@@ -101,6 +177,18 @@ class WindObjective(ob.StateCostIntegralObjective):
 
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1, s2):
+        """
+        1. Convert the meausred wind direction to radians
+        2. Convert the measured wind direction to true wind direction
+        3. Check if the angle between the true wind direction and the North direction is greater than 180 degrees
+        4. If the angle is greater than 180 degrees, then subtract 360 degrees from the angle
+        Ask whether we need to keep the angle negative or positive (since it is a cost function then we do not need to worry about the sign)
+
+        We need to decide whether the wind is coming from or blowing towards the boat. WE ARE USING COMING FROM
+
+        RANGE: [-180, 180]
+
+        """
         distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s2.getY()) ** 2) ** 0.5
         boatDirectionRadians = math.atan2(s2.getY() - s1.getY(), s2.getX() - s1.getX())
 
@@ -127,14 +215,11 @@ def abs_angle_dist_radians(a1, a2):
     return abs((a1 - a2 + math.pi) % (2 * math.pi) - math.pi)
 
 
-def allocate_objective(
-    space_information, heading_degrees, initial_heading_degrees, windDirectionDegrees
-):
+def allocate_objective(space_information, simple_setup, heading_degrees, windDirectionDegrees):
     """Allocates a SO2 objective function with the given weight for each of the components of the objective function"""
     objective = ob.MultiOptimizationObjective(space_information)
     objective.addObjective(Distanceobjective(space_information), 1.0)
-    objective.addObjective(
-        HeadingObjective(space_information, heading_degrees=45, initial_heading_degrees=0), 100.0
-    )
-    objective.addObjective(WindObjective(space_information, windDirectionDegrees=8), 1.0)
+    objective.addObjective(HeadingObjective(space_information, simple_setup, heading_degrees=45), 100.0)
+    # objective.addObjective(WindObjective(space_information, windDirectionDegrees=8), 1.0)
+
     return objective
