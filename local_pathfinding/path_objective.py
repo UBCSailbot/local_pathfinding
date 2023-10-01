@@ -69,7 +69,7 @@ class HeadingObjective(ob.StateCostIntegralObjective):
         # Calculate the mininum turning cost between s1-goal and heading
         turn_cost = self.goalHeadingTurnCost(s1)
 
-        # Calculate the minimum turning cost between s1-s1 and s1-goal
+        # Calculate the minimum turning cost between s1-s2 and s1-goal
         #   turn_cost = self.goalHeadingTurnCost(s1, s2)
 
         # Calculate the minimum turning cost from sl-s2 and heading
