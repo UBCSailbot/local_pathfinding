@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 import local_pathfinding.coord_systems as coord_systems
@@ -20,61 +22,31 @@ def test_cartesian_to_true_bearing(cartesian: float, true_bearing: float):
 
 
 @pytest.mark.parametrize(
-    "reference,latlon,xy",
+    "ref_lat,ref_lon,true_bearing_deg,dist_km",
     [
-        (
-            LatLon(latitude=30.0, longitude=-123.0),
-            LatLon(latitude=30.270624453997037, longitude=-123.0),
-            XY(x=0.0, y=30.0),
-        ),
-        (
-            LatLon(latitude=30.0, longitude=-123.0),
-            LatLon(latitude=30.19117726329345, longitude=-122.77971962373852),
-            XY(x=21.213203435597134, y=21.213203435596135),
-        ),
-        (
-            LatLon(latitude=30.0, longitude=-123.0),
-            LatLon(latitude=29.99963284667579, longitude=-122.68907572868501),
-            XY(x=30.0, y=0.0),
-        ),
-        (
-            LatLon(latitude=60.0, longitude=-123.0),
-            LatLon(latitude=60.26926459981188, longitude=-123.0),
-            XY(x=0.0, y=30.0),
-        ),
-        (
-            LatLon(latitude=60.0, longitude=-123.0),
-            LatLon(latitude=60.189849426556385, longitude=-122.61764080128867),
-            XY(x=21.213203435596185, y=21.21320343559584),
-        ),
-        (
-            LatLon(latitude=60.0, longitude=-123.0),
-            LatLon(latitude=59.99890592957226, longitude=-122.46237744068965),
-            XY(x=30.0, y=0.0),
-        ),
+        (30.0, -123.0, 0.0, 30.0),
+        (30.0, -123.0, 45.0, 30.0),
+        (30.0, -123.0, 90.0, 30.0),
+        (60.0, -123.0, 0.0, 30.0),
+        (60.0, -123.0, 45.0, 30.0),
+        (60.0, -123.0, 90.0, 30.0),
     ],
 )
-def test_latlon_to_xy(reference: LatLon, latlon: LatLon, xy: XY):
+def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, dist_km: float):
+    # create inputs
+    reference = LatLon(latitude=ref_lat, longitude=ref_lon)
+    lon, lat, _ = coord_systems.GEODESIC.fwd(
+        lons=ref_lon, lats=ref_lat, az=true_bearing_deg, dist=dist_km * 1000
+    )
+    latlon = LatLon(latitude=lat, longitude=lon)
+    true_bearing = math.radians(true_bearing_deg)
+
+    # create expected output
+    xy = XY(
+        x=dist_km * math.sin(true_bearing),
+        y=dist_km * math.cos(true_bearing),
+    )
+
     assert coord_systems.latlon_to_xy(reference, latlon) == pytest.approx(
         xy
     ), "incorrect coordinate conversion"
-
-
-def get_latlon_to_xy_test_cases():
-    test_cases = []
-    start_lon = -123
-    dist_km = 30
-    for start_lat in [30, 60]:
-        start = LatLon(latitude=start_lat, longitude=start_lon)
-        for course_deg in [0, 45, 90]:
-            dest_lon, dest_lat, _ = coord_systems.GEODESIC.fwd(
-                lons=start_lon, lats=start_lat, az=course_deg, dist=dist_km * 1000
-            )
-            dest = LatLon(latitude=dest_lat, longitude=dest_lon)
-            xy = coord_systems.latlon_to_xy(start, dest)
-            test_cases.append((start, dest, xy))
-    return test_cases
-
-
-if __name__ == "__main__":
-    print("latlon_to_xy() test cases:", get_latlon_to_xy_test_cases(), sep="\n")
