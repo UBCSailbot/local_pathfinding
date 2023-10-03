@@ -39,9 +39,9 @@ def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
         lons=ref_lon, lats=ref_lat, az=true_bearing_deg, dist=dist_km * 1000
     )
     latlon = LatLon(latitude=lat, longitude=lon)
-    true_bearing = math.radians(true_bearing_deg)
 
     # create expected output
+    true_bearing = math.radians(true_bearing_deg)
     xy = XY(
         x=dist_km * math.sin(true_bearing),
         y=dist_km * math.cos(true_bearing),
