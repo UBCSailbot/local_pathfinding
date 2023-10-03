@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
 
 from ompl import base as ob
 from ompl import geometric as og
@@ -31,13 +31,28 @@ class OMPLPathState:
 
 
 class OMPLPath:
+    """Represents the general OMPL Path.
+
+    Attributes
+        _logger (RcutilsLogger): ROS logger of this class.
+        _simple_setup (og.SimpleSetup): OMPL SimpleSetup object.
+        solved (bool): True if the path is a solution to the OMPL query, else false.
+    """
+
     def __init__(
         self,
         parent_logger: RcutilsLogger,
         max_runtime: float,
         local_path_state: LocalPathState,
     ):
-        self._logger = parent_logger.get_child(name='ompl_path')
+        """Initialize the OMPLPath Class. Attempt to solve for a path.
+
+        Args:
+            parent_logger (RcutilsLogger): Logger of the parent class.
+            max_runtime (float): Maximum amount of time in seconds to look for a solution path.
+            local_path_state (LocalPathState): State of Sailbot.
+        """
+        self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
@@ -48,11 +63,22 @@ class OMPLPath:
         #     simple_setup.simplifySolution()
 
     def get_cost(self):
+        """Get the cost of the path generated.
+
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
-    def get_waypoints(self):
+    def get_waypoints(self) -> List[Tuple[float, float]]:
+        """Get a list of waypoints for the boat to follow.
+
+        Returns:
+            list: A list of tuples representing the x and y coordinates of the waypoints.
+                  Output an empty list and print a warning message if path not solved.
+        """
         if not self.solved:
-            self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
+            self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
@@ -60,9 +86,20 @@ class OMPLPath:
         return waypoints
 
     def update_objectives(self):
+        """Update the objectives on the basis of which the path is optimized.
+
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
     def _init_simple_setup(self) -> og.SimpleSetup:
+        """Initialize and configure the OMPL SimpleSetup object.
+
+        Returns:
+            og.SimpleSetup: Encapsulates the various objects necessary to solve a geometric or
+                control query in OMPL.
+        """
         # create an SE2 state space: rotation and translation in a plane
         space = ob.SE2StateSpace()
 
@@ -75,9 +112,9 @@ class OMPLPath:
         bounds.setHigh(index=0, value=x_max)
         bounds.setHigh(index=1, value=y_max)
         self._logger.debug(
-            'state space bounds: '
-            f'x=[{bounds.low[0]}, {bounds.high[0]}]; '
-            f'y=[{bounds.low[1]}, {bounds.high[1]}]'
+            "state space bounds: "
+            f"x=[{bounds.low[0]}, {bounds.high[0]}]; "
+            f"y=[{bounds.low[1]}, {bounds.high[1]}]"
         )
         bounds.check()  # check if bounds are valid
         space.setBounds(bounds)
@@ -94,9 +131,9 @@ class OMPLPath:
         start().setXY(start_x, start_y)
         goal().setXY(goal_x, goal_y)
         self._logger.debug(
-            'start and goal state: '
-            f'start=({start().getX()}, {start().getY()}); '
-            f'goal=({goal().getX()}, {goal().getY()})'
+            "start and goal state: "
+            f"start=({start().getX()}, {start().getY()}); "
+            f"goal=({goal().getX()}, {goal().getY()})"
         )
         simple_setup.setStartAndGoalStates(start, goal)
 
@@ -112,6 +149,14 @@ class OMPLPath:
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
+    """Evaluate a state to determine if the configuration collides with an environment obstacle.
+
+    Args:
+        state (ob.SE2StateSpace): State to check.
+
+    Returns:
+        bool: True if state is valid, else false.
+    """
     # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
     return state.getX() < 0.6
