@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
 
 from ompl import base as ob
 from ompl import geometric as og
@@ -70,7 +70,7 @@ class OMPLPath:
         """
         raise NotImplementedError
 
-    def get_waypoints(self) -> list[tuple[float, float]]:
+    def get_waypoints(self) -> List[Tuple[float, float]]:
         """Get a list of waypoints for the boat to follow.
 
         Returns:
