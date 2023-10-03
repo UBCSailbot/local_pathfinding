@@ -5,14 +5,29 @@ VS Code currently can't read these bindings, so LSP features (autocomplete, go t
 won't work). The C++ API is documented on the OMPL website:
 https://ompl.kavrakilab.org/api_overview.html.
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+if TYPE_CHECKING:
+    from local_pathfinding.local_path import LocalPathState
+
 # OMPL logging: only log warnings and above
 ou.setLogLevel(ou.LOG_WARN)
+
+
+class OMPLPathState:
+    def __init__(self, local_path_state: LocalPathState):
+        # TODO: derive OMPLPathState attributes from local_path_state
+        self.state_domain = (-1, 1)
+        self.state_range = (-1, 1)
+        self.start_state = (0.5, 0.4)
+        self.goal_state = (0.5, -0.4)
 
 
 class OMPLPath:
@@ -24,14 +39,21 @@ class OMPLPath:
         solved (bool): True if the path is a solution to the OMPL query, else false.
     """
 
-    def __init__(self, parent_logger: RcutilsLogger, max_runtime: float):
+    def __init__(
+        self,
+        parent_logger: RcutilsLogger,
+        max_runtime: float,
+        local_path_state: LocalPathState,
+    ):
         """Initialize the OMPLPath Class. Attempt to solve for a path.
 
         Args:
             parent_logger (RcutilsLogger): Logger of the parent class.
             max_runtime (float): Maximum amount of time in seconds to look for a solution path.
+            local_path_state (LocalPathState): State of Sailbot.
         """
         self._logger = parent_logger.get_child(name="ompl_path")
+        self.state = OMPLPathState(local_path_state)
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
@@ -59,7 +81,6 @@ class OMPLPath:
             self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
             return []
 
-        waypoints = []
         solution_path = self._simple_setup.getSolutionPath()
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
@@ -84,8 +105,8 @@ class OMPLPath:
 
         # set the bounds of the state space
         bounds = ob.RealVectorBounds(dim=2)
-        x_min, x_max = -1, 1
-        y_min, y_max = -1, 1
+        x_min, x_max = self.state.state_domain
+        y_min, y_max = self.state.state_range
         bounds.setLow(index=0, value=x_min)
         bounds.setLow(index=1, value=y_min)
         bounds.setHigh(index=0, value=x_max)
@@ -105,8 +126,10 @@ class OMPLPath:
         # set the goal and start states of the simple setup object
         start = ob.State(space)
         goal = ob.State(space)
-        start().setXY(x=0.5, y=0.4)
-        goal().setXY(x=-0.5, y=-0.4)
+        start_x, start_y = self.state.start_state
+        goal_x, goal_y = self.state.goal_state
+        start().setXY(start_x, start_y)
+        goal().setXY(goal_x, goal_y)
         self._logger.debug(
             "start and goal state: "
             f"start=({start().getX()}, {start().getY()}); "
