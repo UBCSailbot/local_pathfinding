@@ -19,19 +19,19 @@ class OMPLPath:
     """Represents the general OMPL Path.
 
     Attributes
-        _logger (RcutilsLogger): Logger of the parent class.
-        _simple_setup (og.SimpleSetup): OMPL Simple Setup object.
-        solved (bool): The variable to denote if path is solved or not.
+        _logger (RcutilsLogger): ROS logger of this class.
+        _simple_setup (og.SimpleSetup): OMPL SimpleSetup object.
+        solved (bool): True if the path is a solution to the OMPL query, else false.
     """
 
     def __init__(self, parent_logger: RcutilsLogger, max_runtime: float):
-        """Initialize the OMPL Path Class. Attempts to solve for a path.
+        """Initialize the OMPLPath Class. Attempt to solve for a path.
 
         Args:
             parent_logger (RcutilsLogger): Logger of the parent class.
-            max_runtime (float): Maximum runtime to solve for a path.
+            max_runtime (float): Maximum amount of time in seconds to look for a solution path.
         """
-        self._logger = parent_logger.get_child(name='ompl_path')
+        self._logger = parent_logger.get_child(name="ompl_path")
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
@@ -56,7 +56,7 @@ class OMPLPath:
                   Output an empty list and print a warning message if path not solved.
         """
         if not self.solved:
-            self._logger.warn('Trying to get the waypoints of an unsolved OMPLPath')
+            self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
             return []
 
         waypoints = []
@@ -76,7 +76,8 @@ class OMPLPath:
         """Initialize and configure the OMPL SimpleSetup object.
 
         Returns:
-            og.SimpleSetup: Configured SimpleSetup object based on the problem.
+            og.SimpleSetup: Encapsulates the various objects necessary to solve a geometric or
+                control query in OMPL.
         """
         # create an SE2 state space: rotation and translation in a plane
         space = ob.SE2StateSpace()
@@ -90,9 +91,9 @@ class OMPLPath:
         bounds.setHigh(index=0, value=x_max)
         bounds.setHigh(index=1, value=y_max)
         self._logger.debug(
-            'state space bounds: '
-            f'x=[{bounds.low[0]}, {bounds.high[0]}]; '
-            f'y=[{bounds.low[1]}, {bounds.high[1]}]'
+            "state space bounds: "
+            f"x=[{bounds.low[0]}, {bounds.high[0]}]; "
+            f"y=[{bounds.low[1]}, {bounds.high[1]}]"
         )
         bounds.check()  # check if bounds are valid
         space.setBounds(bounds)
@@ -107,9 +108,9 @@ class OMPLPath:
         start().setXY(x=0.5, y=0.4)
         goal().setXY(x=-0.5, y=-0.4)
         self._logger.debug(
-            'start and goal state: '
-            f'start=({start().getX()}, {start().getY()}); '
-            f'goal=({goal().getX()}, {goal().getY()})'
+            "start and goal state: "
+            f"start=({start().getX()}, {start().getY()}); "
+            f"goal=({goal().getX()}, {goal().getY()})"
         )
         simple_setup.setStartAndGoalStates(start, goal)
 
@@ -125,13 +126,13 @@ class OMPLPath:
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
-    """Determine if the state is valid.
+    """Evaluate a state to determine if the configuration collides with an environment obstacle.
 
     Args:
         state (ob.SE2StateSpace): State to check.
 
     Returns:
-        bool: True if state is valid else False.
+        bool: True if state is valid, else false.
     """
     # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
