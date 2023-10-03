@@ -24,10 +24,10 @@ def test_cartesian_to_true_bearing(cartesian: float, true_bearing: float):
 @pytest.mark.parametrize(
     "ref_lat,ref_lon,true_bearing_deg,dist_km",
     [
-        (30.0, -123.0, 0.0, 30.0),
+        (30.0, -123.0, 0.00, 30.0),
         (30.0, -123.0, 45.0, 30.0),
         (30.0, -123.0, 90.0, 30.0),
-        (60.0, -123.0, 0.0, 30.0),
+        (60.0, -123.0, 0.00, 30.0),
         (60.0, -123.0, 45.0, 30.0),
         (60.0, -123.0, 90.0, 30.0),
     ],
