@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from shapely.geometry import Polygon
 
@@ -86,7 +88,6 @@ class Boat(ObstacleInterface):
                 [-width / 2, length / 2],
                 [width / 2, length / 2],
                 [width / 2, -length / 2],
-                1,
             ]
         )
 
@@ -96,8 +97,8 @@ class Boat(ObstacleInterface):
         # but #TODO: check this
         rot = np.array(
             [
-                [np.cos(true_bearing), -np.sin(true_bearing)],
-                [np.sin(true_bearing), np.cos(true_bearing)],
+                [np.cos(math.radians(true_bearing)), -np.sin(math.radians(true_bearing))],
+                [np.sin(math.radians(true_bearing)), np.cos(math.radians(true_bearing))],
             ]
         )
 
