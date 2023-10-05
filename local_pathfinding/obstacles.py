@@ -97,8 +97,8 @@ class Boat(ObstacleInterface):
         # but #TODO: check this
         rot = np.array(
             [
-                [np.cos(math.radians(true_bearing)), -np.sin(math.radians(true_bearing))],
-                [np.sin(math.radians(true_bearing)), np.cos(math.radians(true_bearing))],
+                [np.cos(math.radians(true_bearing)), np.sin(math.radians(true_bearing))],
+                [-np.sin(math.radians(true_bearing)), np.cos(math.radians(true_bearing))],
             ]
         )
 
