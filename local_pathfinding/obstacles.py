@@ -4,6 +4,9 @@ import numpy as np
 from shapely.geometry import Polygon
 
 
+# TODO Look into adding more data available from AIS
+# TODO ensure proper use of true_bearing and heading
+# TODO change the boat's polygon to represent its possible positions in a given time frame
 class ObstacleInterface:
 
     """
@@ -43,6 +46,7 @@ class Boat(ObstacleInterface):
             - speed (knots)
             - heading (degrees measured clockwise from true north)
             - other information is also available but not used here
+            - In the future, I will want to obtain ship size and rate of turn
 
         To avoid confusion, the physical dimensions, position, and heading of the boat are
         stored in the aggregated Polygon object, not the Boat object itself.
