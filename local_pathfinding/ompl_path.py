@@ -26,6 +26,13 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
+        try:
+            self.headingDirection = local_path_state.heading
+            self.windDirection = local_path_state.wind_direction
+        except AttributeError:
+            self.headingDirection = 45
+            self.windDirection = 10
+
         self.state_domain = (-0.6, 0.6)
         self.state_range = (-0.6, 0.6)
         self.start_state = (0, 0)
@@ -61,10 +68,12 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self, space_information, simple_setup):
-
-        return po.allocate_objective(space_information, simple_setup, heading_degrees=45, windDirectionDegrees=10)
-
+    def update_objectives(
+        self, space_information, simple_setup, heading_degrees, windDirectionDegrees
+    ):
+        return po.allocate_objective(
+            space_information, simple_setup, heading_degrees, windDirectionDegrees
+        )
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         # create an SE2 state space: rotation and translation in a plane
@@ -109,23 +118,15 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        objective = self.update_objectives(space_information, simple_setup)
+        objective = self.update_objectives(
+            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
+        )
         simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
         planner = og.RRTstar(space_information)
         simple_setup.setPlanner(planner)
-
-        solve = simple_setup.solve(10)
-
-        if solve:
-            with open("path.txt", "w") as f:
-                f.write(simple_setup.getSolutionPath().printAsMatrix())
-                f.close()
-
-            # if ss is a ompl::geometric::SimpleSetup object
-            print(simple_setup.getSolutionPath().printAsMatrix())
 
         return simple_setup
 
