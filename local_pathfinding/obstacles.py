@@ -4,9 +4,9 @@ import numpy as np
 from shapely.geometry import Polygon
 
 
+# TODO:Validate Collision cone dimensions
 # TODO Look into adding more data available from AIS
 # TODO implement isValid (need to decide on shape of polygon and how to calculate it)
-# TODO change the boat's polygon to represent its possible positions in a given time frame
 class ObstacleInterface:
 
     """
@@ -101,7 +101,7 @@ class Boat(ObstacleInterface):
             return knots * 0.514444
 
         # This factor can be adjusted to change the scope of the collision cone
-        COLLISION_CONE_STRETCH_FACTOR = 0.75
+        COLLISION_CONE_STRETCH_FACTOR = 1.3
 
         speed_mps = knots_to_meters_per_second(speed)
 
@@ -110,10 +110,8 @@ class Boat(ObstacleInterface):
         # See external documentation for a diagram
         # collision_cone_length = speed_mps * delta_time + COLLISION_CONE_STRETCH_FACTOR * length
 
-        collision_cone_width = (
-            (1 / 2)
-            * math.sqrt(width**2 + length**2)
-            * (1 + (speed_mps * delta_time) / COLLISION_CONE_STRETCH_FACTOR * length)
+        collision_cone_width = math.sqrt(width**2 + length**2) * (
+            1 + (speed_mps * delta_time) / COLLISION_CONE_STRETCH_FACTOR * length
         )
 
         # coordinates of the center of the boat
@@ -128,10 +126,17 @@ class Boat(ObstacleInterface):
             ]
         )
 
-        # Rotation matrix
-        # according to napkin math, the rotation matrix should be able to
-        # use the course_over_ground angle directly
-        # but #TODO: check this
+        # This is just to visualize the ship inside its collision cone, as a hole
+        ship = np.array(
+            [
+                [-width / 2, -length / 2],
+                [width / 2, -length / 2],
+                [width / 2, length / 2],
+                [-width / 2, length / 2],
+            ]
+        )
+
+        # Rotation matrix to rotate the polygon about the origin
         rot = np.array(
             [
                 [
@@ -151,4 +156,16 @@ class Boat(ObstacleInterface):
         # translate the points to the boat's position
         points = points + np.array([x, y])
 
-        return Polygon(points)
+        return Polygon(points, [ship])
+
+    def is_valid(self, point):
+        """
+        Checks if a point is within the boat's collision cone
+
+        Args:
+            point (Point): a shapely Point object representing the point to be checked
+
+        Returns:
+            bool: True if the point is not within the boat's collision cone
+        """
+        return not self.collision_cone.within(point)
