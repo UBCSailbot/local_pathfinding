@@ -207,7 +207,7 @@ def isUpwind(windDirectionRadians, boatDirectionRadians):
         boatDirectionRadians (float): The direction of the boat (radians). [-pi, pi)
 
     Returns:
-        float: The cost associated with the upwind direction
+        bool: The cost associated with the upwind direction
     """
     thetamin = math.degrees(windDirectionRadians - math.radians(UPWIND_MAX_ANGLE_DEGREES))
     thetamax = math.degrees(windDirectionRadians + math.radians(UPWIND_MAX_ANGLE_DEGREES))
@@ -216,6 +216,15 @@ def isUpwind(windDirectionRadians, boatDirectionRadians):
 
 
 def isDownwind(windDirectionRadians, boatDirectionRadians):
+    """Generates the cost associated with the downwind direction
+
+    Args:
+        windDirectionRadians (float): The true wind direction (radians). [-pi, pi)
+        boatDirectionRadians (float)): The direction of the boat (radians). [-pi, pi)
+
+    Returns:
+        bool: The cost associated with the downwind direction
+    """
     downwind_windDirectionRadians = math.radians(bound_to_180(windDirectionRadians + math.pi))
 
     thetamin = math.degrees(
@@ -305,11 +314,7 @@ def is_angle_between(first_angle, middle_angle, second_angle):
             return False
 
 
-def abs_angle_dist_radians(a1, a2):
-    """What is the output of this function?"""
 
-    """Computes the absolute difference between two angles in radians"""
-    return abs((a1 - a2 + math.pi) % (2 * math.pi) - math.pi)
 
 
 def allocate_objective(space_information, simple_setup, heading_degrees, windDirectionDegrees):
