@@ -127,6 +127,7 @@ class Boat(ObstacleInterface):
         )
 
         # This is just to visualize the ship inside its collision cone, as a hole
+        # TODO remove this later
         ship = np.array(
             [
                 [-width / 2, -length / 2],
