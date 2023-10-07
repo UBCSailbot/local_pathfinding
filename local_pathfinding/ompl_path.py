@@ -13,6 +13,10 @@ from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
+from local_pathfinding.path_objective import getSailingObjective
+
+if TYPE_CHECKING:
+    from local_pathfinding.local_path import LocalPathState
 
 from local_pathfinding import path_objective as po
 
@@ -97,6 +101,9 @@ class OMPLPath:
 
         # create a simple setup object
         simple_setup = og.SimpleSetup(space)
+
+        # Constructs a space information instance for this simple setup
+        space_information = simple_setup.getSpaceInformation()
         simple_setup.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
 
         # Constructs a space information instance for this simple setup
@@ -118,6 +125,7 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
+
         objective = self.update_objectives(
             space_information, simple_setup, self.state.headingDirection, self.state.windDirection
         )
@@ -130,6 +138,8 @@ class OMPLPath:
 
         return simple_setup
 
+    def getSpaceInformation(self):
+        return self._omplPath.getSpaceInformation()
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
     # TODO: implement obstacle avoidance here

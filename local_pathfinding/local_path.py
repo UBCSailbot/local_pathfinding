@@ -21,7 +21,6 @@ class LocalPathState:
         `wind_speed` (float): Wind speed.
         `wind_direction` (int): Wind direction.
     """
-
     def __init__(
         self,
         gps: GPS,

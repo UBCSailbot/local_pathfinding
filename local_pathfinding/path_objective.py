@@ -387,3 +387,4 @@ def allocate_objective(space_information, simple_setup, heading_degrees, wind_di
     objective.addObjective(WindObjective(space_information, wind_direction_degrees), 1.0)
 
     return objective
+
