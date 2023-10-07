@@ -101,14 +101,14 @@ class Boat(ObstacleInterface):
             return knots * 0.514444
 
         # This factor can be adjusted to change the scope of the collision cone
-        COLLISION_CONE_STRETCH_FACTOR = 1.5
+        COLLISION_CONE_STRETCH_FACTOR = 0.75
 
         speed_mps = knots_to_meters_per_second(speed)
 
         # These two lines use geometry of similar triangles to calculate the length and width of
         # the collision cone
         # See external documentation for a diagram
-        collision_cone_length = speed_mps * delta_time + COLLISION_CONE_STRETCH_FACTOR * length
+        # collision_cone_length = speed_mps * delta_time + COLLISION_CONE_STRETCH_FACTOR * length
 
         collision_cone_width = (
             (1 / 2)
@@ -122,9 +122,9 @@ class Boat(ObstacleInterface):
         # Points of the boat polygon before rotation and centred at the origin
         points = np.array(
             [
-                [0, 0],
-                [collision_cone_width / 2, collision_cone_length],
-                [-collision_cone_width / 2, collision_cone_length],
+                [0, -COLLISION_CONE_STRETCH_FACTOR * length],
+                [collision_cone_width / 2, speed_mps * delta_time],
+                [-collision_cone_width / 2, speed_mps * delta_time],
             ]
         )
 
@@ -135,12 +135,12 @@ class Boat(ObstacleInterface):
         rot = np.array(
             [
                 [
-                    np.cos(math.radians(course_over_ground)),
-                    np.sin(math.radians(course_over_ground)),
+                    np.cos(math.radians(-course_over_ground)),
+                    np.sin(math.radians(-course_over_ground)),
                 ],
                 [
-                    -np.sin(math.radians(course_over_ground)),
-                    np.cos(math.radians(course_over_ground)),
+                    -np.sin(math.radians(-course_over_ground)),
+                    np.cos(math.radians(-course_over_ground)),
                 ],
             ]
         )
