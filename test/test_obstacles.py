@@ -2,9 +2,12 @@ import numpy as np
 import plotly.graph_objects as go
 from shapely.geometry import Point
 
+from local_pathfinding.coord_systems import XY
 from local_pathfinding.obstacles import Boat
 
-boat1 = Boat(999, 26, 52, (0, 0), 30, 10, 70)
+position = XY(0, 0)
+
+boat1 = Boat(999, 26, 52, position, 30, 10, 70)
 
 # Extract exterior coordinates for boat1's collision cone
 x = np.array(boat1.collision_cone.exterior.coords.xy[0])
