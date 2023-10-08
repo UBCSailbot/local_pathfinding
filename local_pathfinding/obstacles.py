@@ -4,9 +4,8 @@ import numpy as np
 from shapely.geometry import Polygon
 
 
-# TODO:Validate Collision cone dimensions
 # TODO Look into adding more data available from AIS
-# TODO implement isValid (need to decide on shape of polygon and how to calculate it)
+# TODO Decide between using COG and SOG or Heading and Speed
 class ObstacleInterface:
 
     """
@@ -105,35 +104,16 @@ class Boat(ObstacleInterface):
 
         speed_mps = knots_to_meters_per_second(speed)
 
-        # These two lines use geometry of similar triangles to calculate the length and width of
-        # the collision cone
-        # See external documentation for a diagram
-        # collision_cone_length = speed_mps * delta_time + COLLISION_CONE_STRETCH_FACTOR * length
-
-        collision_cone_width = math.sqrt(width**2 + length**2) * (
-            1 + (speed_mps * delta_time) / COLLISION_CONE_STRETCH_FACTOR * length
-        )
-
         # coordinates of the center of the boat
         x, y = position[0], position[1]
 
         # Points of the boat polygon before rotation and centred at the origin
         points = np.array(
             [
-                [0, -COLLISION_CONE_STRETCH_FACTOR * length],
-                [collision_cone_width / 2, speed_mps * delta_time],
-                [-collision_cone_width / 2, speed_mps * delta_time],
-            ]
-        )
-
-        # This is just to visualize the ship inside its collision cone, as a hole
-        # TODO remove this later
-        ship = np.array(
-            [
                 [-width / 2, -length / 2],
+                [-COLLISION_CONE_STRETCH_FACTOR * width, length / 2 + speed_mps * delta_time],
+                [COLLISION_CONE_STRETCH_FACTOR * width, length / 2 + speed_mps * delta_time],
                 [width / 2, -length / 2],
-                [width / 2, length / 2],
-                [-width / 2, length / 2],
             ]
         )
 
@@ -157,7 +137,7 @@ class Boat(ObstacleInterface):
         # translate the points to the boat's position
         points = points + np.array([x, y])
 
-        return Polygon(points, [ship])
+        return Polygon(points)
 
     def is_valid(self, point):
         """
