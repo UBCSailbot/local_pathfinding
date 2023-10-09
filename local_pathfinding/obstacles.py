@@ -99,7 +99,7 @@ class Boat(ObstacleInterface):
         def knots_to_meters_per_second(knots) -> float:
             return knots * 0.514444
 
-        # This factor can be adjusted to change the scope of the collision cone
+        # This factor can be adjusted to change the scope/width of the collision cone
         COLLISION_CONE_STRETCH_FACTOR = 1.3
 
         speed_mps = knots_to_meters_per_second(speed)
@@ -107,7 +107,7 @@ class Boat(ObstacleInterface):
         # coordinates of the center of the boat
         x, y = position[0], position[1]
 
-        # Points of the boat polygon before rotation and centred at the origin
+        # Points of the boat collision box polygon before rotation and centred at the origin
         points = np.array(
             [
                 [-width / 2, -length / 2],
@@ -149,4 +149,4 @@ class Boat(ObstacleInterface):
         Returns:
             bool: True if the point is not within the boat's collision cone
         """
-        return not self.collision_cone.within(point)
+        return not self.collision_cone.contains(point)

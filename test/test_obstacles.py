@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objects as go
+from shapely.geometry import Point
 
 from local_pathfinding.coord_systems import XY
 from local_pathfinding.obstacles import Boat
@@ -20,5 +21,9 @@ fig1 = go.Figure(go.Scatter(x=x, y=y, fill="toself"))
 
 fig1.update_layout(yaxis_range=[-200, 200], xaxis_range=[-200, 750])
 
+# check the is_valid function
+assert not boat1.is_valid(Point(100, 50))
+assert boat1.is_valid(Point(100, 100))
+
 # Show the figures
-fig1.show()
+# fig1.show()
