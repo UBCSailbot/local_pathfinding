@@ -45,6 +45,18 @@ def cartesian_to_true_bearing(cartesian: float) -> float:
     return (90 - cartesian + 360) % 360
 
 
+def knots_to_kilometers_per_hour(knots: float) -> float:
+    """Convert knots to km/h.
+
+    Args:
+        knots (float): Speed in knots
+
+    Returns:
+        float: speed in km/h
+    """
+    return knots * 1.852
+
+
 def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
     """Convert a geographical coordinate to a 2D Cartesian coordinate given a reference point.
 
