@@ -55,8 +55,9 @@ class LocalPath:
 
     Attributes:
         `_logger` (RcutilsLogger): ROS logger.
-        `_ompl_path` (OMPLPath): Raw representation of the path from OMPL.
-        `waypoints` (List): List of coordinates that form the path to the next global waypoint.
+        `_ompl_path` (Optional[OMPLPath]): Raw representation of the path from OMPL.
+        `waypoints` (Optional[List[Tuple[float, float]]]): List of coordinates that form the path
+            to the next global waypoint.
     """
 
     def __init__(self, parent_logger: RcutilsLogger):
