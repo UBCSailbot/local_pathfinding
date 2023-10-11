@@ -1,5 +1,7 @@
 """The path to the next global waypoint, represented by the `LocalPath` class."""
 
+from typing import List, Optional, Tuple
+
 from custom_interfaces.msg import GPS, AISShips, GlobalPath, WindSensor
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
@@ -58,9 +60,9 @@ class LocalPath:
     """
 
     def __init__(self, parent_logger: RcutilsLogger):
-        self._logger = parent_logger.get_child(name='local_path')
-        self._ompl_path = None
-        self.waypoints = None
+        self._logger = parent_logger.get_child(name="local_path")
+        self._ompl_path: Optional[OMPLPath] = None
+        self.waypoints: Optional[List[Tuple[float, float]]] = None
 
     def update_if_needed(
         self,
@@ -80,7 +82,7 @@ class LocalPath:
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
         ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
         if ompl_path.solved:
-            self._logger.info('Updating local path')
+            self._logger.info("Updating local path")
             self._update(ompl_path)
 
     def _update(self, ompl_path: OMPLPath):
