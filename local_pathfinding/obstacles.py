@@ -29,7 +29,7 @@ class Obstacle:
 
     """
 
-    def is_valid(self, point: Point):
+    def is_valid(self, point: LatLon) -> bool:
         """
         Checks if a point is contained the obstacle's interior
 
@@ -39,6 +39,10 @@ class Obstacle:
         Returns:
             bool: True if the point is not within the obstacle's interior, False otherwise
         """
+        point = latlon_to_xy(point)
+
+        # contains() requires a shapely Point object as an argument
+        point = Point(point[0], point[1])
         return not self.collision_zone.contains(point)
 
 
