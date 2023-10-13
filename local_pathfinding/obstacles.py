@@ -209,7 +209,7 @@ def calculate_projected_distance(
     Args:
         position (XY): x,y coordinates of the boat in km
         course_over_ground (float): COG of the boat in degrees clockwise from true north
-        speed_kmph (float): speed of the boat in km/h
+        speed_over_ground_kmph (float): speed of the boat in km/h, over ground
         sailbot_position (XY): x,y coordinates of the Sailbot in km
     """
     # Speed over ground vector of the boat obstacle
@@ -275,7 +275,7 @@ def calculate_time_to_intersection(
         return -1
 
     # The solution to the quadratic formula is the time until the boats collide
-    t = np.roots([quadratic_coefficients])
+    t = np.roots(quadratic_coefficients)
 
     # Return the smaller positive time
     return min([i for i in t if i > 0])
