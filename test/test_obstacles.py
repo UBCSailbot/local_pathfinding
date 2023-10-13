@@ -20,8 +20,8 @@ from local_pathfinding.obstacles import Boat
             LatLon(51.95785651405779, -136.26282894969611),
             HelperAISShip(
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-                cog=HelperCOG(COG=0.0),
-                sog=HelperSOG(SOG=20.0),
+                cog=HelperCOG(cog=0.0),
+                sog=HelperSOG(sog=20.0),
                 dimensions=HelperDimensions(length=100.0, width=20.0),
             ),
             LatLon(52.174842845359755, -137.10372451905042),
@@ -40,21 +40,31 @@ boat1 = Boat(
     LatLon(51.95785651405779, -136.26282894969611),
     HelperAISShip(
         lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-        cog=HelperCOG(heading=0.0),
-        sog=HelperSOG(speed=20.0),
+        cog=HelperCOG(cog=0.0),
+        sog=HelperSOG(sog=20.0),
         dimensions=HelperDimensions(length=100.0, width=20.0),
     ),
 )
-# Extract exterior coordinates for boat1's collision cone
-x = np.array(boat1.collision_cone.exterior.coords.xy[0])
-y = np.array(boat1.collision_cone.exterior.coords.xy[1])
-
 
 if __name__ == "__main__":
     import plotly.graph_objects as go
 
+    # Extract exterior coordinates for boat1's collision cone
+    boat_x, boat_y = np.array(boat1.collision_zone.exterior.coords.xy)
+    boat_x = np.array(boat_x)
+    boat_y = np.array(boat_y)
+    boat = go.Scatter(x=boat_x, y=boat_y, fill="toself", name="Boat Collision Cone")
+
+    # Extract coordinates for sailbot
+    sailbot_x, sailbot_y = boat1.sailbot_position
+    sailbot_x = np.array(sailbot_x)
+    sailbot_y = np.array(sailbot_y)
+    sailbot = go.Scatter(x=sailbot_x, y=sailbot_y, mode="markers", name="Sailbot Position")
+
     # Create a Plotly figure to represent the boat's collision cone for manual inspection
-    fig1 = go.Figure(go.Scatter(x=x, y=y, fill="toself"))
+    fig1 = go.Figure(boat)
+    fig1.add_trace(sailbot)
+
     fig1.update_layout(yaxis_range=[-200, 200], xaxis_range=[-200, 750])
 
     fig1.show()

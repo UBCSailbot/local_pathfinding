@@ -57,6 +57,10 @@ def knots_to_kilometers_per_hour(knots: float) -> float:
     return knots * 1.852
 
 
+def meters_to_km(meters: float) -> float:
+    return meters / 1000
+
+
 def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
     """Convert a geographical coordinate to a 2D Cartesian coordinate given a reference point.
 

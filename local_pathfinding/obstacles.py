@@ -9,10 +9,11 @@ from local_pathfinding.coord_systems import (
     LatLon,
     knots_to_kilometers_per_hour,
     latlon_to_xy,
+    meters_to_km,
 )
 
 # Constants
-SAILBOT_MAX_SPEED = 14.4  # km/h
+SAILBOT_MAX_SPEED = 100  # km/h
 MAX_PROJECTION_TIME = 3  # hours
 
 
@@ -105,24 +106,23 @@ class Boat(Obstacle):
                 -heading (float, degrees): heading of the boat, clockwise from true north
         """
         self.id = ais_ship.id
-        self.speed_over_ground = ais_ship.SOG
 
         # Position of the boat
         position = latlon_to_xy(
             reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
         # Position of the Sailbot
-        sailbot_position = latlon_to_xy(
+        self.sailbot_position = latlon_to_xy(
             reference, LatLon(sailbot_position.latitude, sailbot_position.longitude)
         )
 
         self.collision_zone = self.create_collision_cone(
-            ais_ship.width,
-            ais_ship.length,
+            ais_ship.dimensions.width,
+            ais_ship.dimensions.length,
             position,
-            ais_ship.sog,
-            ais_ship.cog,
-            sailbot_position,
+            ais_ship.sog.sog,
+            ais_ship.cog.cog,
+            self.sailbot_position,
         )
 
     def create_collision_cone(
@@ -141,14 +141,14 @@ class Boat(Obstacle):
         Args:
             width (float): width of the boat in meters
             length (float): length of the boat in meters
-            position (XY): x,y coordinates of the boat, converted from lat/lon
+            position (XY): x,y coordinates of the boat in km
             speed_over_ground (float): speed of the boat in knots, over ground
-            delta_time (float): time in seconds, to calculate the boat's expected position
             course_over_ground (float): COG of the boat in degrees clockwise from true north
+            Sailbot_position (XY): x,y coordinates of the Sailbot in km
         """
 
         # This factor can be adjusted to change the scope/width of the collision cone
-        COLLISION_CONE_STRETCH_FACTOR = 1.3
+        COLLISION_CONE_STRETCH_FACTOR = 20
 
         # coordinates of the center of the boat
         x, y = position[0], position[1]
@@ -159,6 +159,9 @@ class Boat(Obstacle):
             speed_over_ground_kmph,
             sailbot_position,
         )
+
+        width = meters_to_km(width)
+        length = meters_to_km(length)
 
         # Points of the boat collision box polygon before rotation and centred at the origin
         points = np.array(
@@ -200,13 +203,13 @@ def calculate_projected_distance(
     sailbot_position: XY,
 ) -> float:
     """
-    Calculates the distance the boat will travel before collision, if the Sailbot moves
-    directly towards the soonest possible collision point
+    Calculates the distance (km) the boat obstacle will travel before collision, if the Sailbot
+    moves directly towards the soonest possible collision point at full speed.
 
     Args:
         position (XY): x,y coordinates of the boat in km
         course_over_ground (float): COG of the boat in degrees clockwise from true north
-        speed_kmph (float): speed of the boat in meters per second
+        speed_kmph (float): speed of the boat in km/h
         sailbot_position (XY): x,y coordinates of the Sailbot in km
     """
     # Speed over ground vector of the boat obstacle
@@ -238,9 +241,9 @@ def calculate_time_to_intersection(
     parametric lines extending from the positions of the boat obstacle and sailbot respectively
     in 2D space. These lines may intersect at some specific point and time.
 
-    This linear system, in which the vector representing the Sailbot's velocity is free to point at
-    the soonest possible collision point (but whose magnitude is known), is solved using
-    linear algebra and finally, the quadratic formula.
+    This linear system, in which the vector that represents the Sailbot's velocity is free
+    to point at the soonest possible collision point (but whose magnitude is known),
+    is solved using linear algebra and  the quadratic formula.
 
     Args:
         position (XY): x,y coordinates of the boat in km
@@ -248,7 +251,7 @@ def calculate_time_to_intersection(
         sailbot_position (XY): x,y coordinates of the Sailbot in km
     Returns:
         time_to_intersection (float): time in hours until the boat and Sailbot collide
-        -1 of the boats will never collide
+        -1 if the boats will never collide
     """
     v1 = boat_sog_vector[0]
     v2 = boat_sog_vector[1]
