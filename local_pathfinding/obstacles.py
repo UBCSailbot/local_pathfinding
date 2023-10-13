@@ -120,8 +120,8 @@ class Boat(Obstacle):
             ais_ship.width,
             ais_ship.length,
             position,
-            ais_ship.SOG,
-            ais_ship.COG,
+            ais_ship.sog,
+            ais_ship.cog,
             sailbot_position,
         )
 
