@@ -49,5 +49,7 @@ def test_headingPathTurnCost():
 
 
 def test_wind_objective():
-    wind_objective = path_objective.WindObjective(PATH._simple_setup.getSpaceInformation(), 0)
+    wind_objective = path_objective.WindObjective(
+        PATH._simple_setup.getSpaceInformation(), 0
+    )
     assert wind_objective is not None

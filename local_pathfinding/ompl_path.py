@@ -143,8 +143,8 @@ class OMPLPath:
         # Constructs a space information instance for this simple setup
         space_information = simple_setup.getSpaceInformation()
 
-       # set the optimization objective of the simple setup object
-       # TODO: implement and add optimization objective here
+        # set the optimization objective of the simple setup object
+        # TODO: implement and add optimization objective here
 
         objective = self.update_objectives(
             simple_setup, self.state.headingDirection, self.state.windDirection
