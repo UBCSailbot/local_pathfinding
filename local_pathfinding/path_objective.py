@@ -43,7 +43,7 @@ class Distanceobjective(ob.StateCostIntegralObjective):
         # Generates the latlon distance between two points
         latlonPathObjective = self.get_latlon_path_length_objective(s1, s2)
 
-        return latlonPathObjective
+        return omplPathObjective
 
     def get_path_length_objective(self):
         """Generates an OMPL Path Length Objective
@@ -126,7 +126,7 @@ class MinimumTurningObjective(ob.StateCostIntegralObjective):
         # Calculate the minimum turning cost from sl-s2 and heading
         s1_s2__heading = self.headingPathTurnCost(s1, s2)
 
-        return s1_goal__heading
+        return s1_s2__s1_goal
 
     def goalPathTurnCost(self, s1, s2):
         """Determine the smallest turn angle between s1-s2 and s1-goal
@@ -387,4 +387,3 @@ def allocate_objective(space_information, simple_setup, heading_degrees, wind_di
     objective.addObjective(WindObjective(space_information, wind_direction_degrees), 1.0)
 
     return objective
-

@@ -13,7 +13,7 @@ from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
-from local_pathfinding.path_objective import getSailingObjective
+from local_pathfinding.path_objective import allocate_objective
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
