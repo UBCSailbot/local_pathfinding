@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 from custom_interfaces.msg import HelperAISShip
+from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 
 from local_pathfinding.coord_systems import (
@@ -13,7 +14,6 @@ from local_pathfinding.coord_systems import (
 )
 
 # Constants
-SAILBOT_MAX_SPEED = 100  # km/h
 MAX_PROJECTION_TIME = 3  # hours
 
 
@@ -30,7 +30,29 @@ class Obstacle:
 
     """
 
-    def is_valid(self, reference: LatLon, point: LatLon) -> bool:
+    def __init__(
+        self,
+        reference: LatLon,
+        sailbot_position: LatLon,
+        sailbot_speed: float,
+    ):
+        """
+        Args:
+            -reference (LatLon): latitude and longitude of the next global waypoint
+            -sailbot_position (LatLon): lat and lon position of SailBot
+            -sailbot_speed (float): speed of the SailBot in km/h
+        """
+        self.reference = reference
+
+        # Position of the Sailbot in XY
+        self.sailbot_position = latlon_to_xy(reference, sailbot_position)
+
+        self.sailbot_speed = sailbot_speed
+
+        # This should be defined in child classes
+        self.collision_zone = Polygon(None, None)
+
+    def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
         """
         Checks if a point is contained the obstacle's interior
 
@@ -40,7 +62,7 @@ class Obstacle:
         Returns:
             bool: True if the point is not within the obstacle's interior, False otherwise
         """
-        point = latlon_to_xy(reference, point)
+        point = latlon_to_xy(reference, point_latlon)
 
         # contains() requires a shapely Point object as an argument
         point = Point(point[0], point[1])
@@ -50,7 +72,9 @@ class Obstacle:
 class Boat(Obstacle):
 
     """
-    This class describes boat objects.
+    This class describes boat objects which Sailbot must avoid.
+    Also referred to target ships or boat obstacles.
+
 
     Attributes
     ----------
@@ -93,34 +117,33 @@ class Boat(Obstacle):
         self,
         reference: LatLon,
         sailbot_position: LatLon,
+        sailbot_speed: float,
         ais_ship: HelperAISShip,
     ):
         """
         Args:
             -reference (LatLon): latitude and longitude of the next global waypoint
             -sailbot_position (LatLon): lat and lon position of SailBot
+            -sailbot_speed (float): speed of the SailBot in km/h
             -ais_ship (HelperAISShip): an AISShip object, containing the following information:
                 -id (int): MMSI number of the boat
                 -width (float): width of the boat in meters
                 -length (float): length of the boat in meters
                 -lat_lon (LatLon): latitude and longitude of the boat
                 -speed_over_ground (float): speed of the boat in knots, over ground
-                -course_over_ground (float, degrees): COG of the boat, clockwise from true north
+                -course_over_ground (float): COG of the boat, in degrees, clockwise from true north
                 -rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding
                     to -708 to +708 degrees per minute
         """
+        super().__init__(reference, sailbot_position, sailbot_speed)
+
         self.id = ais_ship.id
-        self.reference = reference
 
-        # Position of the boat
+        # Position of the boat in XY
         position = latlon_to_xy(
-            reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
+            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
-        # Position of the Sailbot
-        self.sailbot_position = latlon_to_xy(
-            reference, LatLon(sailbot_position.latitude, sailbot_position.longitude)
-        )
-
+        # A Boat's collision zone is represented by a cone shaped polygon
         self.collision_zone = self.create_collision_cone(
             ais_ship.dimensions.width,
             ais_ship.dimensions.length,
@@ -129,6 +152,7 @@ class Boat(Obstacle):
             ais_ship.cog.cog,
             ais_ship.rot.rot,
             self.sailbot_position,
+            self.sailbot_speed,
         )
 
     def create_collision_cone(
@@ -140,6 +164,7 @@ class Boat(Obstacle):
         course_over_ground: float,
         rate_of_turn: float,
         sailbot_position: XY,
+        sailbot_speed: float,
     ) -> Polygon:
         """
         Creates a Shapely Polygon to represent the boat's collision_cone, which is sized,
@@ -168,11 +193,12 @@ class Boat(Obstacle):
         length = meters_to_km(length)
 
         # Calculate distance the boat will travel before soonest possible collision with Sailbot
-        projected_distance = calculate_projected_distance(
+        projected_distance = self.calculate_projected_distance(
             position,
             course_over_ground,
             speed_over_ground_kmph,
             sailbot_position,
+            sailbot_speed,
         )
 
         # This factor can be adjusted to change the scope/width of the collision cone
@@ -189,7 +215,7 @@ class Boat(Obstacle):
             ]
         )
 
-        # Rotation matrix to rotate the polygon about the origin
+        # Rotation matrix to rotate the polygon about the origin according to COG
         rot = np.array(
             [
                 [
@@ -211,87 +237,91 @@ class Boat(Obstacle):
 
         return Polygon(points)
 
+    def calculate_projected_distance(
+        self,
+        position: XY,
+        course_over_ground: float,
+        speed_over_ground_kmph: float,
+        sailbot_position: XY,
+        sailbot_speed: float,
+    ) -> float:
+        """
+        Calculates the distance (km) the boat obstacle will travel before collision, if the Sailbot
+        moves directly towards the soonest possible collision point at current speed.
 
-def calculate_projected_distance(
-    position: XY,
-    course_over_ground: float,
-    speed_over_ground_kmph: float,
-    sailbot_position: XY,
-) -> float:
-    """
-    Calculates the distance (km) the boat obstacle will travel before collision, if the Sailbot
-    moves directly towards the soonest possible collision point at full speed.
+        Args:
+            position (XY): x,y coordinates of the boat in km
+            course_over_ground (float): COG of the boat in degrees clockwise from true north
+            speed_over_ground_kmph (float): speed of the boat in km/h, over ground
+            sailbot_position (XY): x,y coordinates of the Sailbot in km
+            sailbot_speed (float): speed of the Sailbot in km/h
+        """
+        # Speed over ground vector of the boat obstacle
+        boat_sog_vector = np.array(
+            [
+                speed_over_ground_kmph * np.sin(math.radians(course_over_ground)),
+                speed_over_ground_kmph * np.cos(math.radians(course_over_ground)),
+            ]
+        )
 
-    Args:
-        position (XY): x,y coordinates of the boat in km
-        course_over_ground (float): COG of the boat in degrees clockwise from true north
-        speed_over_ground_kmph (float): speed of the boat in km/h, over ground
-        sailbot_position (XY): x,y coordinates of the Sailbot in km
-    """
-    # Speed over ground vector of the boat obstacle
-    boat_sog_vector = np.array(
-        [
-            speed_over_ground_kmph * np.sin(math.radians(course_over_ground)),
-            speed_over_ground_kmph * np.cos(math.radians(course_over_ground)),
-        ]
-    )
+        time_to_intersection = self.calculate_time_to_intersection(
+            position, boat_sog_vector, sailbot_position, sailbot_speed
+        )
 
-    time_to_intersection = calculate_time_to_intersection(
-        position, boat_sog_vector, sailbot_position
-    )
+        if time_to_intersection < 0:
+            return MAX_PROJECTION_TIME * speed_over_ground_kmph
 
-    if time_to_intersection < 0:
-        return MAX_PROJECTION_TIME * speed_over_ground_kmph
+        return time_to_intersection * speed_over_ground_kmph
 
-    return time_to_intersection * speed_over_ground_kmph
+    def calculate_time_to_intersection(
+        self,
+        position: XY,
+        boat_sog_vector: NDArray,
+        sailbot_position: XY,
+        sailbot_speed: float,
+    ) -> float:
+        """
+        Calculates the time until the boat and Sailbot collide, if the Sailbot moves
+        directly towards the soonest possible collision point at its current speed.
+        The system is modeled by two parametric lines extending from the positions of the boat
+        obstacle and sailbot respectively in 2D space. These lines may intersect at some specific
+        point and time.
 
+        This linear system, in which the vector that represents the Sailbot's velocity is free
+        to point at the soonest possible collision point (but whose magnitude is known),
+        is solved using linear algebra and  the quadratic formula.
 
-def calculate_time_to_intersection(
-    position: XY,
-    boat_sog_vector: np.array,
-    sailbot_position: XY,
-) -> float:
-    """
-    Calculates the time until the boat and Sailbot collide, if the Sailbot moves
-    directly towards the soonest possible collision point. The system is modeled by two
-    parametric lines extending from the positions of the boat obstacle and sailbot respectively
-    in 2D space. These lines may intersect at some specific point and time.
+        Args:
+            position (XY): x,y coordinates of the boat in km
+            boat_sog_vector (np.array): x,y components of the boat's speed over ground
+            sailbot_position (XY): x,y coordinates of the Sailbot in km
+        Returns:
+            time_to_intersection (float): time in hours until the boat and Sailbot collide
+            -1 if the boats will never collide
+        """
+        v1 = boat_sog_vector[0]
+        v2 = boat_sog_vector[1]
+        a = position[0]
+        b = position[1]
+        c = sailbot_position[0]
+        d = sailbot_position[1]
 
-    This linear system, in which the vector that represents the Sailbot's velocity is free
-    to point at the soonest possible collision point (but whose magnitude is known),
-    is solved using linear algebra and  the quadratic formula.
+        quadratic_coefficients = np.array(
+            [
+                v1**2 + v2**2 - (sailbot_speed**2),
+                2 * (v1 * (a - c) - v2 * (b - d)),
+                (a - c) ** 2 + (b - d) ** 2,
+            ]
+        )
 
-    Args:
-        position (XY): x,y coordinates of the boat in km
-        boat_sog_vector (np.array): x,y components of the boat's speed over ground
-        sailbot_position (XY): x,y coordinates of the Sailbot in km
-    Returns:
-        time_to_intersection (float): time in hours until the boat and Sailbot collide
-        -1 if the boats will never collide
-    """
-    v1 = boat_sog_vector[0]
-    v2 = boat_sog_vector[1]
-    a = position[0]
-    b = position[1]
-    c = sailbot_position[0]
-    d = sailbot_position[1]
+        # If the radicand  of the quadratic formula is negative, the boats will never collide
+        if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
+            v1**2 + v2**2 - (sailbot_speed**2)
+        ) * (a - c) ** 2 + (b - d) ** 2 <= 0:
+            return -1
 
-    quadratic_coefficients = np.array(
-        [
-            v1**2 + v2**2 - (SAILBOT_MAX_SPEED**2),
-            2 * (v1 * (a - c) - v2 * (b - d)),
-            (a - c) ** 2 + (b - d) ** 2,
-        ]
-    )
+        # The solution to the quadratic formula is the time until the boats collide
+        t = np.roots(quadratic_coefficients)
 
-    # If the radicand  of the quadratic formula is negative, the boats will never collide
-    if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
-        v1**2 + v2**2 - (SAILBOT_MAX_SPEED**2)
-    ) * (a - c) ** 2 + (b - d) ** 2 <= 0:
-        return -1
-
-    # The solution to the quadratic formula is the time until the boats collide
-    t = np.roots(quadratic_coefficients)
-
-    # Return the smaller positive time
-    return min([i for i in t if i > 0])
+        # Return the smaller positive time
+        return min([i for i in t if i > 0])
