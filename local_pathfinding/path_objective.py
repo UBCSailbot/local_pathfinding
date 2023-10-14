@@ -34,8 +34,6 @@ class Distanceobjective(ob.StateCostIntegralObjective):
         Returns:
             class/int: The distance between two points object or integer (currently it is returning a object)
         """
-        # Generates an OMPL Path Length Objective
-        omplPathObjective = self.get_path_length_objective()
 
         # Generates the euclidean distance between two points
         euclideanPathObjective = self.get_euclidean_path_length_objective(s1, s2)
@@ -43,9 +41,9 @@ class Distanceobjective(ob.StateCostIntegralObjective):
         # Generates the latlon distance between two points
         latlonPathObjective = self.get_latlon_path_length_objective(s1, s2)
 
-        return omplPathObjective
+        return latlonPathObjective
 
-    def get_path_length_objective(self):
+    def get_ompl_path_length_objective(self):
         """Generates an OMPL Path Length Objective
 
         Returns:
@@ -156,9 +154,9 @@ class MinimumTurningObjective(ob.StateCostIntegralObjective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_unbias > large_turn_threshold:
-            return 500 * turn_size_unbias
-        else:
-            return 10 * turn_size_unbias
+            return 5000 * math.fabs(turn_size_unbias)
+
+        return 100 * math.fabs(turn_size_unbias)
 
     def goalHeadingTurnCost(self, s1):
         """Determine the smallest turn angle between s1-s2 and heading
@@ -185,9 +183,9 @@ class MinimumTurningObjective(ob.StateCostIntegralObjective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_unbias > large_turn_threshold:
-            return 500 * turn_size_unbias
-        else:
-            return 10 * turn_size_unbias
+            return 500 * math.fabs(turn_size_unbias)
+
+        return 10 * math.fabs(turn_size_unbias)
 
     def headingPathTurnCost(self, s1, s2):
         """Generates the turning cost between s1-s2 and heading of the sailbot
@@ -214,9 +212,10 @@ class MinimumTurningObjective(ob.StateCostIntegralObjective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_bias > large_turn_threshold:
-            return 500 * turn_size_unbias
-        else:
-            return 10 * turn_size_unbias
+            return 500 * math.fabs(turn_size_unbias)
+
+
+        return 10 * math.fabs(turn_size_unbias)
 
 
 class WindObjective(ob.StateCostIntegralObjective):
@@ -225,6 +224,7 @@ class WindObjective(ob.StateCostIntegralObjective):
     Attributes:
         space_information (class): The space information of the OMPL problem
     """
+
     def __init__(self, space_information, wind_direction_degrees):
         super(WindObjective, self).__init__(space_information, True)
         self.space_information = space_information
@@ -380,10 +380,18 @@ def allocate_objective(space_information, simple_setup, heading_degrees, wind_di
         class: The summation of the objective classes
     """
     objective = ob.MultiOptimizationObjective(space_information)
+    # If you want to test ompl path length objective then uncomment the following lines and
+    # comment out the following line
+
+    # distance_objective = Distanceobjective(space_information)
+    ## objective.addObjective(distance_objective.get_ompl_path_length_objective(), 1.0)
+
     objective.addObjective(Distanceobjective(space_information), 1.0)
+
     objective.addObjective(
         MinimumTurningObjective(space_information, simple_setup, heading_degrees), 100.0
     )
+
     objective.addObjective(WindObjective(space_information, wind_direction_degrees), 1.0)
 
     return objective
