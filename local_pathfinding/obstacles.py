@@ -30,7 +30,7 @@ class Obstacle:
 
     """
 
-    def is_valid(self, point: LatLon) -> bool:
+    def is_valid(self, reference: LatLon, point: LatLon) -> bool:
         """
         Checks if a point is contained the obstacle's interior
 
@@ -40,7 +40,7 @@ class Obstacle:
         Returns:
             bool: True if the point is not within the obstacle's interior, False otherwise
         """
-        point = latlon_to_xy(point)
+        point = latlon_to_xy(reference, point)
 
         # contains() requires a shapely Point object as an argument
         point = Point(point[0], point[1])
@@ -72,9 +72,12 @@ class Boat(Obstacle):
             - Maritime Mobile Service Identity (9 digit int)
             - latitude (float) latitude in degrees
             - longitude (float) longitude in degrees
-            - speed_over_ground (float) speed in knots over ground
-            - Course over ground (float) degrees measured clockwise from true north
+            - speed over ground (float) speed in knots over ground
+            - course over ground (float) degrees measured clockwise from true north
             - boat dimensions (float) width and length of the boat in meters
+            - rate of turn (float) ROT in AISROT scale -126 to +126 corresponding to
+                -708 to +708 deg/min
+
             - other information is also available but not used here
 
         To avoid confusion, the physical dimensions, position, and COG of the boat are
@@ -82,7 +85,7 @@ class Boat(Obstacle):
         So that all we need to do to update the boat's position or COG is to update the
         polygon's position, size, and rotation.
 
-        points (x,y) are measured in meters, with the origin set at the current global waypoint.
+        points (x,y) are measured in km, with the origin set at the current global waypoint.
 
     """
 
@@ -103,9 +106,11 @@ class Boat(Obstacle):
                 -lat_lon (LatLon): latitude and longitude of the boat
                 -speed_over_ground (float): speed of the boat in knots, over ground
                 -course_over_ground (float, degrees): COG of the boat, clockwise from true north
-                -heading (float, degrees): heading of the boat, clockwise from true north
+                -rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding
+                    to -708 to +708 degrees per minute
         """
         self.id = ais_ship.id
+        self.reference = reference
 
         # Position of the boat
         position = latlon_to_xy(
@@ -122,6 +127,7 @@ class Boat(Obstacle):
             position,
             ais_ship.sog.sog,
             ais_ship.cog.cog,
+            ais_ship.rot.rot,
             self.sailbot_position,
         )
 
@@ -132,6 +138,7 @@ class Boat(Obstacle):
         position: XY,
         speed_over_ground: float,
         course_over_ground: float,
+        rate_of_turn: float,
         sailbot_position: XY,
     ) -> Polygon:
         """
@@ -144,15 +151,23 @@ class Boat(Obstacle):
             position (XY): x,y coordinates of the boat in km
             speed_over_ground (float): speed of the boat in knots, over ground
             course_over_ground (float): COG of the boat in degrees clockwise from true north
+            rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding to
+                -708 to +708 degrees per minute
             Sailbot_position (XY): x,y coordinates of the Sailbot in km
-        """
 
-        # This factor can be adjusted to change the scope/width of the collision cone
-        COLLISION_CONE_STRETCH_FACTOR = 20
+        Notes:
+            ROT is not incorporated yet, but may be in the future.
+        """
 
         # coordinates of the center of the boat
         x, y = position[0], position[1]
+
         speed_over_ground_kmph = knots_to_kilometers_per_hour(speed_over_ground)
+
+        width = meters_to_km(width)
+        length = meters_to_km(length)
+
+        # Calculate distance the boat will travel before soonest possible collision with Sailbot
         projected_distance = calculate_projected_distance(
             position,
             course_over_ground,
@@ -160,8 +175,9 @@ class Boat(Obstacle):
             sailbot_position,
         )
 
-        width = meters_to_km(width)
-        length = meters_to_km(length)
+        # This factor can be adjusted to change the scope/width of the collision cone
+        # TODO This feels too arbitrary, maybe will incorporate ROT at a later time
+        COLLISION_CONE_STRETCH_FACTOR = projected_distance * 1.5
 
         # Points of the boat collision box polygon before rotation and centred at the origin
         points = np.array(
