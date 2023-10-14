@@ -70,7 +70,9 @@ def isDownwind(wind_direction_radians, boat_direction_radians):
     return NotImplementedError
 
 
-def allocate_objective(space_information, simple_setup, heading_degrees, wind_direction_degrees):
+def allocate_objective(simple_setup, heading_degrees, wind_direction_degrees):
+    space_information = simple_setup.getSpaceInformation()
+    
     objective = ob.MultiOptimizationObjective(space_information)
     objective.addObjective(Distanceobjective(space_information), 1.0)
     objective.addObjective(

@@ -44,7 +44,6 @@ def test_OMPLPath_get_waypoint():
 
 def test_OMPLPath_update_objectives():
     PATH.update_objectives(
-        PATH._simple_setup.getSpaceInformation(),
         PATH._simple_setup,
         heading_degrees=45,
         windDirectionDegrees=75,

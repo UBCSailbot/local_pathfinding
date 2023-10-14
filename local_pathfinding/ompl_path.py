@@ -90,10 +90,10 @@ class OMPLPath:
         return waypoints
 
     def update_objectives(
-        self, space_information, simple_setup, heading_degrees, windDirectionDegrees
+        self, simple_setup, heading_degrees, windDirectionDegrees
     ):
         return allocate_objective(
-            space_information, simple_setup, heading_degrees, windDirectionDegrees
+            simple_setup, heading_degrees, windDirectionDegrees
         )
 
     def _init_simple_setup(self) -> og.SimpleSetup:
@@ -147,7 +147,7 @@ class OMPLPath:
        # TODO: implement and add optimization objective here
 
         objective = self.update_objectives(
-            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
+            simple_setup, self.state.headingDirection, self.state.windDirection
         )
         simple_setup.setOptimizationObjective(objective)
 
