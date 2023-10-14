@@ -19,16 +19,16 @@ class Distanceobjective(ob.StateCostIntegralObjective):
         self.space_information = space_information
 
     def motionCost(self, s1, s2):
-        return 1000
+        return 0
 
     def get_path_length_objective(self):
-        pass
+        return NotImplementedError
 
     def get_euclidean_path_length_objective(self, s1, s2):
-        pass
+        return NotImplementedError
 
     def get_latlon_path_length_objective(self, s1, s2):
-        pass
+        return NotImplementedError
 
 
 class MinimumTurningObjective(ob.StateCostIntegralObjective):
@@ -39,16 +39,16 @@ class MinimumTurningObjective(ob.StateCostIntegralObjective):
         self.heading_degrees = heading_degrees
 
     def motionCost(self, s1, s2):
-        return 1000
+        return 0
 
     def goalPathTurnCost(self, s1, s2):
-        pass
+        return NotImplementedError
 
     def goalHeadingTurnCost(self, s1):
-        pass
+        return NotImplementedError
 
     def headingPathTurnCost(self, s1, s2):
-        pass
+        return NotImplementedError
 
 
 class WindObjective(ob.StateCostIntegralObjective):
@@ -59,15 +59,15 @@ class WindObjective(ob.StateCostIntegralObjective):
 
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1, s2):
-        return 1000
+        return 0
 
 
 def isUpwind(wind_direction_radians, boat_direction_radians):
-    pass
+    return NotImplementedError
 
 
 def isDownwind(wind_direction_radians, boat_direction_radians):
-    pass
+    return NotImplementedError
 
 
 def allocate_objective(space_information, simple_setup, heading_degrees, wind_direction_degrees):
