@@ -13,6 +13,7 @@ from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
+from local_pathfinding.path_objective import allocate_objective
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
@@ -24,6 +25,9 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
+        self.headingDirection = 45
+        self.windDirection = 10
+
         self.state_domain = (-1, 1)
         self.state_range = (-1, 1)
         self.start_state = (0.5, 0.4)
@@ -85,13 +89,12 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self):
-        """Update the objectives on the basis of which the path is optimized.
-
-        Raises:
-            NotImplementedError: Method or function hasn't been implemented yet.
-        """
-        raise NotImplementedError
+    def update_objectives(
+        self, space_information, simple_setup, heading_degrees, windDirectionDegrees
+    ):
+        return allocate_objective(
+            space_information, simple_setup, heading_degrees, windDirectionDegrees
+        )
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         """Initialize and configure the OMPL SimpleSetup object.
@@ -137,13 +140,21 @@ class OMPLPath:
         )
         simple_setup.setStartAndGoalStates(start, goal)
 
-        # set the optimization objective of the simple setup object
-        # TODO: implement and add optimization objective here
-        # simple_setup.setOptimizationObjective(objective)
+        # Constructs a space information instance for this simple setup
+        space_information = simple_setup.getSpaceInformation()
+
+       # set the optimization objective of the simple setup object
+       # TODO: implement and add optimization objective here
+
+        objective = self.update_objectives(
+            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
+        )
+        simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
-        # simple_setup.setPlanner(planner)
+        planner = og.RRTstar(space_information)
+        simple_setup.setPlanner(planner)
 
         return simple_setup
 
