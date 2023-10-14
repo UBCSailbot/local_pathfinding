@@ -1,8 +1,6 @@
-import math
-import sys
+
 
 from ompl import base as ob
-from ompl import util as ou
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
@@ -72,12 +70,16 @@ def isDownwind(wind_direction_radians, boat_direction_radians):
 
 def allocate_objective(simple_setup, heading_degrees, wind_direction_degrees):
     space_information = simple_setup.getSpaceInformation()
-    
+
     objective = ob.MultiOptimizationObjective(space_information)
     objective.addObjective(Distanceobjective(space_information), 1.0)
     objective.addObjective(
-        MinimumTurningObjective(space_information, simple_setup, heading_degrees), 100.0
+        MinimumTurningObjective(
+            space_information, simple_setup, heading_degrees
+        ), 100.0
     )
-    objective.addObjective(WindObjective(space_information, wind_direction_degrees), 1.0)
+    objective.addObjective(
+        WindObjective(space_information, wind_direction_degrees), 1.0
+    )
 
     return objective
