@@ -12,7 +12,7 @@ PATH = ompl_path.OMPLPath(
 
 
 def test_distance_objective():
-    distance_objective = objectives.Distanceobjective(PATH._simple_setup.getSpaceInformation())
+    distance_objective = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
     assert distance_objective is not None
 
 
@@ -29,6 +29,13 @@ def test_get_euclidean_path_length_objective():
 def test_get_latlon_path_length_objective():
     with pytest.raises(NotImplementedError):
         raise NotImplementedError
+
+
+def test_minimum_turning_objective():
+    minimum_turning_objective = objectives.MinimumTurningObjective(
+        PATH._simple_setup.getSpaceInformation(), None, 0
+    )
+    assert minimum_turning_objective is not None
 
 
 def test_goalPathTurnCost():

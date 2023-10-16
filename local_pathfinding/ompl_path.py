@@ -14,7 +14,7 @@ from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
-from local_pathfinding.objectives import allocate_objective
+from local_pathfinding.objectives import get_sailing_objective
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
@@ -90,8 +90,12 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(self, simple_setup, heading_degrees, windDirectionDegrees):
-        return allocate_objective(simple_setup, heading_degrees, windDirectionDegrees)
+    def update_objectives(self):
+        """Update the objectives on the basis of which the path is optimized.
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
+        raise NotImplementedError
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         """Initialize and configure the OMPL SimpleSetup object.
@@ -143,8 +147,8 @@ class OMPLPath:
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
 
-        objective = self.update_objectives(
-            simple_setup, self.state.headingDirection, self.state.windDirection
+        objective = get_sailing_objective(
+            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
         )
         simple_setup.setOptimizationObjective(objective)
 
