@@ -1,4 +1,4 @@
-
+"""Our custom OMPL optimization objectives."""
 
 from ompl import base as ob
 
@@ -74,12 +74,8 @@ def allocate_objective(simple_setup, heading_degrees, wind_direction_degrees):
     objective = ob.MultiOptimizationObjective(space_information)
     objective.addObjective(Distanceobjective(space_information), 1.0)
     objective.addObjective(
-        MinimumTurningObjective(
-            space_information, simple_setup, heading_degrees
-        ), 100.0
+        MinimumTurningObjective(space_information, simple_setup, heading_degrees), 100.0
     )
-    objective.addObjective(
-        WindObjective(space_information, wind_direction_degrees), 1.0
-    )
+    objective.addObjective(WindObjective(space_information, wind_direction_degrees), 1.0)
 
     return objective
