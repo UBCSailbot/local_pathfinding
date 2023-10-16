@@ -1,8 +1,8 @@
 import pytest
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.objectives as objectives
 import local_pathfinding.ompl_path as ompl_path
-import local_pathfinding.path_objective as path_objective
 
 PATH = ompl_path.OMPLPath(
     parent_logger=RcutilsLogger(),
@@ -12,9 +12,7 @@ PATH = ompl_path.OMPLPath(
 
 
 def test_distance_objective():
-    distance_objective = path_objective.Distanceobjective(
-        PATH._simple_setup.getSpaceInformation()
-    )
+    distance_objective = objectives.Distanceobjective(PATH._simple_setup.getSpaceInformation())
     assert distance_objective is not None
 
 
@@ -49,7 +47,5 @@ def test_headingPathTurnCost():
 
 
 def test_wind_objective():
-    wind_objective = path_objective.WindObjective(
-        PATH._simple_setup.getSpaceInformation(), 0
-    )
+    wind_objective = objectives.WindObjective(PATH._simple_setup.getSpaceInformation(), 0)
     assert wind_objective is not None

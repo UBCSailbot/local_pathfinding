@@ -13,7 +13,8 @@ from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
-from local_pathfinding.path_objective import allocate_objective
+
+from local_pathfinding.objectives import allocate_objective
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
@@ -89,12 +90,8 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(
-        self, simple_setup, heading_degrees, windDirectionDegrees
-    ):
-        return allocate_objective(
-            simple_setup, heading_degrees, windDirectionDegrees
-        )
+    def update_objectives(self, simple_setup, heading_degrees, windDirectionDegrees):
+        return allocate_objective(simple_setup, heading_degrees, windDirectionDegrees)
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         """Initialize and configure the OMPL SimpleSetup object.
