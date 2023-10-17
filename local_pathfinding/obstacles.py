@@ -1,3 +1,5 @@
+"""Describes obstacles which the Sailbot must avoid: Boats and Land"""
+
 import math
 
 import numpy as np
@@ -14,10 +16,10 @@ from local_pathfinding.coord_systems import (
 )
 
 # Constants
-MAX_PROJECTION_TIME = 3  # hours
+PROJ_TIME_NO_COLLISION = 3  # hours
+COLLISION_ZONE_SAFETY_BUFFER = 0.5  # km
 
 
-# TODO Look into adding more data available from AIS
 class Obstacle:
 
     """
@@ -143,6 +145,8 @@ class Boat(Obstacle):
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
+        self.position = position
+
         # A Boat's collision zone is represented by a cone shaped polygon
         self.collision_zone = self.create_collision_cone(
             ais_ship.dimensions.width,
@@ -169,6 +173,9 @@ class Boat(Obstacle):
         """
         Creates a Shapely Polygon to represent the boat's collision_cone, which is sized,
         orientated and positioned according to the boat's COG, SOG, and position.
+
+        The polygon is oversized according to the collision zone safety buffer, for
+        added assurrance that the boat will be entirely contained by the polygon.
 
         Args:
             width (float): width of the boat in meters
@@ -235,7 +242,7 @@ class Boat(Obstacle):
         # translate the points to the boat's position
         points = points + np.array([x, y])
 
-        return Polygon(points)
+        return Polygon(points).buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
 
     def calculate_projected_distance(
         self,
@@ -268,10 +275,12 @@ class Boat(Obstacle):
             position, boat_sog_vector, sailbot_position, sailbot_speed
         )
 
+        # Sailbot and this Boat will never collide
         if time_to_intersection < 0:
-            return MAX_PROJECTION_TIME * speed_over_ground_kmph
+            return PROJ_TIME_NO_COLLISION * speed_over_ground_kmph
 
-        return time_to_intersection * speed_over_ground_kmph
+        # Added 1 km to the projected distance for extra safety margin
+        return time_to_intersection * speed_over_ground_kmph + 1
 
     def calculate_time_to_intersection(
         self,
@@ -291,6 +300,10 @@ class Boat(Obstacle):
         to point at the soonest possible collision point (but whose magnitude is known),
         is solved using linear algebra and  the quadratic formula.
 
+        A more in-depth explanation for this function can be found here:
+        https://ubcsailbot.atlassian.net/wiki/spaces/prjt22/pages/1881145358/Obstacle+Class+Planning
+
+
         Args:
             position (XY): x,y coordinates of the boat in km
             boat_sog_vector (np.array): x,y components of the boat's speed over ground
@@ -309,7 +322,7 @@ class Boat(Obstacle):
         quadratic_coefficients = np.array(
             [
                 v1**2 + v2**2 - (sailbot_speed**2),
-                2 * (v1 * (a - c) - v2 * (b - d)),
+                2 * (v1 * (a - c) + v2 * (b - d)),
                 (a - c) ** 2 + (b - d) ** 2,
             ]
         )
