@@ -7,26 +7,23 @@ from custom_interfaces.msg import HelperAISShip
 from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 
-from local_pathfinding.coord_systems import (
-    XY,
-    LatLon,
-    knots_to_kilometers_per_hour,
-    latlon_to_xy,
-    meters_to_km,
-)
+from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_km
 
 # Constants
 PROJ_TIME_NO_COLLISION = 3  # hours
 COLLISION_ZONE_SAFETY_BUFFER = 0.5  # km
+COLLISION_CONE_STRETCH_FACTOR = 1.5  # This factor changes the scope/width of the collision cone
 
 
 class Obstacle:
-    """This Interface describes general obstacle objects which are
+    """This class describes general obstacle objects which are
     anything which the sailbot must avoid.
 
-    The choice was made to create an interface rather than a class as Boat and LandMass objects
-    may be very different objects which share an "avoidable" property and a position, but not much
-    else.
+    Attributes:
+        reference (LatLon): Lat and lon position of the next global waypoint
+        sailbot_position (LatLon): Lat and lon position of SailBot
+        sailbot_speed (float): Speed of the SailBot in kmph
+        collision_zone (Polygon): Shapely Polygon object representing the obstacle's collision zone
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
@@ -34,26 +31,23 @@ class Obstacle:
         Args:
             reference (LatLon): Latitude and longitude of the next global waypoint.
             sailbot_position (LatLon): Lat and lon position of SailBot.
-            sailbot_speed (float): Speed of the SailBot in km/h.
+            sailbot_speed (float): Speed of the SailBot in kmph.
         """
         self.reference = reference
-
-        # Position of the Sailbot in XY
         self.sailbot_position = latlon_to_xy(reference, sailbot_position)
-
         self.sailbot_speed = sailbot_speed
 
-        # This should be defined in child classes
+        # This is defined in child classes
         self.collision_zone = Polygon()
 
     def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
-        """Checks if a point is contained the obstacle's interior.
+        """Checks if a point is contained the obstacle's collision zone.
 
         Args:
             point (Point): Shapely Point object representing the point to be checked.
 
         Returns:
-            bool: True if the point is not within the obstacle's interior, false otherwise.
+            bool: True if the point is not within the obstacle's collision zone, false otherwise.
         """
         point = latlon_to_xy(reference, point_latlon)
 
@@ -63,42 +57,17 @@ class Obstacle:
 
 
 class Boat(Obstacle):
-    """This class describes boat objects which Sailbot must avoid.
+
+    """
+    This class describes boat objects which Sailbot must avoid.
     Also referred to target ships or boat obstacles.
 
     Attributes:
-        id (int): MMSI number of the boat.
-        speed_over_ground (float): Speed of the boat, over ground, in knots.
-        collision_cone (Polygon): Shapely Polygon object representing the boat's collision box.
-            -the collision_cone represents the boats hull via a region of possible positions
-            -It is shaped like a cone, with the tip at the boat's position and the base at the
-             furthest possible position of the boat in the next time step
-            -the collision_cone is orientated according to the course of the boat
-            -position (XY): x,y coordinates of the boat's center (converted from lat/lon)
-            -course_over_ground (float): course of the boat in degrees, clockwise from true north
-            (#TODO: check if we need to consider magnetic north)
-            -width (float): width of the boat in meters
-            -length (float): length of the boat in meters
+        reference (LatLon): Lat and lon position of the next global waypoint
+        sailbot_position (LatLon): Lat and lon position of SailBot
+        sailbot_speed (float): Speed of the SailBot in kmph
+        ais_ship (HelperAISShip): an AISShip object, containing information about the boat
 
-    Notes:
-        The following information about a boat is obtained from AIS:
-            - Maritime Mobile Service Identity (9 digit int)
-            - latitude (float) latitude in degrees
-            - longitude (float) longitude in degrees
-            - speed over ground (float) speed in knots over ground
-            - course over ground (float) degrees measured clockwise from true north
-            - boat dimensions (float) width and length of the boat in meters
-            - rate of turn (float) ROT in AISROT scale -126 to +126 corresponding to
-                -708 to +708 deg/min
-
-            - other information is also available but not used here
-
-        To avoid confusion, the physical dimensions, position, and COG of the boat are
-        stored in the aggregated Polygon object, not the Boat object itself.
-        So that all we need to do to update the boat's position or COG is to update the
-        polygon's position, size, and rotation.
-
-        points (x,y) are measured in km, with the origin set at the current global waypoint.
     """
 
     def __init__(
@@ -108,21 +77,6 @@ class Boat(Obstacle):
         sailbot_speed: float,
         ais_ship: HelperAISShip,
     ):
-        """
-        Args:
-            reference (LatLon): Latitude and longitude of the next global waypoint.
-            sailbot_position (LatLon): Lat and lon position of SailBot.
-            sailbot_speed (float): Speed of the SailBot in km/h.
-            ais_ship (HelperAISShip): an AISShip object, containing the following information:
-                -id (int): MMSI number of the boat
-                -width (float): width of the boat in meters
-                -length (float): length of the boat in meters
-                -lat_lon (LatLon): latitude and longitude of the boat
-                -speed_over_ground (float): speed of the boat in knots, over ground
-                -course_over_ground (float): COG of the boat, in degrees, clockwise from true north
-                -rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding
-                    to -708 to +708 degrees per minute
-        """
         super().__init__(reference, sailbot_position, sailbot_speed)
 
         self.id = ais_ship.id
@@ -131,16 +85,13 @@ class Boat(Obstacle):
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
-        self.position = position
 
-        # A Boat's collision zone is represented by a cone shaped polygon
         self.collision_zone = self.create_collision_cone(
             ais_ship.dimensions.width,
             ais_ship.dimensions.length,
             position,
             ais_ship.sog.sog,
             ais_ship.cog.cog,
-            ais_ship.rot.rot,
             self.sailbot_position,
             self.sailbot_speed,
         )
@@ -152,34 +103,18 @@ class Boat(Obstacle):
         position: XY,
         speed_over_ground: float,
         course_over_ground: float,
-        rate_of_turn: float,
         sailbot_position: XY,
         sailbot_speed: float,
     ) -> Polygon:
-        """Creates a Shapely Polygon to represent the boat's collision_cone, which is sized,
-        orientated and positioned according to the boat's COG, SOG, and position.
+        """Creates a Shapely Polygon to represent the boat's collision zone,
+        which is shaped like a cone.
 
         The polygon is oversized according to the collision zone safety buffer, for
         added assurrance that the boat will be entirely contained by the polygon.
-
-        Args:
-            width (float): Width of the boat in meters.
-            length (float): Length of the boat in meters.
-            position (XY): x,y coordinates of the boat in km.
-            speed_over_ground (float): Speed of the boat in knots, over ground.
-            course_over_ground (float): COG of the boat in degrees clockwise from true north.
-            rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding to
-                -708 to +708 degrees per minute.
-            sailbot_position (XY): x,y coordinates of the Sailbot in km.
-
-        Notes:
-            ROT is not incorporated yet, but may be in the future.
         """
 
         # coordinates of the center of the boat
         x, y = position[0], position[1]
-
-        speed_over_ground_kmph = knots_to_kilometers_per_hour(speed_over_ground)
 
         width = meters_to_km(width)
         length = meters_to_km(length)
@@ -188,21 +123,20 @@ class Boat(Obstacle):
         projected_distance = self.calculate_projected_distance(
             position,
             course_over_ground,
-            speed_over_ground_kmph,
+            speed_over_ground,
             sailbot_position,
             sailbot_speed,
         )
 
-        # This factor can be adjusted to change the scope/width of the collision cone
         # TODO This feels too arbitrary, maybe will incorporate ROT at a later time
-        COLLISION_CONE_STRETCH_FACTOR = projected_distance * 1.5
+        collision_cone_stretch = projected_distance * COLLISION_CONE_STRETCH_FACTOR
 
-        # Points of the boat collision box polygon before rotation and centred at the origin
+        # Points of the boat collision cone polygon before rotation and centred at the origin
         points = np.array(
             [
                 [-width / 2, -length / 2],
-                [-COLLISION_CONE_STRETCH_FACTOR * width, length / 2 + projected_distance],
-                [COLLISION_CONE_STRETCH_FACTOR * width, length / 2 + projected_distance],
+                [-collision_cone_stretch * width, length / 2 + projected_distance],
+                [collision_cone_stretch * width, length / 2 + projected_distance],
                 [width / 2, -length / 2],
             ]
         )
