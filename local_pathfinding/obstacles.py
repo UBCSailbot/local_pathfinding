@@ -21,28 +21,20 @@ COLLISION_ZONE_SAFETY_BUFFER = 0.5  # km
 
 
 class Obstacle:
-
-    """
-    This Interface describes general obstacle objects which are
+    """This Interface describes general obstacle objects which are
     anything which the sailbot must avoid.
 
     The choice was made to create an interface rather than a class as Boat and LandMass objects
     may be very different objects which share an "avoidable" property and a position, but not much
     else.
-
     """
 
-    def __init__(
-        self,
-        reference: LatLon,
-        sailbot_position: LatLon,
-        sailbot_speed: float,
-    ):
+    def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
         """
         Args:
-            -reference (LatLon): latitude and longitude of the next global waypoint
-            -sailbot_position (LatLon): lat and lon position of SailBot
-            -sailbot_speed (float): speed of the SailBot in km/h
+            reference (LatLon): Latitude and longitude of the next global waypoint.
+            sailbot_position (LatLon): Lat and lon position of SailBot.
+            sailbot_speed (float): Speed of the SailBot in km/h.
         """
         self.reference = reference
 
@@ -52,37 +44,32 @@ class Obstacle:
         self.sailbot_speed = sailbot_speed
 
         # This should be defined in child classes
-        self.collision_zone = Polygon(None, None)
+        self.collision_zone = Polygon()
 
     def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
-        """
-        Checks if a point is contained the obstacle's interior
+        """Checks if a point is contained the obstacle's interior.
 
         Args:
-            point (Point): a shapely Point object representing the point to be checked
+            point (Point): Shapely Point object representing the point to be checked.
 
         Returns:
-            bool: True if the point is not within the obstacle's interior, False otherwise
+            bool: True if the point is not within the obstacle's interior, false otherwise.
         """
         point = latlon_to_xy(reference, point_latlon)
 
         # contains() requires a shapely Point object as an argument
-        point = Point(point[0], point[1])
+        point = Point(*point)
         return not self.collision_zone.contains(point)
 
 
 class Boat(Obstacle):
-
-    """
-    This class describes boat objects which Sailbot must avoid.
+    """This class describes boat objects which Sailbot must avoid.
     Also referred to target ships or boat obstacles.
 
-
-    Attributes
-    ----------
-        -id (int): MMSI number of the boat
-        -speed_over_ground (float): speed of the boat, over ground, in knots
-        -collision_cone (Polygon): a shapely Polygon object representing the boat's collision box
+    Attributes:
+        id (int): MMSI number of the boat.
+        speed_over_ground (float): Speed of the boat, over ground, in knots.
+        collision_cone (Polygon): Shapely Polygon object representing the boat's collision box.
             -the collision_cone represents the boats hull via a region of possible positions
             -It is shaped like a cone, with the tip at the boat's position and the base at the
              furthest possible position of the boat in the next time step
@@ -92,8 +79,8 @@ class Boat(Obstacle):
             (#TODO: check if we need to consider magnetic north)
             -width (float): width of the boat in meters
             -length (float): length of the boat in meters
-    Notes
-    ----------
+
+    Notes:
         The following information about a boat is obtained from AIS:
             - Maritime Mobile Service Identity (9 digit int)
             - latitude (float) latitude in degrees
@@ -112,7 +99,6 @@ class Boat(Obstacle):
         polygon's position, size, and rotation.
 
         points (x,y) are measured in km, with the origin set at the current global waypoint.
-
     """
 
     def __init__(
@@ -124,10 +110,10 @@ class Boat(Obstacle):
     ):
         """
         Args:
-            -reference (LatLon): latitude and longitude of the next global waypoint
-            -sailbot_position (LatLon): lat and lon position of SailBot
-            -sailbot_speed (float): speed of the SailBot in km/h
-            -ais_ship (HelperAISShip): an AISShip object, containing the following information:
+            reference (LatLon): Latitude and longitude of the next global waypoint.
+            sailbot_position (LatLon): Lat and lon position of SailBot.
+            sailbot_speed (float): Speed of the SailBot in km/h.
+            ais_ship (HelperAISShip): an AISShip object, containing the following information:
                 -id (int): MMSI number of the boat
                 -width (float): width of the boat in meters
                 -length (float): length of the boat in meters
@@ -170,8 +156,7 @@ class Boat(Obstacle):
         sailbot_position: XY,
         sailbot_speed: float,
     ) -> Polygon:
-        """
-        Creates a Shapely Polygon to represent the boat's collision_cone, which is sized,
+        """Creates a Shapely Polygon to represent the boat's collision_cone, which is sized,
         orientated and positioned according to the boat's COG, SOG, and position.
 
         The polygon is oversized according to the collision zone safety buffer, for
@@ -185,7 +170,7 @@ class Boat(Obstacle):
             course_over_ground (float): COG of the boat in degrees clockwise from true north
             rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding to
                 -708 to +708 degrees per minute
-            Sailbot_position (XY): x,y coordinates of the Sailbot in km
+            sailbot_position (XY): x,y coordinates of the Sailbot in km
 
         Notes:
             ROT is not incorporated yet, but may be in the future.
@@ -252,9 +237,8 @@ class Boat(Obstacle):
         sailbot_position: XY,
         sailbot_speed: float,
     ) -> float:
-        """
-        Calculates the distance (km) the boat obstacle will travel before collision, if the Sailbot
-        moves directly towards the soonest possible collision point at current speed.
+        """Calculates the distance (km) the boat obstacle will travel before collision, if the
+        Sailbot moves directly towards the soonest possible collision point at current speed.
 
         Args:
             position (XY): x,y coordinates of the boat in km
@@ -289,8 +273,7 @@ class Boat(Obstacle):
         sailbot_position: XY,
         sailbot_speed: float,
     ) -> float:
-        """
-        Calculates the time until the boat and Sailbot collide, if the Sailbot moves
+        """Calculates the time until the boat and Sailbot collide, if the Sailbot moves
         directly towards the soonest possible collision point at its current speed.
         The system is modeled by two parametric lines extending from the positions of the boat
         obstacle and sailbot respectively in 2D space. These lines may intersect at some specific
@@ -302,7 +285,6 @@ class Boat(Obstacle):
 
         A more in-depth explanation for this function can be found here:
         https://ubcsailbot.atlassian.net/wiki/spaces/prjt22/pages/1881145358/Obstacle+Class+Planning
-
 
         Args:
             position (XY): x,y coordinates of the boat in km
