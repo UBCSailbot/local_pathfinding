@@ -58,9 +58,6 @@ class Boat(Obstacle):
     Also referred to target ships or boat obstacles.
 
     Attributes:
-        reference (LatLon): Lat and lon position of the next global waypoint
-        sailbot_position (LatLon): Lat and lon position of SailBot
-        sailbot_speed (float): Speed of the SailBot in kmph
         ais_ship (HelperAISShip): an AISShip object, containing information about the boat
 
     """
@@ -240,14 +237,19 @@ class Boat(Obstacle):
             ]
         )
 
-        # If the radicand  of the quadratic formula is negative, the boats will never collide
+        # If the radicand of the quadratic formula is negative, there is no real time
+        # when the boats will collide
         if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
             v1**2 + v2**2 - (sailbot_speed**2)
-        ) * (a - c) ** 2 + (b - d) ** 2 <= 0:
+        ) * (a - c) ** 2 + (b - d) ** 2 < 0:
             return -1
 
         # The solution to the quadratic formula is the time until the boats collide
         t = np.roots(quadratic_coefficients)
 
         # Return the smaller positive time
-        return min([i for i in t if i > 0])
+        try:
+            return min([i for i in t if i > 0])
+        except ValueError:
+            # if there are no positive times return -1
+            return -1
