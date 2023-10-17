@@ -163,14 +163,14 @@ class Boat(Obstacle):
         added assurrance that the boat will be entirely contained by the polygon.
 
         Args:
-            width (float): width of the boat in meters
-            length (float): length of the boat in meters
-            position (XY): x,y coordinates of the boat in km
-            speed_over_ground (float): speed of the boat in knots, over ground
-            course_over_ground (float): COG of the boat in degrees clockwise from true north
+            width (float): Width of the boat in meters.
+            length (float): Length of the boat in meters.
+            position (XY): x,y coordinates of the boat in km.
+            speed_over_ground (float): Speed of the boat in knots, over ground.
+            course_over_ground (float): COG of the boat in degrees clockwise from true north.
             rate_of_turn (float): ROT of the boat in AISROT scale -126 to +126 corresponding to
-                -708 to +708 degrees per minute
-            sailbot_position (XY): x,y coordinates of the Sailbot in km
+                -708 to +708 degrees per minute.
+            sailbot_position (XY): x,y coordinates of the Sailbot in km.
 
         Notes:
             ROT is not incorporated yet, but may be in the future.
@@ -241,11 +241,11 @@ class Boat(Obstacle):
         Sailbot moves directly towards the soonest possible collision point at current speed.
 
         Args:
-            position (XY): x,y coordinates of the boat in km
-            course_over_ground (float): COG of the boat in degrees clockwise from true north
-            speed_over_ground_kmph (float): speed of the boat in km/h, over ground
-            sailbot_position (XY): x,y coordinates of the Sailbot in km
-            sailbot_speed (float): speed of the Sailbot in km/h
+            position (XY): x,y coordinates of the boat in km.
+            course_over_ground (float): COG of the boat in degrees clockwise from true north.
+            speed_over_ground_kmph (float): Speed of the boat in km/h, over ground.
+            sailbot_position (XY): x,y coordinates of the Sailbot in km.
+            sailbot_speed (float): Speed of the Sailbot in km/h.
         """
         # Speed over ground vector of the boat obstacle
         boat_sog_vector = np.array(
@@ -287,12 +287,13 @@ class Boat(Obstacle):
         https://ubcsailbot.atlassian.net/wiki/spaces/prjt22/pages/1881145358/Obstacle+Class+Planning
 
         Args:
-            position (XY): x,y coordinates of the boat in km
-            boat_sog_vector (np.array): x,y components of the boat's speed over ground
-            sailbot_position (XY): x,y coordinates of the Sailbot in km
+            position (XY): x,y coordinates of the boat in km.
+            boat_sog_vector (np.array): x,y components of the boat's speed over ground.
+            sailbot_position (XY): x,y coordinates of the Sailbot in km.
+
         Returns:
-            time_to_intersection (float): time in hours until the boat and Sailbot collide
-            -1 if the boats will never collide
+            time_to_intersection (float): Time in hours until the boat and Sailbot collide
+            -1 if the boats will never collide.
         """
         v1 = boat_sog_vector[0]
         v2 = boat_sog_vector[1]
