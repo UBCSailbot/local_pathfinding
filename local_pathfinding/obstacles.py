@@ -27,24 +27,19 @@ class Obstacle:
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
-        """
-        Args:
-            reference (LatLon): Latitude and longitude of the next global waypoint.
-            sailbot_position (LatLon): Lat and lon position of SailBot.
-            sailbot_speed (float): Speed of the SailBot in kmph.
-        """
         self.reference = reference
         self.sailbot_position = latlon_to_xy(reference, sailbot_position)
         self.sailbot_speed = sailbot_speed
 
-        # This is defined in child classes
+        # This is defined in child classes, this makes mypy happy
         self.collision_zone = Polygon()
 
     def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
         """Checks if a point is contained the obstacle's collision zone.
 
         Args:
-            point (Point): Shapely Point object representing the point to be checked.
+            reference (LatLon): Lat and lon position of the next global waypoint
+            point (Point): Shapely Point representing the state point to be checked.
 
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
@@ -53,13 +48,13 @@ class Obstacle:
 
         # contains() requires a shapely Point object as an argument
         point = Point(*point)
+
         return not self.collision_zone.contains(point)
 
 
 class Boat(Obstacle):
 
-    """
-    This class describes boat objects which Sailbot must avoid.
+    """Describes boat objects which Sailbot must avoid.
     Also referred to target ships or boat obstacles.
 
     Attributes:
@@ -224,6 +219,7 @@ class Boat(Obstacle):
             position (XY): x,y coordinates of the boat in km.
             boat_sog_vector (np.array): x,y components of the boat's speed over ground.
             sailbot_position (XY): x,y coordinates of the Sailbot in km.
+            sailbot_speed (float): Speed of the Sailbot in kmph.
 
         Returns:
             time_to_intersection (float): Time in hours until the boat and Sailbot collide
