@@ -41,8 +41,8 @@ def test_is_valid(
     valid_point: LatLon,
 ):
     boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-    assert not boat1.is_valid(reference_point, invalid_point)
-    assert boat1.is_valid(reference_point, valid_point)
+    assert not boat1.is_valid(invalid_point)
+    assert boat1.is_valid(valid_point)
 
 
 @pytest.mark.parametrize(
@@ -67,9 +67,9 @@ def test_is_valid_no_collision_zone(
     obstacle = Obstacle(reference_point, sailbot_position, sailbot_speed)
 
     with pytest.raises(ValueError):
-        obstacle.is_valid(reference_point, invalid_point)
+        obstacle.is_valid(invalid_point)
     with pytest.raises(ValueError):
-        obstacle.is_valid(reference_point, valid_point)
+        obstacle.is_valid(valid_point)
 
 
 """

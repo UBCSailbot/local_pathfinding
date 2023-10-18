@@ -21,10 +21,9 @@ class Obstacle:
 
     Attributes:
         reference (LatLon): Lat and lon position of the next global waypoint.
-        sailbot_position (LatLon): Lat and lon position of SailBot.
+        sailbot_position (XY): Lat and lon position of SailBot.
         sailbot_speed (float): Speed of the SailBot in kmph.
-        collision_zone (Polygon): Shapely Polygon object representing the
-        obstacle's collision zone.
+        collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
@@ -35,17 +34,16 @@ class Obstacle:
         # This is defined in child classes
         self.collision_zone = None
 
-    def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
+    def is_valid(self, point_latlon: LatLon) -> bool:
         """Checks if a point is contained the obstacle's collision zone.
 
         Args:
-            reference (LatLon): Lat and lon position of the next global waypoint.
-            point (Point): Shapely Point representing the state point to be checked.
+            point (LatLon): LatLon Point representing the state point to be checked.
 
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
         """
-        point = latlon_to_xy(reference, point_latlon)
+        point = latlon_to_xy(self.reference, point_latlon)
 
         # contains() requires a shapely Point object as an argument
         point = Point(*point)
