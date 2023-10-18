@@ -81,7 +81,7 @@ class Boat(Obstacle):
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
-        # for debugging purposes
+        # for debugging purposes only
         self.position = position
 
         self.collision_zone = self.create_collision_cone(
@@ -252,7 +252,7 @@ class Boat(Obstacle):
         # The solution to the quadratic formula is the time until the boats collide
         t = np.roots(quadratic_coefficients)
 
-        # filter out only positive times
+        # filter out only positive roots
         t = [i for i in t if i > 0]
 
         if len(t) == 0:
