@@ -11,20 +11,39 @@ class Node:
     """A node class for A* pathfinding"""
 
     def __init__(self, parent=None, position=None):
+        """Initialize the Node class.
+
+        Args:
+            parent (Node, optional): Parent Node. Defaults to None.
+            position (ob.State, optional): Position of the Node (x, y). Defaults to None.
+        """
         self.parent = parent
         self.position = position
         self.g = 0
         self.h = 0
         self.f = 0
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        """Check if two nodes are equal.
+
+        Args:
+            other (Node): Node to compare to.
+
+        Returns:
+            bool: True if equal, False otherwise.
+        """
         return (
             self.position.getX() == other.position.getX()
             and self.position.getY() == other.position.getY()
         )
         # return self.position[0] == other.position[0] and self.position[1] == other.position[1]
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a string representation of the Node.
+
+        Returns:
+            str: String representation of the Node.
+        """
         return (
             str(self.position.getX())
             + ", "
@@ -33,20 +52,49 @@ class Node:
             + str(self.position.getYaw() * 180 / math.pi)
         )
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
+        """Check if the current node is less than another node.
+
+        Args:
+            other (Node): Node to compare to.
+
+        Returns:
+            bool: True if less than, False otherwise.
+        """
         return self.f < other.f
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> bool:
+        """Check if the current node is greater than another node.
+
+        Args:
+            other (Node): Node to compare to.
+
+        Returns:
+            bool: True if greater than, False otherwise.
+        """
         return self.f > other.f
 
 
 class Astar(ob.Planner):
     def __init__(self, si: ob.SpaceInformation):
+        """Initialize the Astar class.
+
+        Args:
+            si (ob.SpaceInformation): Space information.
+        """
         super(Astar, self).__init__(si, "Astar")
         self.states_ = []
         self.sampler_ = si.allocStateSampler()
 
-    def solve(self, ptc: ob.PlannerTerminationCondition):
+    def solve(self, ptc: ob.PlannerTerminationCondition) -> ob.PlannerStatus:
+        """Solve the Astar problem.
+
+        Args:
+            ptc (ob.PlannerTerminationCondition): Planner termination condition.
+
+        Returns:
+            ob.PlannerStatus: Planner status.
+        """
         pdef = self.getProblemDefinition()  # type: ob.ProblemDefinition
         goal = pdef.getGoal()  # type: ob.GoalState
         si = self.getSpaceInformation()  # type: ob.SpaceInformation
@@ -138,5 +186,6 @@ class Astar(ob.Planner):
         return ob.PlannerStatus(solved, approximate)
 
     def clear(self):
+        """Clear the Astar problem."""
         super(Astar, self).clear()
         self.states_ = []
