@@ -20,10 +20,11 @@ class Obstacle:
     anything which the sailbot must avoid.
 
     Attributes:
-        reference (LatLon): Lat and lon position of the next global waypoint
-        sailbot_position (LatLon): Lat and lon position of SailBot
-        sailbot_speed (float): Speed of the SailBot in kmph
-        collision_zone (Polygon): Shapely Polygon object representing the obstacle's collision zone
+        reference (LatLon): Lat and lon position of the next global waypoint.
+        sailbot_position (LatLon): Lat and lon position of SailBot.
+        sailbot_speed (float): Speed of the SailBot in kmph.
+        collision_zone (Polygon): Shapely Polygon object representing the
+        obstacle's collision zone.
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
@@ -31,14 +32,14 @@ class Obstacle:
         self.sailbot_position = latlon_to_xy(reference, sailbot_position)
         self.sailbot_speed = sailbot_speed
 
-        # This is defined in child classes, this makes mypy happy
-        self.collision_zone = Polygon()
+        # This is defined in child classes
+        self.collision_zone = None
 
     def is_valid(self, reference: LatLon, point_latlon: LatLon) -> bool:
         """Checks if a point is contained the obstacle's collision zone.
 
         Args:
-            reference (LatLon): Lat and lon position of the next global waypoint
+            reference (LatLon): Lat and lon position of the next global waypoint.
             point (Point): Shapely Point representing the state point to be checked.
 
         Returns:
@@ -49,6 +50,9 @@ class Obstacle:
         # contains() requires a shapely Point object as an argument
         point = Point(*point)
 
+        if self.collision_zone is None:
+            raise ValueError("Collision zone has not been initialized")
+
         return not self.collision_zone.contains(point)
 
 
@@ -58,7 +62,7 @@ class Boat(Obstacle):
     Also referred to target ships or boat obstacles.
 
     Attributes:
-        ais_ship (HelperAISShip): an AISShip object, containing information about the boat
+        ais_ship (HelperAISShip): an AISShip object, containing information about the boat.
 
     """
 
@@ -77,6 +81,8 @@ class Boat(Obstacle):
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
+        # for debugging purposes
+        self.position = position
 
         self.collision_zone = self.create_collision_cone(
             ais_ship.dimensions.width,
@@ -189,8 +195,7 @@ class Boat(Obstacle):
         if time_to_intersection < 0:
             return PROJ_TIME_NO_COLLISION * speed_over_ground_kmph
 
-        # Added 1 km to the projected distance for extra safety margin
-        return time_to_intersection * speed_over_ground_kmph + 1
+        return time_to_intersection * speed_over_ground_kmph
 
     def calculate_time_to_intersection(
         self,
@@ -219,7 +224,7 @@ class Boat(Obstacle):
             sailbot_speed (float): Speed of the Sailbot in kmph.
 
         Returns:
-            time_to_intersection (float): Time in hours until the boat and Sailbot collide
+            t (float): Time in hours until the boat and Sailbot collide
             -1 if the boats will never collide.
         """
         v1 = boat_sog_vector[0]
@@ -247,9 +252,11 @@ class Boat(Obstacle):
         # The solution to the quadratic formula is the time until the boats collide
         t = np.roots(quadratic_coefficients)
 
-        # Return the smaller positive time
-        try:
-            return min([i for i in t if i > 0])
-        except ValueError:
-            # if there are no positive times return -1
+        # filter out only positive times
+        t = [i for i in t if i > 0]
+
+        if len(t) == 0:
             return -1
+        else:
+            # Return the smaller positive time, if there is one
+            return min(t)

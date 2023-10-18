@@ -10,11 +10,11 @@ from custom_interfaces.msg import (
 )
 
 from local_pathfinding.coord_systems import LatLon, latlon_to_xy
-from local_pathfinding.obstacles import Boat
+from local_pathfinding.obstacles import Boat, Obstacle
 
 
 @pytest.mark.parametrize(
-    "reference_point,sailbot_position,ais_ship,sailbot_speed,state_point",
+    "reference_point,sailbot_position,ais_ship,sailbot_speed,invalid_point,valid_point",
     [
         (
             LatLon(52.268119490007756, -136.9133983613776),
@@ -28,6 +28,7 @@ from local_pathfinding.obstacles import Boat
             ),
             15.0,
             LatLon(52.174842845359755, -137.10372451905042),
+            LatLon(49.30499213908291, -123.31330140816111),
         )
     ],
 )
@@ -36,21 +37,49 @@ def test_is_valid(
     sailbot_position: LatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
-    state_point: LatLon,
+    invalid_point: LatLon,
+    valid_point: LatLon,
 ):
     boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-    assert not boat1.is_valid(reference_point, state_point)
-    assert boat1.is_valid(reference_point, LatLon(49.30499213908291, -123.31330140816111))
+    assert not boat1.is_valid(reference_point, invalid_point)
+    assert boat1.is_valid(reference_point, valid_point)
+
+
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,sailbot_speed,invalid_point,valid_point",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.95785651405779, -136.26282894969611),
+            15.0,
+            LatLon(52.174842845359755, -137.10372451905042),
+            LatLon(49.30499213908291, -123.31330140816111),
+        )
+    ],
+)
+def test_is_valid_no_collision_zone(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    sailbot_speed: float,
+    invalid_point: LatLon,
+    valid_point: LatLon,
+):
+    obstacle = Obstacle(reference_point, sailbot_position, sailbot_speed)
+
+    with pytest.raises(ValueError):
+        obstacle.is_valid(reference_point, invalid_point)
+    with pytest.raises(ValueError):
+        obstacle.is_valid(reference_point, valid_point)
 
 
 """
 VISUAL TESTS
 
-The projected distance length was verified visually, using the plotly chart and this desmos graph:
-https://www.desmos.com/calculator/4qepsjekrj
+The projected distance length was verified visually, using the plotly chart and this graph:
+https://www.desmos.com/calculator/py6socdmne
 
-According to calculations, the cone should be about 47km long which is what can be observed
-in the plotly chart.
+According to calculations, the cone should be about 47km long + a 0.5km buffer on both ends
+which is what can be observed in the plotly chart.
 
 Modifying the COG also modifies the collision cone's orientation as expected
 """
@@ -67,7 +96,7 @@ if __name__ == "__main__":
         HelperAISShip(
             lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
             cog=HelperCOG(cog=0.0),
-            sog=HelperSOG(sog=10.0),
+            sog=HelperSOG(sog=18.52),
             dimensions=HelperDimensions(length=100.0, width=20.0),
             rot=HelperROT(rot=0.0),
         ),
@@ -76,12 +105,6 @@ if __name__ == "__main__":
     # Choose some states for visual inspection
     valid_state = LatLon(50.42973337261916, -134.12018940923838)
     invalid_state = LatLon(52.174842845359755, -137.10372451905042)
-
-    # Extract exterior coordinates for boat1's collision cone
-    boat_x, boat_y = np.array(boat1.collision_zone.exterior.coords.xy)
-    boat_x = np.array(boat_x)
-    boat_y = np.array(boat_y)
-    boat = go.Scatter(x=boat_x, y=boat_y, fill="toself", name="Boat Collision Cone")
 
     # Extract coordinates for sailbot
     sailbot_x, sailbot_y = boat1.sailbot_position
@@ -99,10 +122,17 @@ if __name__ == "__main__":
     )
 
     # Create a Plotly figure to represent the boat's collision cone for manual inspection
-    fig1 = go.Figure(boat)
-    fig1.add_trace(sailbot)
+    fig1 = go.Figure(sailbot)
     fig1.add_trace(valid_state)
     fig1.add_trace(invalid_state)
+
+    # Extract exterior coordinates for boat1's collision cone
+    if boat1.collision_zone is not None:
+        boat_x, boat_y = np.array(boat1.collision_zone.exterior.coords.xy)
+        boat_x = np.array(boat_x)
+        boat_y = np.array(boat_y)
+        boat = go.Scatter(x=boat_x, y=boat_y, fill="toself", name="Boat Collision Cone")
+        fig1.add_trace(boat)
 
     fig1.update_layout(yaxis_range=[-200, 200], xaxis_range=[-200, 750])
 
