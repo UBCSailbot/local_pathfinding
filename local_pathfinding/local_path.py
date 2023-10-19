@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Tuple
 
-from custom_interfaces.msg import GPS, AISShips, GlobalPath, WindSensor
+from custom_interfaces.msg import GPS, AISShips, Path, WindSensor
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 from local_pathfinding.ompl_path import OMPLPath
@@ -28,7 +28,7 @@ class LocalPathState:
         self,
         gps: GPS,
         ais_ships: AISShips,
-        global_path: GlobalPath,
+        global_path: Path,
         filtered_wind_sensor: WindSensor,
     ):
         """Initializes the state from ROS msgs."""
@@ -69,7 +69,7 @@ class LocalPath:
         self,
         gps: GPS,
         ais_ships: AISShips,
-        global_path: GlobalPath,
+        global_path: Path,
         filtered_wind_sensor: WindSensor,
     ):
         """Updates the OMPL path and waypoints. The path is updated if a new path is found.
@@ -77,7 +77,7 @@ class LocalPath:
         Args:
             `gps` (GPS): GPS data.
             `ais_ships` (AISShips): AIS ships data.
-            `global_path` (GlobalPath): Path to the destination.
+            `global_path` (Path): Path to the destination.
             `filtered_wind_sensor` (WindSensor): Wind data.
         """
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)

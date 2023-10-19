@@ -1,7 +1,7 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
 import rclpy
-from custom_interfaces.msg import GPS, AISShips, DesiredHeading, GlobalPath, WindSensor
+from custom_interfaces.msg import GPS, AISShips, DesiredHeading, Path, WindSensor
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -23,7 +23,7 @@ class Sailbot(Node):
     Subscribers:
         ais_ships_sub (Subscription): Subscribe to a `AISShips` msg.
         gps_sub (Subscription): Subscribe to a `GPS` msg.
-        global_path_sub (Subscription): Subscribe to a `GlobalPath` msg.
+        global_path_sub (Subscription): Subscribe to a `Path` msg.
         filtered_wind_sensor_sub (Subscription): Subscribe to a `WindSensor` msg.
 
     Publishers and their timers:
@@ -33,7 +33,7 @@ class Sailbot(Node):
     Attributes from subscribers:
         ais_ships (AISShips): Data from other boats.
         gps (GPS): Data from the GPS sensor.
-        global_path (GlobalPath): Path that we are following.
+        global_path (Path): Path that we are following.
         filtered_wind_sensor (WindSensor): Filtered data from the wind sensors.
 
     Attributes:
@@ -41,41 +41,41 @@ class Sailbot(Node):
     """
 
     def __init__(self):
-        super().__init__(node_name='navigate')
+        super().__init__(node_name="navigate")
 
         self.declare_parameters(
-            namespace='',
+            namespace="",
             parameters=[
-                ('pub_period_sec', rclpy.Parameter.Type.DOUBLE),
+                ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
             ],
         )
 
         # subscribers
         self.ais_ships_sub = self.create_subscription(
-            msg_type=AISShips, topic='ais_ships', callback=self.ais_ships_callback, qos_profile=10
+            msg_type=AISShips, topic="ais_ships", callback=self.ais_ships_callback, qos_profile=10
         )
         self.gps_sub = self.create_subscription(
-            msg_type=GPS, topic='gps', callback=self.gps_callback, qos_profile=10
+            msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
         )
         self.global_path_sub = self.create_subscription(
-            msg_type=GlobalPath,
-            topic='global_path',
+            msg_type=Path,
+            topic="global_path",
             callback=self.global_path_callback,
             qos_profile=10,
         )
         self.filtered_wind_sensor_sub = self.create_subscription(
             msg_type=WindSensor,
-            topic='filtered_wind_sensor',
+            topic="filtered_wind_sensor",
             callback=self.filtered_wind_sensor_callback,
             qos_profile=10,
         )
 
         # publishers and their timers
         self.desired_heading_pub = self.create_publisher(
-            msg_type=DesiredHeading, topic='desired_heading', qos_profile=10
+            msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
         )
-        pub_period_sec = self.get_parameter('pub_period_sec').get_parameter_value().double_value
-        self.get_logger().info(f'Got parameter: {pub_period_sec=}')
+        pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
+        self.get_logger().info(f"Got parameter: {pub_period_sec=}")
         self.desired_heading_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
@@ -92,19 +92,19 @@ class Sailbot(Node):
     # subscriber callbacks
 
     def ais_ships_callback(self, msg: AISShips):
-        self.get_logger().info(f'Received data from {self.ais_ships_sub.topic}: {msg}')
+        self.get_logger().info(f"Received data from {self.ais_ships_sub.topic}: {msg}")
         self.ais_ships = msg
 
     def gps_callback(self, msg: GPS):
-        self.get_logger().info(f'Received data from {self.gps_sub.topic}: {msg}')
+        self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
 
-    def global_path_callback(self, msg: GlobalPath):
-        self.get_logger().info(f'Received data from {self.global_path_sub.topic}: {msg}')
+    def global_path_callback(self, msg: Path):
+        self.get_logger().info(f"Received data from {self.global_path_sub.topic}: {msg}")
         self.global_path = msg
 
     def filtered_wind_sensor_callback(self, msg: WindSensor):
-        self.get_logger().info(f'Received data from {self.filtered_wind_sensor_sub.topic}: {msg}')
+        self.get_logger().info(f"Received data from {self.filtered_wind_sensor_sub.topic}: {msg}")
         self.filtered_wind_sensor = msg
 
     # publisher callbacks
@@ -116,13 +116,13 @@ class Sailbot(Node):
         """
         desired_heading = self.get_desired_heading()
         if desired_heading < 0 or 360 <= desired_heading:
-            self.get_logger().warning(f'Heading {desired_heading} not in [0, 360)')
+            self.get_logger().warning(f"Heading {desired_heading} not in [0, 360)")
 
         msg = DesiredHeading()
         msg.heading.heading = desired_heading
 
         self.desired_heading_pub.publish(msg)
-        self.get_logger().info(f'Publishing to {self.desired_heading_pub.topic}: {msg}')
+        self.get_logger().info(f"Publishing to {self.desired_heading_pub.topic}: {msg}")
 
     # get_desired_heading and its helper functions
 
@@ -150,8 +150,8 @@ class Sailbot(Node):
 
     def _log_inactive_subs_warning(self):
         # TODO: log which subscribers are inactive
-        self.get_logger().warning('There are inactive subscribers')
+        self.get_logger().warning("There are inactive subscribers")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
