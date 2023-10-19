@@ -14,6 +14,8 @@ from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+from .planners import A_star
+
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
 
@@ -143,7 +145,7 @@ class OMPLPath:
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
-        # simple_setup.setPlanner(planner)
+        simple_setup.setPlanner(A_star.Astar(simple_setup.getSpaceInformation()))
 
         return simple_setup
 
