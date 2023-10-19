@@ -2,14 +2,6 @@
 
 from ompl import base as ob
 
-# Upwind downwind cost multipliers
-UPWIND_MULTIPLIER = 3000.0
-DOWNWIND_MULTIPLIER = 3000.0
-
-# Upwind downwind constants
-UPWIND_MAX_ANGLE_DEGREES = 40.0
-DOWNWIND_MAX_ANGLE_DEGREES = 20.0
-
 
 class Objective(ob.StateCostIntegralObjective):
     """All of our optimization objectives inherit from this class.
