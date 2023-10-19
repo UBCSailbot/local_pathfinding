@@ -34,7 +34,7 @@ class Obstacle:
         # This is defined in child classes
         self.collision_zone = None
 
-    def is_valid(self, point_latlon: LatLon) -> bool:
+    def is_valid(self, point: XY) -> bool:
         """Checks if a point is contained the obstacle's collision zone.
 
         Args:
@@ -43,7 +43,6 @@ class Obstacle:
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
         """
-        point = latlon_to_xy(self.reference, point_latlon)
 
         # contains() requires a shapely Point object as an argument
         point = Point(*point)

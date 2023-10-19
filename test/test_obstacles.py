@@ -9,7 +9,7 @@ from custom_interfaces.msg import (
     HelperSOG,
 )
 
-from local_pathfinding.coord_systems import LatLon, latlon_to_xy
+from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy
 from local_pathfinding.obstacles import Boat, Obstacle
 
 
@@ -27,8 +27,14 @@ from local_pathfinding.obstacles import Boat, Obstacle
                 rot=HelperROT(rot=0.0),
             ),
             15.0,
-            LatLon(52.174842845359755, -137.10372451905042),
-            LatLon(49.30499213908291, -123.31330140816111),
+            latlon_to_xy(
+                LatLon(52.268119490007756, -136.9133983613776),
+                LatLon(52.174842845359755, -137.10372451905042),
+            ),
+            latlon_to_xy(
+                LatLon(52.268119490007756, -136.9133983613776),
+                LatLon(49.30499213908291, -123.31330140816111),
+            ),
         )
     ],
 )
@@ -37,8 +43,8 @@ def test_is_valid(
     sailbot_position: LatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
-    invalid_point: LatLon,
-    valid_point: LatLon,
+    invalid_point: XY,
+    valid_point: XY,
 ):
     boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
     assert not boat1.is_valid(invalid_point)
@@ -52,8 +58,14 @@ def test_is_valid(
             LatLon(52.268119490007756, -136.9133983613776),
             LatLon(51.95785651405779, -136.26282894969611),
             15.0,
-            LatLon(52.174842845359755, -137.10372451905042),
-            LatLon(49.30499213908291, -123.31330140816111),
+            latlon_to_xy(
+                LatLon(52.268119490007756, -136.9133983613776),
+                LatLon(52.174842845359755, -137.10372451905042),
+            ),
+            latlon_to_xy(
+                LatLon(52.268119490007756, -136.9133983613776),
+                LatLon(49.30499213908291, -123.31330140816111),
+            ),
         )
     ],
 )
@@ -61,8 +73,8 @@ def test_is_valid_no_collision_zone(
     reference_point: LatLon,
     sailbot_position: LatLon,
     sailbot_speed: float,
-    invalid_point: LatLon,
-    valid_point: LatLon,
+    invalid_point: XY,
+    valid_point: XY,
 ):
     obstacle = Obstacle(reference_point, sailbot_position, sailbot_speed)
 
