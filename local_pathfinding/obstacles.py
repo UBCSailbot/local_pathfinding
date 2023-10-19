@@ -23,7 +23,8 @@ class Obstacle:
         reference (LatLon): Lat and lon position of the next global waypoint.
         sailbot_position (XY): Lat and lon position of SailBot.
         sailbot_speed (float): Speed of the SailBot in kmph.
-        collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
+        collision_zone (Optional[Polygon]): Shapely polygon representing the
+            obstacle's collision zone. Shape depends on the child class.
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
@@ -31,7 +32,7 @@ class Obstacle:
         self.sailbot_position = latlon_to_xy(reference, sailbot_position)
         self.sailbot_speed = sailbot_speed
 
-        # This is defined in child classes
+        # Defined later by the child class
         self.collision_zone = None
 
     def is_valid(self, point: XY) -> bool:
@@ -42,25 +43,34 @@ class Obstacle:
 
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
+
+        Raises:
+            ValueError: If the collision zone has not been initialized.
         """
+        if self.collision_zone is None:
+            raise ValueError("Collision zone has not been initialized")
 
         # contains() requires a shapely Point object as an argument
         point = Point(*point)
 
-        if self.collision_zone is None:
-            raise ValueError("Collision zone has not been initialized")
-
         return not self.collision_zone.contains(point)
+
+    def update_collision_zone(self, collision_zone: Polygon):
+        """Updates the collision zone of the obstacle. Called by the child classes.
+
+        Args:
+            collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
+        """
+        self.collision_zone = collision_zone
 
 
 class Boat(Obstacle):
-
     """Describes boat objects which Sailbot must avoid.
     Also referred to target ships or boat obstacles.
 
     Attributes:
-        ais_ship (HelperAISShip): an AISShip object, containing information about the boat.
-
+        id (int): MMSI ID of the boat.
+        position (XY): Position of the boat in XY coordinates. For debugging purposes.
     """
 
     def __init__(
@@ -74,14 +84,12 @@ class Boat(Obstacle):
 
         self.id = ais_ship.id
 
-        # Position of the boat in XY
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
-        # for debugging purposes only
         self.position = position
 
-        self.collision_zone = self.create_collision_cone(
+        collision_zone = self.create_collision_cone(
             ais_ship.dimensions.width,
             ais_ship.dimensions.length,
             position,
@@ -90,6 +98,7 @@ class Boat(Obstacle):
             self.sailbot_position,
             self.sailbot_speed,
         )
+        self.update_collision_zone(collision_zone)
 
     def create_collision_cone(
         self,
@@ -107,7 +116,6 @@ class Boat(Obstacle):
         The polygon is oversized according to the collision zone safety buffer, for
         added assurrance that the boat will be entirely contained by the polygon.
         """
-
         # coordinates of the center of the boat
         x, y = position[0], position[1]
 

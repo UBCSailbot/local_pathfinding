@@ -84,20 +84,17 @@ def test_is_valid_no_collision_zone(
         obstacle.is_valid(valid_point)
 
 
-"""
-VISUAL TESTS
-
-The projected distance length was verified visually, using the plotly chart and this graph:
-https://www.desmos.com/calculator/py6socdmne
-
-According to calculations, the cone should be about 47km long + a 0.5km buffer on both ends
-which is what can be observed in the plotly chart.
-
-Modifying the COG also modifies the collision cone's orientation as expected
-"""
-
-
 if __name__ == "__main__":
+    """VISUAL TESTS
+
+    The projected distance length was verified visually, using the plotly chart and this graph:
+    https://www.desmos.com/calculator/py6socdmne
+
+    According to calculations, the cone should be about 47km long + a 0.5km buffer on both ends
+    which is what can be observed in the plotly chart.
+
+    Modifying the COG also modifies the collision cone's orientation as expected.
+    """
     import plotly.graph_objects as go
 
     # Create a boat object
