@@ -45,18 +45,6 @@ def cartesian_to_true_bearing(cartesian: float) -> float:
     return (90 - cartesian + 360) % 360
 
 
-def knots_to_kilometers_per_hour(knots: float) -> float:
-    """Convert knots to km/h.
-
-    Args:
-        knots (float): Speed in knots
-
-    Returns:
-        float: speed in km/h
-    """
-    return knots * 1.852
-
-
 def meters_to_km(meters: float) -> float:
     return meters / 1000
 

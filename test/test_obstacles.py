@@ -2,12 +2,13 @@ import numpy as np
 import pytest
 from custom_interfaces.msg import (
     HelperAISShip,
-    HelperCOG,
-    HelperDimensions,
+    HelperDimension,
+    HelperHeading,
     HelperLatLon,
     HelperROT,
-    HelperSOG,
+    HelperSpeed,
 )
+from shapely.geometry import Polygon
 
 from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy
 from local_pathfinding.obstacles import Boat, Obstacle
@@ -21,9 +22,10 @@ from local_pathfinding.obstacles import Boat, Obstacle
             LatLon(51.95785651405779, -136.26282894969611),
             HelperAISShip(
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-                cog=HelperCOG(cog=0.0),
-                sog=HelperSOG(sog=20.0),
-                dimensions=HelperDimensions(length=100.0, width=20.0),
+                cog=HelperHeading(heading=0.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
                 rot=HelperROT(rot=0.0),
             ),
             15.0,
@@ -76,12 +78,45 @@ def test_is_valid_no_collision_zone(
     invalid_point: XY,
     valid_point: XY,
 ):
+    # If you only create an obstacle, then a collision zone is not created
+    # is_valid() should raise a ValueError
     obstacle = Obstacle(reference_point, sailbot_position, sailbot_speed)
 
     with pytest.raises(ValueError):
         obstacle.is_valid(invalid_point)
     with pytest.raises(ValueError):
         obstacle.is_valid(valid_point)
+
+
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_create_collision_cone(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+    boat1.collision_zone = boat1.create_collision_cone()
+    assert boat1.collision_zone is Polygon
+    if boat1.collision_zone is not None:
+        assert boat1.collision_zone.exterior.coords is not None
 
 
 """
@@ -107,9 +142,10 @@ if __name__ == "__main__":
         30.0,
         HelperAISShip(
             lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-            cog=HelperCOG(cog=0.0),
-            sog=HelperSOG(sog=18.52),
-            dimensions=HelperDimensions(length=100.0, width=20.0),
+            cog=HelperHeading(heading=0.0),
+            sog=HelperSpeed(speed=18.52),
+            width=HelperDimension(dimension=20.0),
+            length=HelperDimension(dimension=100.0),
             rot=HelperROT(rot=0.0),
         ),
     )
