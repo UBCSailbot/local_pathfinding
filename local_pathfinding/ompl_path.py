@@ -7,13 +7,14 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
 
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
-from local_pathfinding.path_objective import allocate_objective
+
+from local_pathfinding.objectives import get_sailing_objective
 
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
@@ -29,26 +30,34 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
-        try:
-            self.headingDirection = local_path_state.heading
-            self.windDirection = local_path_state.wind_direction
-        except AttributeError:
-            self.headingDirection = 45
-            self.windDirection = 10
-
-        self.state_domain = (-0.6, 0.6)
-        self.state_range = (-0.6, 0.6)
-        self.start_state = (0, 0)
+        self.state_domain = (-1, 1)
+        self.state_range = (-1, 1)
+        self.start_state = (0.5, 0.4)
         self.goal_state = (0.5, -0.4)
 
 
 class OMPLPath:
+    """Represents the general OMPL Path.
+
+    Attributes
+        _logger (RcutilsLogger): ROS logger of this class.
+        _simple_setup (og.SimpleSetup): OMPL SimpleSetup object.
+        solved (bool): True if the path is a solution to the OMPL query, else false.
+    """
+
     def __init__(
         self,
         parent_logger: RcutilsLogger,
         max_runtime: float,
         local_path_state: LocalPathState,
     ):
+        """Initialize the OMPLPath Class. Attempt to solve for a path.
+
+        Args:
+            parent_logger (RcutilsLogger): Logger of the parent class.
+            max_runtime (float): Maximum amount of time in seconds to look for a solution path.
+            local_path_state (LocalPathState): State of Sailbot.
+        """
         self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
         self._simple_setup = self._init_simple_setup()
@@ -60,9 +69,20 @@ class OMPLPath:
         #     simple_setup.simplifySolution()
 
     def get_cost(self):
+        """Get the cost of the path generated.
+
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
-    def get_waypoints(self):
+    def get_waypoints(self) -> List[Tuple[float, float]]:
+        """Get a list of waypoints for the boat to follow.
+
+        Returns:
+            list: A list of tuples representing the x and y coordinates of the waypoints.
+                  Output an empty list and print a warning message if path not solved.
+        """
         if not self.solved:
             self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
             return []
@@ -71,14 +91,16 @@ class OMPLPath:
         waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
         return waypoints
 
-    def update_objectives(
-        self, space_information, simple_setup, heading_degrees, windDirectionDegrees
-    ):
-        return allocate_objective(
-            space_information, simple_setup, heading_degrees, windDirectionDegrees
-        )
+    def update_objectives(self):
+        raise NotImplementedError
 
     def _init_simple_setup(self) -> og.SimpleSetup:
+        """Initialize and configure the OMPL SimpleSetup object.
+
+        Returns:
+            og.SimpleSetup: Encapsulates the various objects necessary to solve a geometric or
+                control query in OMPL.
+        """
         # create an SE2 state space: rotation and translation in a plane
         space = ob.SE2StateSpace()
 
@@ -123,10 +145,8 @@ class OMPLPath:
         space_information = simple_setup.getSpaceInformation()
 
         # set the optimization objective of the simple setup object
-        objective = self.update_objectives(
-            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
-        )
-        simple_setup.setOptimizationObjective(objective)
+        # TODO: implement and add optimization objective here
+        # simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
@@ -140,6 +160,14 @@ class OMPLPath:
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
+    """Evaluate a state to determine if the configuration collides with an environment obstacle.
+
+    Args:
+        state (ob.SE2StateSpace): State to check.
+
+    Returns:
+        bool: True if state is valid, else false.
+    """
     # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
     return state.getX() < 0.6
