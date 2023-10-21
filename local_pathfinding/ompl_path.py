@@ -19,10 +19,6 @@ from local_pathfinding.objectives import get_sailing_objective
 if TYPE_CHECKING:
     from local_pathfinding.local_path import LocalPathState
 
-
-if TYPE_CHECKING:
-    from local_pathfinding.local_path import LocalPathState
-
 # OMPL logging: only log warnings and above
 ou.setLogLevel(ou.LOG_WARN)
 
@@ -30,6 +26,9 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
+        self.headingDirection = 45
+        self.windDirection = 10
+
         self.state_domain = (-1, 1)
         self.state_range = (-1, 1)
         self.start_state = (0.5, 0.4)
@@ -92,6 +91,10 @@ class OMPLPath:
         return waypoints
 
     def update_objectives(self):
+        """Update the objectives on the basis of which the path is optimized.
+        Raises:
+            NotImplementedError: Method or function hasn't been implemented yet.
+        """
         raise NotImplementedError
 
     def _init_simple_setup(self) -> og.SimpleSetup:
@@ -124,9 +127,6 @@ class OMPLPath:
         simple_setup = og.SimpleSetup(space)
         simple_setup.setStateValidityChecker(ob.StateValidityCheckerFn(is_state_valid))
 
-        # Constructs a space information instance for this simple setup
-        space_information = simple_setup.getSpaceInformation()
-
         # set the goal and start states of the simple setup object
         start = ob.State(space)
         goal = ob.State(space)
@@ -146,7 +146,11 @@ class OMPLPath:
 
         # set the optimization objective of the simple setup object
         # TODO: implement and add optimization objective here
-        # simple_setup.setOptimizationObjective(objective)
+
+        objective = get_sailing_objective(
+            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
+        )
+        simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
         # TODO: implement and add planner here
@@ -154,9 +158,6 @@ class OMPLPath:
         simple_setup.setPlanner(planner)
 
         return simple_setup
-
-    def getSpaceInformation(self):
-        return self._omplPath.getSpaceInformation()
 
 
 def is_state_valid(state: ob.SE2StateSpace) -> bool:
