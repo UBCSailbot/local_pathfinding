@@ -29,8 +29,8 @@ class OMPLPathState:
         self.headingDirection = 45
         self.windDirection = 10
 
-        self.state_domain = (-1, 1)
-        self.state_range = (-1, 1)
+        self.state_domain = (-1000, 1000)
+        self.state_range = (-1000, 1000)
         self.start_state = (0.5, 0.4)
         self.goal_state = (0.5, -0.4)
 

@@ -83,7 +83,7 @@ class DistanceObjective(Objective):
             float: The euclidean distance between the two points
         """
 
-        return ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s1.getX()) ** 2) ** (0.5)
+        return ((s2.getY() - s1.getY()) ** 2.0 + (s2.getX() - s1.getX()) ** 2.0) ** (0.5)
 
     def get_latlon_path_length_objective(self, s1, s2):
         """Generates the "great circle" distance between two points
@@ -98,12 +98,12 @@ class DistanceObjective(Objective):
         return (
             math.acos(
                 (
-                    math.sin(s1.getX()) * math.sin(s2.getX())
-                    + math.cos(s1.getX()) * math.cos(s2.getX())
+                    math.sin(math.radians(s1.getX())) * math.sin(math.radians(s2.getX()))
+                    + math.cos(math.radians(s1.getX())) * math.cos(math.radians(s2.getX()))
                 )
-                * math.cos(s1.getY() - s2.getY())
+                * math.cos(math.radians(s1.getY() - s2.getY()))
             )
-            * 6371
+            * 6378
         )
 
 
@@ -331,16 +331,17 @@ def is_angle_between(first_angle, middle_angle, second_angle):
     Returns:
         bool: True when `middle_angle` is not in the reflex angle of `first_angle` and `second_angle`, false otherwise.
     """
-    if (first_angle < second_angle):
-        if (second_angle - 180 == first_angle):  # Assume all angles are between first and second when 180 degrees apart
+    if first_angle < second_angle:
+        if (
+            second_angle - 180 == first_angle
+        ):  # Assume all angles are between first and second when 180 degrees apart
             return middle_angle != first_angle and middle_angle != second_angle
-        elif (second_angle - 180 < first_angle):
+        elif second_angle - 180 < first_angle:
             return middle_angle > first_angle and middle_angle < second_angle
         else:
             return middle_angle < first_angle or middle_angle > second_angle
     else:
         return is_angle_between(second_angle, middle_angle, first_angle)
-
 
 
 def get_sailing_objective(
