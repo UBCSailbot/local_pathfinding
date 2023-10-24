@@ -113,26 +113,23 @@ def test_create_collision_cone(
     sailbot_speed: float,
 ):
     boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-    boat1.collision_zone = boat1.create_collision_cone()
+    boat1.collision_zone = boat1.create_collision_zone(ais_ship)
     assert boat1.collision_zone is Polygon
     if boat1.collision_zone is not None:
         assert boat1.collision_zone.exterior.coords is not None
 
 
-"""
-VISUAL TESTS
-
-The projected distance length was verified visually, using the plotly chart and this graph:
-https://www.desmos.com/calculator/py6socdmne
-
-According to calculations, the cone should be about 47km long + a 0.5km buffer on both ends
-which is what can be observed in the plotly chart.
-
-Modifying the COG also modifies the collision cone's orientation as expected
-"""
-
-
 if __name__ == "__main__":
+    """VISUAL TESTS
+
+    The projected distance length was verified visually, using the plotly chart and this graph:
+    https://www.desmos.com/calculator/py6socdmne
+
+    According to calculations, the cone should be about 47km long + a 0.5km buffer on both ends
+    which is what can be observed in the plotly chart.
+
+    Modifying the COG also modifies the collision cone's orientation as expected.
+    """
     import plotly.graph_objects as go
 
     # Create a boat object
@@ -142,7 +139,7 @@ if __name__ == "__main__":
         30.0,
         HelperAISShip(
             lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-            cog=HelperHeading(heading=0.0),
+            cog=HelperHeading(heading=30.0),
             sog=HelperSpeed(speed=18.52),
             width=HelperDimension(dimension=20.0),
             length=HelperDimension(dimension=100.0),

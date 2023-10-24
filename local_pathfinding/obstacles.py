@@ -4,6 +4,8 @@ import math
 
 import numpy as np
 from custom_interfaces.msg import HelperAISShip
+from multipledispatch import dispatch
+from shapely import affinity as af
 from shapely.geometry import Point, Polygon
 
 from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_km
@@ -11,7 +13,7 @@ from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_
 # Constants
 PROJ_TIME_NO_COLLISION = 3  # hours
 COLLISION_ZONE_SAFETY_BUFFER = 0.5  # km
-COLLISION_CONE_STRETCH_FACTOR = 1.5  # This factor changes the scope/width of the collision cone
+COLLISION_ZONE_STRETCH_FACTOR = 1.5  # This factor changes the scope/width of the collision cone
 
 
 class Obstacle:
@@ -22,7 +24,8 @@ class Obstacle:
         reference (LatLon): Lat and lon position of the next global waypoint.
         sailbot_position (XY): Lat and lon position of SailBot.
         sailbot_speed (float): Speed of the SailBot in kmph.
-        collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
+        collision_zone (Optional[Polygon]): Shapely polygon representing the
+            obstacle's collision zone. Shape depends on the child class.
     """
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
@@ -30,7 +33,7 @@ class Obstacle:
         self.sailbot_position = latlon_to_xy(reference, sailbot_position)
         self.sailbot_speed = sailbot_speed
 
-        # This is defined in child classes
+        # Defined later by the child class
         self.collision_zone = None
 
     def is_valid(self, point: XY) -> bool:
@@ -41,25 +44,52 @@ class Obstacle:
 
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
+
+        Raises:
+            ValueError: If the collision zone has not been initialized.
         """
-
-        # contains() requires a shapely Point as an argument
-        point = Point(*point)
-
         if self.collision_zone is None:
             raise ValueError("Collision zone has not been initialized")
 
+        # contains() requires a shapely Point object as an argument
+        point = Point(*point)
+
         return not self.collision_zone.contains(point)
+
+    def update_collision_zone(self, collision_zone: Polygon):
+        """Updates the collision zone of the obstacle. Called by the child classes.
+
+        Args:
+            collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
+        """
+        self.collision_zone = collision_zone
+
+    @staticmethod
+    @dispatch(Polygon, XY)
+    def create_collision_zone(collision_zone_poly, centre_position: XY) -> Polygon:
+        """Creates a final Shapely Polygon which represents the collision zone of the obstacle.
+
+        Args:
+            collision_zone_poly (Polygon): Polygon which defines the shape of the collision zone.
+            centre_position (XY): XY position of the centre of the collision zone.
+
+        Returns:
+            Polygon: Buffered and translated collision zone polygon.
+        """
+        collision_zone_poly = af.translate(
+            collision_zone_poly, xoff=centre_position[0], yoff=centre_position[1]
+        )
+        return collision_zone_poly.buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
 
 
 class Boat(Obstacle):
-
     """Describes boat objects which Sailbot must avoid.
     Also referred to target ships or boat obstacles.
 
     Attributes:
-        ais_ship (HelperAISShip): an AISShip object, containing information about the boat.
-
+        id (int): MMSI ID of the boat.
+        width (float): Width of the boat in meters.
+        length (float): Length of the boat in meters.
     """
 
     def __init__(
@@ -71,73 +101,55 @@ class Boat(Obstacle):
     ):
         super().__init__(reference, sailbot_position, sailbot_speed)
 
-        # Position of the boat should be converted from LatLon to XY
+        self.id = ais_ship.id
+        self.width = ais_ship.width.dimension
+        self.length = ais_ship.length.dimension
+
+        collision_zone = self.create_collision_zone(ais_ship)
+        self.update_collision_zone(collision_zone)
+
+    @dispatch(HelperAISShip)
+    def create_collision_zone(self, ais_ship: HelperAISShip) -> Polygon:
+        """Creates a Shapely Polygon that represents the boat's collision zone,
+        which is shaped like a cone.
+
+        Args:
+            ais_ship (HelperAISShip): AIS Ship message containing information about the boat.
+
+        Returns:
+            Polygon: Shapely Polygon representing the boat's collision zone.
+        """
+        # coordinates of the center of the boat
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
 
-        self.id = ais_ship.id
-        self.width = ais_ship.width.dimension
-        self.length = ais_ship.length.dimension
-        self.position = position
-        self.sog = ais_ship.sog.speed
-        self.cog = ais_ship.cog.heading
-        self.collision_zone = self.create_collision_cone()
-
-    def create_collision_cone(self) -> Polygon:
-        """Creates a Shapely Polygon to represent the boat's collision zone,
-        which is shaped like a cone.
-
-        The polygon is oversized according to the collision zone safety buffer, for
-        added assurrance that the boat will be entirely contained by the polygon.
-        """
-
-        # coordinates of the center of the boat
-        x, y = self.position[0], self.position[1]
-
         width = meters_to_km(self.width)
         length = meters_to_km(self.length)
 
+        cog = ais_ship.cog.heading
+
         # Calculate distance the boat will travel before soonest possible collision with Sailbot
-        projected_distance = self.calculate_projected_distance()
+        projected_distance = self.calculate_projected_distance(ais_ship)
 
         # TODO This feels too arbitrary, maybe will incorporate ROT at a later time
-        collision_cone_stretch = projected_distance * COLLISION_CONE_STRETCH_FACTOR
+        collision_zone_stretch = projected_distance * COLLISION_ZONE_STRETCH_FACTOR
 
         # Points of the boat collision cone polygon before rotation and centred at the origin
-        points = np.array(
+        collision_zone_poly = Polygon(
             [
                 [-width / 2, -length / 2],
-                [-collision_cone_stretch * width, length / 2 + projected_distance],
-                [collision_cone_stretch * width, length / 2 + projected_distance],
+                [-collision_zone_stretch * width, length / 2 + projected_distance],
+                [collision_zone_stretch * width, length / 2 + projected_distance],
                 [width / 2, -length / 2],
             ]
         )
 
-        # Rotation matrix to rotate the polygon about the origin according to COG
-        # self.cog is negative to reflect a CW rotation
-        rot = np.array(
-            [
-                [
-                    np.cos(math.radians(-self.cog)),
-                    np.sin(math.radians(-self.cog)),
-                ],
-                [
-                    -np.sin(math.radians(-self.cog)),
-                    np.cos(math.radians(-self.cog)),
-                ],
-            ]
-        )
+        collision_zone_poly = af.rotate(collision_zone_poly, -cog, origin=(0, 0))
 
-        # rotate the points about the origin, to orientate the boat according to its COG
-        points = points @ rot
+        return Obstacle.create_collision_zone(collision_zone_poly, position)
 
-        # translate the points to the boat's position
-        points = points + np.array([x, y])
-
-        return Polygon(points).buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
-
-    def calculate_projected_distance(self) -> float:
+    def calculate_projected_distance(self, ais_ship: HelperAISShip) -> float:
         """Calculates the distance (km) the boat obstacle will travel before collision, if the
         Sailbot moves directly towards the soonest possible collision point at current speed.
 
@@ -145,15 +157,15 @@ class Boat(Obstacle):
             float: Distance in km the boat will travel before collision
         """
 
-        time_to_intersection = self.calculate_time_to_intersection()
+        t = self.calculate_time_to_intersection(ais_ship)
 
-        if time_to_intersection < 0:
+        if t < 0:
             # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * self.sog
+            return PROJ_TIME_NO_COLLISION * ais_ship.sog.speed
 
-        return time_to_intersection * self.sog
+        return t * ais_ship.sog.speed
 
-    def calculate_time_to_intersection(self) -> float:
+    def calculate_time_to_intersection(self, ais_ship: HelperAISShip) -> float:
         """Calculates the time until the boat and Sailbot collide, if the Sailbot moves
         directly towards the soonest possible collision point at its current speed.
         The system is modeled by two parametric lines extending from the positions of the boat
@@ -171,13 +183,19 @@ class Boat(Obstacle):
             float: Time in hours until the boat and Sailbot collide
             -1 if the boats will never collide.
         """
+        sog = ais_ship.sog.speed
+        cog = ais_ship.cog.heading
+        position = latlon_to_xy(
+            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
+        )
+
         # vector components of the boat's speed over ground
-        v1 = self.sog * np.sin(math.radians(self.cog))
-        v2 = self.sog * np.cos(math.radians(self.cog))
+        v1 = sog * np.sin(math.radians(cog))
+        v2 = sog * np.cos(math.radians(cog))
 
         # coordinates of the boat
-        a = self.position[0]
-        b = self.position[1]
+        a = position[0]
+        b = position[1]
 
         # coordinates of Sailbot
         c = self.sailbot_position[0]
