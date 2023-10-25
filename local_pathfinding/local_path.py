@@ -1,6 +1,8 @@
 """The path to the next global waypoint, represented by the `LocalPath` class."""
 
-from custom_interfaces.msg import GPS, AISShips, GlobalPath, WindSensor
+from typing import List, Optional, Tuple
+
+from custom_interfaces.msg import GPS, AISShips, Path, WindSensor
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 from local_pathfinding.ompl_path import OMPLPath
@@ -26,7 +28,7 @@ class LocalPathState:
         self,
         gps: GPS,
         ais_ships: AISShips,
-        global_path: GlobalPath,
+        global_path: Path,
         filtered_wind_sensor: WindSensor,
     ):
         """Initializes the state from ROS msgs."""
@@ -53,20 +55,21 @@ class LocalPath:
 
     Attributes:
         `_logger` (RcutilsLogger): ROS logger.
-        `_ompl_path` (OMPLPath): Raw representation of the path from OMPL.
-        `waypoints` (List): List of coordinates that form the path to the next global waypoint.
+        `_ompl_path` (Optional[OMPLPath]): Raw representation of the path from OMPL.
+        `waypoints` (Optional[List[Tuple[float, float]]]): List of coordinates that form the path
+            to the next global waypoint.
     """
 
     def __init__(self, parent_logger: RcutilsLogger):
-        self._logger = parent_logger.get_child(name='local_path')
-        self._ompl_path = None
-        self.waypoints = None
+        self._logger = parent_logger.get_child(name="local_path")
+        self._ompl_path: Optional[OMPLPath] = None
+        self.waypoints: Optional[List[Tuple[float, float]]] = None
 
     def update_if_needed(
         self,
         gps: GPS,
         ais_ships: AISShips,
-        global_path: GlobalPath,
+        global_path: Path,
         filtered_wind_sensor: WindSensor,
     ):
         """Updates the OMPL path and waypoints. The path is updated if a new path is found.
@@ -74,13 +77,13 @@ class LocalPath:
         Args:
             `gps` (GPS): GPS data.
             `ais_ships` (AISShips): AIS ships data.
-            `global_path` (GlobalPath): Path to the destination.
+            `global_path` (Path): Path to the destination.
             `filtered_wind_sensor` (WindSensor): Wind data.
         """
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
         ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
         if ompl_path.solved:
-            self._logger.info('Updating local path')
+            self._logger.info("Updating local path")
             self._update(ompl_path)
 
     def _update(self, ompl_path: OMPLPath):
