@@ -4,7 +4,6 @@ import math
 
 import numpy as np
 from custom_interfaces.msg import HelperAISShip
-from multipledispatch import dispatch
 from shapely import affinity as af
 from shapely.geometry import Point, Polygon
 
@@ -65,7 +64,6 @@ class Obstacle:
         self.collision_zone = collision_zone
 
     @staticmethod
-    @dispatch(Polygon, XY)
     def create_collision_zone(collision_zone_poly, centre_position: XY) -> Polygon:
         """Creates a final Shapely Polygon which represents the collision zone of the obstacle.
 
@@ -103,11 +101,10 @@ class Boat(Obstacle):
         self.width = ais_ship.width.dimension
         self.length = ais_ship.length.dimension
 
-        collision_zone = self.create_collision_zone(ais_ship)
+        collision_zone = self.create_boat_collision_zone(ais_ship)
         self.update_collision_zone(collision_zone)
 
-    @dispatch(HelperAISShip)
-    def create_collision_zone(self, ais_ship: HelperAISShip) -> Polygon:
+    def create_boat_collision_zone(self, ais_ship: HelperAISShip) -> Polygon:
         """Creates a Shapely Polygon that represents the boat's collision zone,
         which is shaped like a cone.
 
@@ -128,6 +125,7 @@ class Boat(Obstacle):
         width = meters_to_km(self.width)
         length = meters_to_km(self.length)
 
+        # Course over ground of the boat
         cog = ais_ship.cog.heading
 
         # Calculate distance the boat will travel before soonest possible collision with Sailbot

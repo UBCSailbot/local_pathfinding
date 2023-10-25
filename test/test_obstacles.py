@@ -88,6 +88,7 @@ def test_is_valid_no_collision_zone(
         obstacle.is_valid(valid_point)
 
 
+# Test collision zone is created successfully
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,ais_ship,sailbot_speed",
     [
@@ -118,6 +119,51 @@ def test_create_collision_zone(
     if boat1.collision_zone is not None:
         assert boat1.collision_zone.exterior.coords is not None
 
+
+# Test update collision zone raises error when id of passed ais_ship does not match self's id
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+            HelperAISShip(
+                id=2,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+        )
+    ],
+)
+def test_update_collision_zone_id_mismatch(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship_1: HelperAISShip,
+    ais_ship_2: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship_1)
+    boat1.collision_zone = boat1.create_collision_zone(ais_ship_1)
+
+    with pytest.raises(ValueError):
+        boat1.update_collision_zone(boat1.create_collision_zone(ais_ship_2))
+
+
+# TODO add unit tests for helper functions like proj dist an proj time
 
 if __name__ == "__main__":
     """VISUAL TESTS
