@@ -76,9 +76,7 @@ class Obstacle:
         Returns:
             Polygon: Buffered and translated collision zone polygon.
         """
-        collision_zone_poly = af.translate(
-            collision_zone_poly, xoff=centre_position[0], yoff=centre_position[1]
-        )
+        collision_zone_poly = af.translate(collision_zone_poly, *centre_position)
         return collision_zone_poly.buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
 
 
@@ -119,6 +117,9 @@ class Boat(Obstacle):
         Returns:
             Polygon: Shapely Polygon representing the boat's collision zone.
         """
+        if self.id != ais_ship.id:
+            raise ValueError("Argument AIS Ship ID does not match this Boat instance's ID")
+
         # coordinates of the center of the boat
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
@@ -150,8 +151,8 @@ class Boat(Obstacle):
         return Obstacle.create_collision_zone(collision_zone_poly, position)
 
     def calculate_projected_distance(self, ais_ship: HelperAISShip) -> float:
-        """Calculates the distance (km) the boat obstacle will travel before collision, if the
-        Sailbot moves directly towards the soonest possible collision point at current speed.
+        """Calculates the distance the boat obstacle will travel before collision, if
+        Sailbot moves directly towards the soonest possible collision point at its current speed.
 
         Returns:
             float: Distance in km the boat will travel before collision
@@ -172,11 +173,10 @@ class Boat(Obstacle):
         obstacle and sailbot respectively, in 2D space. These lines may intersect at some specific
         point and time.
 
-        This linear system, in which the vector that represents the Sailbot's velocity is free
-        to point at the soonest possible collision point (but whose magnitude is constrained),
-        is solved using linear algebra and the quadratic formula.
+        The vector that represents the Sailbot's velocity is free to point at the soonest possible
+        collision point, but its magnitude is constrained.
 
-        A more in-depth explanation for this function can be found here:
+        An in-depth explanation for this function can be found here:
         https://ubcsailbot.atlassian.net/wiki/spaces/prjt22/pages/1881145358/Obstacle+Class+Planning
 
         Returns:

@@ -50,3 +50,11 @@ def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
     assert coord_systems.latlon_to_xy(reference, latlon) == pytest.approx(
         xy
     ), "incorrect coordinate conversion"
+
+
+@pytest.mark.parametrize(
+    "meters,km",
+    [(0.0, 0.0), (30, 0.03), (500, 0.5), (-30.5, -0.035), (-0.0, 0.0)],
+)
+def test_meters_to_km(meters: float, km: float):
+    assert coord_systems.meters_to_km(meters) == pytest.approx(km), "incorrect distance conversion"

@@ -14,6 +14,7 @@ from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy
 from local_pathfinding.obstacles import Boat, Obstacle
 
 
+# Test is_valid
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,ais_ship,sailbot_speed,invalid_point,valid_point",
     [
@@ -53,6 +54,7 @@ def test_is_valid(
     assert boat1.is_valid(valid_point)
 
 
+# Test is_valid raises error when collision zone has not been set
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,sailbot_speed,invalid_point,valid_point",
     [
@@ -78,8 +80,6 @@ def test_is_valid_no_collision_zone(
     invalid_point: XY,
     valid_point: XY,
 ):
-    # If you only create an obstacle, then a collision zone is not created
-    # is_valid() should raise a ValueError
     obstacle = Obstacle(reference_point, sailbot_position, sailbot_speed)
 
     with pytest.raises(ValueError):
@@ -106,7 +106,7 @@ def test_is_valid_no_collision_zone(
         )
     ],
 )
-def test_create_collision_cone(
+def test_create_collision_zone(
     reference_point: LatLon,
     sailbot_position: LatLon,
     ais_ship: HelperAISShip,
