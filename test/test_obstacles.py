@@ -171,6 +171,7 @@ if __name__ == "__main__":
     The collision zone length can be verified visually, using the plotly chart below.
     """
     import plotly.graph_objects as go
+    from numpy import ndarray
 
     # Sample AIS SHIP message
     ais_ship = HelperAISShip(
@@ -199,20 +200,21 @@ if __name__ == "__main__":
     sailbot_x, sailbot_y = boat1.sailbot_position
     sailbot = go.Scatter(x=[sailbot_x], y=[sailbot_y], mode="markers", name="Sailbot Position")
 
+    fig1 = go.Figure(sailbot)
+
     # Extract coordinates for valid and invalid states
     valid_state_x, valid_state_y = latlon_to_xy(boat1.reference, valid_state)
     valid_state = go.Scatter(
         x=[valid_state_x], y=[valid_state_y], mode="markers", name="Valid State"
     )
 
+    fig1.add_trace(valid_state)
+
     invalid_state_x, invalid_state_y = latlon_to_xy(boat1.reference, invalid_state)
     invalid_state = go.Scatter(
         x=[invalid_state_x], y=[invalid_state_y], mode="markers", name="Invalid State"
     )
 
-    # Create a Plotly figure to represent the boat's collision cone for manual inspection
-    fig1 = go.Figure(sailbot)
-    fig1.add_trace(valid_state)
     fig1.add_trace(invalid_state)
 
     # Extract exterior coordinates for boat1's collision cone
@@ -223,17 +225,21 @@ if __name__ == "__main__":
         boat = go.Scatter(x=boat_x, y=boat_y, fill="toself", name="Boat Collision Cone")
         fig1.add_trace(boat)
 
-    fig1.update_layout(yaxis_range=[-200, 200], xaxis_range=[-200, 750])
-
-    # Manually calculate the length of the collision zone
-    collision_zone_length = (
-        round(boat1.calculate_projected_distance(ais_ship), 4)
-        + 2 * COLLISION_ZONE_SAFETY_BUFFER
-        + meters_to_km(boat1.length)
+    # Manually calculate the length of the collision zone based on:
+    # - the boat's projected distance
+    # - the boat's length
+    # - the safety buffer
+    collision_zone_length = round(
+        (
+            boat1.calculate_projected_distance(ais_ship)
+            + 2 * COLLISION_ZONE_SAFETY_BUFFER
+            + meters_to_km(boat1.length)
+        ),
+        4,
     )
 
     fig1.add_annotation(
-        text="Calculated Collision Zone Length: " + str(collision_zone_length) + " km",
+        text="Calculated Length of Collision Zone : " + str(collision_zone_length) + " km",
         align="center",
         showarrow=False,
         xref="paper",
@@ -244,29 +250,20 @@ if __name__ == "__main__":
         borderwidth=1,
     )
 
-    # Manually measure collision zone length
-    # TODO this still has some error to it, and is not as good as a manual calculation
-    # I will need to rewrite my own version as there is some error in this implementation
-    # get minimum bounding box around polygon
-    box: Polygon = None
+    # Measure the length of the collision zone based on the points of the polygon
+    x: ndarray
+    y: ndarray
+
     if boat1.collision_zone is not None:
-        box = boat1.collision_zone.minimum_rotated_rectangle
+        x, y = boat1.collision_zone.exterior.coords.xy
 
-    # get coordinates of polygon vertices
-    if isinstance(box, Polygon):
-        x, y = box.exterior.coords.xy
+    mid_1 = Point((x[1] + x[2]) / 2, (y[1] + y[2]) / 2)
+    mid_2 = Point((x[0] + x[3]) / 2, (y[0] + y[3]) / 2)
 
-    # get length of bounding box edges
-    edge_length = (
-        Point(x[0], y[0]).distance(Point(x[1], y[1])),
-        Point(x[1], y[1]).distance(Point(x[2], y[2])),
-    )
-
-    # get length of polygon as the longest edge of the bounding box
-    length = round(max(edge_length), 4)
+    length = round(mid_1.distance(mid_2), 4)
 
     fig1.add_annotation(
-        text="Collision Zone Measured Length: " + str(length) + " km",
+        text="Measured Length of Collision Zone : " + str(length) + " km",
         align="center",
         showarrow=False,
         xref="paper",
@@ -277,4 +274,5 @@ if __name__ == "__main__":
         borderwidth=1,
     )
 
+    fig1.update_layout(yaxis_range=[-200, 200], xaxis_range=[-200, 750])
     fig1.show()
