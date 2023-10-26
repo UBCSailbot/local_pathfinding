@@ -51,7 +51,8 @@ class DistanceObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            class/int: The distance between two points object or integer (currently it is returning a object)
+            class/int: The distance between two points object or integer
+                       (currently it is returning a object)
         """
 
         # Generates the euclidean distance between two points
@@ -175,7 +176,7 @@ class MinimumTurningObjective(Objective):
         if turn_size_unbias > large_turn_threshold:
             return math.degrees(math.fabs(turn_size_unbias))
 
-        return  math.degrees(math.fabs(turn_size_unbias))
+        return math.degrees(math.fabs(turn_size_unbias))
 
     def goalHeadingTurnCost(self, s1):
         """Determine the smallest turn angle between s1-s2 and heading
@@ -250,7 +251,8 @@ class WindObjective(Objective):
 
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1, s2):
-        """Generates the cost associated with the upwind and downwind directions of the boat in relation to the wind
+        """Generates the cost associated with the upwind and downwind directions of the boat in
+           relation to the wind
 
         Args:
             s1 (SE2StateInternal): The starting point of the local start state
@@ -329,7 +331,8 @@ def is_angle_between(first_angle, middle_angle, second_angle):
         second_angle (float): The second bounding angle in degrees.
 
     Returns:
-        bool: True when `middle_angle` is not in the reflex angle of `first_angle` and `second_angle`, false otherwise.
+        bool: True when `middle_angle` is not in the reflex angle of
+              `first_angle` and `second_angle`, false otherwise.
     """
     if first_angle < second_angle:
         if (

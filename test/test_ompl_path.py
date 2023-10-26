@@ -42,10 +42,9 @@ def test_OMPLPath_get_waypoint():
     ), "last waypoint should be goal state"
 
 
-# def test_OMPLPath_update_objectives():
-#     with pytest.raises(NotImplementedError):
-#         PATH.update_objectives()
-
+def test_OMPLPath_update_objectives():
+    with pytest.raises(NotImplementedError):
+        PATH.update_objectives()
 
 
 @pytest.mark.parametrize(

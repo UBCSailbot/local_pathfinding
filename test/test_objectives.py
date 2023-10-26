@@ -31,7 +31,7 @@ def test_distance_objective():
 def test_get_path_length_objective():
     dist_object = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
 
-    assert dist_object.get_ompl_path_length_objective() != None
+    assert dist_object.get_ompl_path_length_objective() is not None
 
 
 @pytest.mark.parametrize(
@@ -253,13 +253,15 @@ def test_bound_basic1():
 
 def test_between_basic1():
     """Checks different situations such as boundary conditions.
-    For example, what happens when par1 == par2 == par3? In addition, what happens if we change the order of the parameters
+    For example, what happens when par1 == par2 == par3?
+    In addition, what happens if we change the order of the parameters
     """
     assert is_angle_between(0, 1, 2) == 1
     assert is_angle_between(0, 20, 360) == 0
     assert is_angle_between(-20, 10, 40) == 1
     assert is_angle_between(0, 30, 60) == 1
 
-    # Checks negative angle conditions such as can it identify a negative angle between a positive and negative angle.
+    # Checks negative angle conditions such as can it identify a negative angle between a positive
+    # and negative angle.
     assert is_angle_between(-170, -130, -90) == 1
     assert is_angle_between(-170, -130, 100) == 0
