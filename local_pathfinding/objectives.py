@@ -173,9 +173,9 @@ class MinimumTurningObjective(Objective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_unbias > large_turn_threshold:
-            return 5000 * math.fabs(turn_size_unbias)
+            return math.degrees(math.fabs(turn_size_unbias))
 
-        return 100 * math.fabs(turn_size_unbias)
+        return  math.degrees(math.fabs(turn_size_unbias))
 
     def goalHeadingTurnCost(self, s1):
         """Determine the smallest turn angle between s1-s2 and heading
