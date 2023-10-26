@@ -9,7 +9,6 @@ from local_pathfinding.objectives import (
 )
 import math  # for math.degrees()
 import local_pathfinding.ompl_path as ompl_path
-import local_pathfinding.local_path as local_path
 
 
 # Upwind downwind cost multipliers
@@ -213,7 +212,7 @@ def test_isUpwind(windDirection: float, heading: float, expected: float):
 @pytest.mark.parametrize(
     "windDirection,heading,expected",
     [
-        (0.0, 0.0, 0),
+        (0.0, 0.0, True),
         (25.0, 45.0, False),
     ],
 )
@@ -225,7 +224,7 @@ def test_isDownwind(windDirection: float, heading: float, expected: float):
         objectives.isDownwind(
             math.radians(PATH.state.windDirection), math.radians(PATH.state.headingDirection)
         )
-        == expected * DOWNWIND_MULTIPLIER
+        == expected
     )
 
 

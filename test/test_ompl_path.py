@@ -3,7 +3,6 @@ from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.ompl_path as ompl_path
-from local_pathfinding.path_objective import Distanceobjective
 
 PATH = ompl_path.OMPLPath(
     parent_logger=RcutilsLogger(),
