@@ -11,6 +11,12 @@ import math  # for math.degrees()
 import local_pathfinding.ompl_path as ompl_path
 import local_pathfinding.local_path as local_path
 
+
+# Upwind downwind cost multipliers
+UPWIND_MULTIPLIER = 3000.0
+DOWNWIND_MULTIPLIER = 3000.0
+
+
 PATH = ompl_path.OMPLPath(
     parent_logger=RcutilsLogger(),
     max_runtime=1,
@@ -160,9 +166,67 @@ def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: f
     )
 
 
-def test_wind_objective():
-    wind_objective = objectives.WindObjective(PATH._simple_setup.getSpaceInformation(), 0)
-    assert wind_objective is not None
+@pytest.mark.parametrize(
+    "cs1,cs2,windDirection,expected",
+    [
+        ((0, 0), (0, 0), 0.0, 0 * UPWIND_MULTIPLIER),
+        ((-1, -1), (2, 1), 45.0, 3.605551275 * UPWIND_MULTIPLIER),
+    ],
+)
+def test_wind_objective(cs1: tuple, cs2: tuple, windDirection: float, expected: float):
+    space = ob.SE2StateSpace()
+
+    s1 = ob.State(space)
+    s2 = ob.State(space)
+
+    s1().setXY(cs1[0], cs1[1])
+    s2().setXY(cs2[0], cs2[1])
+
+    PATH.state.windDirection = windDirection
+
+    wind_objective = objectives.WindObjective(
+        PATH._simple_setup.getSpaceInformation(), PATH.state.windDirection
+    )
+
+    assert wind_objective.motionCost(s1(), s2()) == pytest.approx(expected, abs=1e-3)
+
+
+@pytest.mark.parametrize(
+    "windDirection,heading,expected",
+    [
+        (0, 0.0, True),
+        (0.0, 45.0, False),
+    ],
+)
+def test_isUpwind(windDirection: float, heading: float, expected: float):
+    PATH.state.headingDirection = heading
+    PATH.state.windDirection = windDirection
+
+    assert (
+        objectives.isUpwind(
+            math.radians(PATH.state.windDirection), math.radians(PATH.state.headingDirection)
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "windDirection,heading,expected",
+    [
+        (0.0, 0.0, 0),
+        (25.0, 45.0, False),
+    ],
+)
+def test_isDownwind(windDirection: float, heading: float, expected: float):
+    PATH.state.headingDirection = heading
+    PATH.state.windDirection = windDirection
+
+    assert (
+        objectives.isDownwind(
+            math.radians(PATH.state.windDirection), math.radians(PATH.state.headingDirection)
+        )
+        == expected * DOWNWIND_MULTIPLIER
+    )
 
 
 """ Tests for bound_to_180() """
