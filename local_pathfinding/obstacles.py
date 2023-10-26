@@ -101,8 +101,7 @@ class Boat(Obstacle):
         self.width = ais_ship.width.dimension
         self.length = ais_ship.length.dimension
 
-        collision_zone = self.create_boat_collision_zone(ais_ship)
-        self.update_collision_zone(collision_zone)
+        self.update_collision_zone(self.create_boat_collision_zone(ais_ship))
 
     def create_boat_collision_zone(self, ais_ship: HelperAISShip) -> Polygon:
         """Creates a Shapely Polygon that represents the boat's collision zone,
