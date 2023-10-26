@@ -132,7 +132,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            int: The minimum turning cost
+            float: The minimum turning angle (degrees)
         """
         # Calculate the mininum turning cost between s1-goal and heading
         # s1_goal__heading = self.goalHeadingTurnCost(s1)
@@ -153,7 +153,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            int: the turning cost from s2 to s1
+            float: the turning angle from s2 to s1 (degrees)
         """
         large_turn_threshold = math.pi / 2
 
@@ -185,7 +185,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            int: the turning cost from s2 to s1
+            float: the turning angle from s2 to s1 (degrees)
         """
         large_turn_threshold = math.pi / 2
 
@@ -214,7 +214,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            int: The minimum turning cost between s1-s2 and heading
+            float: The minimum turning angle between s1-s2 and heading  (degrees)
         """
         large_turn_threshold = math.pi / 2
 
@@ -231,9 +231,9 @@ class MinimumTurningObjective(Objective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_bias > large_turn_threshold:
-            return 500 * math.fabs(turn_size_unbias)
+            return math.degrees(math.fabs(turn_size_unbias))
 
-        return 10 * math.fabs(turn_size_unbias)
+        return math.degrees(math.fabs(turn_size_unbias))
 
 
 class WindObjective(Objective):

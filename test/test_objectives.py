@@ -134,19 +134,33 @@ def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: fl
     assert minimum_turning_objective.goalHeadingTurnCost(s1()) == pytest.approx(expected, abs=1e-3)
 
 
-"""
 @pytest.mark.parametrize(
-    "x,y,is_valid",
+    "cs1,cs2,heading,expected",
     [
-        (0.5, 0.5, True),
-        (0.6, 0.6, False),
+        ((0, 0), (0, 0), 0, 0),
+        ((-1, -1), (2, 1), 45, 11.310),
     ],
 )
-def test_headingPathTurnCost():
-    with pytest.raises(NotImplementedError):
-        raise NotImplementedError
+def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: float):
+    space = ob.SE2StateSpace()
+
+    s1 = ob.State(space)
+    s2 = ob.State(space)
+
+    s1().setXY(cs1[0], cs1[1])
+    s2().setXY(cs2[0], cs2[1])
+
+    PATH.state.headingDirection = heading
+
+    minimum_turning_objective = objectives.MinimumTurningObjective(
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+    )
+    assert minimum_turning_objective.headingPathTurnCost(s1(), s2()) == pytest.approx(
+        expected, abs=1e-3
+    )
 
 
+"""
 def test_wind_objective():
     wind_objective = objectives.WindObjective(PATH._simple_setup.getSpaceInformation(), 0)
     assert wind_objective is not None
