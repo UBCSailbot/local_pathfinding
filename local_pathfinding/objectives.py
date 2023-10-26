@@ -122,7 +122,7 @@ class MinimumTurningObjective(Objective):
         self.space_information = space_information
         self.goal_x = simple_setup.getGoal().getState().getX()
         self.goal_y = simple_setup.getGoal().getState().getY()
-        self.heading_degrees = heading_degrees
+        self.heading_degrees = math.radians(heading_degrees)
 
     def motionCost(self, s1, s2):
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -202,9 +202,9 @@ class MinimumTurningObjective(Objective):
             turn_size_unbias = turn_size_bias
 
         if turn_size_unbias > large_turn_threshold:
-            return 500 * math.fabs(turn_size_unbias)
+            return math.degrees(math.fabs(turn_size_unbias))
 
-        return 10 * math.fabs(turn_size_unbias)
+        return math.degrees(math.fabs(turn_size_unbias))
 
     def headingPathTurnCost(self, s1, s2):
         """Generates the turning cost between s1-s2 and heading of the sailbot

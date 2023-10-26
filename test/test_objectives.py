@@ -107,19 +107,34 @@ def test_goalPathTurnCost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
     )
 
 
-"""
 @pytest.mark.parametrize(
-    "x,y,is_valid",
+    "cs1,sf,heading,expected",
     [
-        (0.5, 0.5, True),
-        (0.6, 0.6, False),
+        ((0, 0), (0, 0), 0, 0),
+        ((-1, -1), (0.1, 0.2), 45, 2.490),
     ],
 )
-def test_goalHeadingTurnCost():
-    with pytest.raises(NotImplementedError):
-        raise NotImplementedError
+def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: float):
+    space = ob.SE2StateSpace()
+
+    goal = ob.State(space)
+
+    s1 = ob.State(space)
+
+    goal().setXY(sf[0], sf[1])
+    PATH._simple_setup.setGoalState(goal)
+
+    s1().setXY(cs1[0], cs1[1])
+
+    PATH.state.headingDirection = heading
+
+    minimum_turning_objective = objectives.MinimumTurningObjective(
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+    )
+    assert minimum_turning_objective.goalHeadingTurnCost(s1()) == pytest.approx(expected, abs=1e-3)
 
 
+"""
 @pytest.mark.parametrize(
     "x,y,is_valid",
     [
