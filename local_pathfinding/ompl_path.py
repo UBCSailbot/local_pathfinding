@@ -26,8 +26,8 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
-        self.headingDirection = 45
-        self.windDirection = 10
+        self.headingDirection = 45.0
+        self.windDirection = 10.0
 
         self.state_domain = (-1000, 1000)
         self.state_range = (-1000, 1000)

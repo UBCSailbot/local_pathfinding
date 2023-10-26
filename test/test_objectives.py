@@ -137,8 +137,8 @@ def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: fl
 @pytest.mark.parametrize(
     "cs1,cs2,heading,expected",
     [
-        ((0, 0), (0, 0), 0, 0),
-        ((-1, -1), (2, 1), 45, 11.310),
+        ((0, 0), (0, 0), 0.0, 0),
+        ((-1, -1), (2, 1), 45.0, 11.310),
     ],
 )
 def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: float):
