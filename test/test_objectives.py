@@ -160,11 +160,10 @@ def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: f
     )
 
 
-"""
 def test_wind_objective():
     wind_objective = objectives.WindObjective(PATH._simple_setup.getSpaceInformation(), 0)
     assert wind_objective is not None
-"""
+
 
 """ Tests for bound_to_180() """
 
