@@ -211,15 +211,17 @@ class Boat(Obstacle):
         if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
             v1**2 + v2**2 - (self.sailbot_speed**2)
         ) * (a - c) ** 2 + (b - d) ** 2 < 0:
+            print("no real times")
             return -1
 
         # The solution to the quadratic formula is the time until the boats collide
         t = np.roots(quadratic_coefficients)
 
         # filter out only positive roots
-        t = [i for i in t if i > 0]
+        t = [i for i in t if i >= 0]
 
         if len(t) == 0:
+            print("no positive times")
             return -1
         else:
             # Return the smaller positive time, if there is one

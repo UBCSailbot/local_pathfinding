@@ -121,6 +121,74 @@ def test_create_collision_zone(
         assert boat1.collision_zone.exterior.coords is not None
 
 
+# Test calculate projected distance
+# Boat and Sailbot in same location
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.957, -136.262),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_calculate_projected_distance(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+
+    assert boat1.calculate_projected_distance(ais_ship) == pytest.approx(
+        0.0
+    ), "incorrect projected distance"
+
+
+# Test calculate projected time
+# Boat and Sailbot in same location
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.957, -136.262),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_calculate_time_intersection(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+
+    assert boat1.calculate_time_to_intersection(ais_ship) == pytest.approx(
+        0.0
+    ), "incorrect intersection time"
+
+
 # Test update collision zone raises error when id of passed ais_ship does not match self's id
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
