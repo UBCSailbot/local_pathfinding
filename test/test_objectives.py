@@ -41,7 +41,7 @@ def test_get_path_length_objective():
         ((0.5, 0.5), (0.1, 0.2), 0.5),
     ],
 )
-def test_get_euclidean_path_length_objective(cs1, cs2, expected):
+def test_get_euclidean_path_length_objective(cs1: float, cs2: float, expected:float):
     space = ob.SE2StateSpace()
 
     s1 = ob.State(space)
@@ -62,7 +62,7 @@ def test_get_euclidean_path_length_objective(cs1, cs2, expected):
         ((13.205724, 29.828011), (13.205824, 29.828111), 0.01552),
     ],
 )
-def test_get_latlon_path_length_objective(cs1, cs2, expected):
+def test_get_latlon_path_length_objective(cs1: tuple, cs2: tuple, expected: float):
     space = ob.SE2StateSpace()
 
     s1 = ob.State(space)
@@ -78,7 +78,7 @@ def test_get_latlon_path_length_objective(cs1, cs2, expected):
 
 def test_minimum_turning_objective():
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
     )
     assert minimum_turning_objective is not None
 
@@ -90,7 +90,7 @@ def test_minimum_turning_objective():
         ((-1, -1), (2, 1), (0.1, 0.2), 13.799),
     ],
 )
-def test_goalPathTurnCost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
+def test_goal_path_turn_cost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
     space = ob.SE2StateSpace()
 
     goal = ob.State(space)
@@ -105,9 +105,9 @@ def test_goalPathTurnCost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
     s2().setXY(cs2[0], cs2[1])
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
     )
-    assert minimum_turning_objective.goalPathTurnCost(s1(), s2()) == pytest.approx(
+    assert minimum_turning_objective.goal_path_turn_cost(s1(), s2()) == pytest.approx(
         expected, abs=1e-3
     )
 
@@ -119,7 +119,7 @@ def test_goalPathTurnCost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
         ((-1, -1), (0.1, 0.2), 45, 2.490),
     ],
 )
-def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: float):
+def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading: float, expected: float):
     space = ob.SE2StateSpace()
 
     goal = ob.State(space)
@@ -131,12 +131,14 @@ def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: fl
 
     s1().setXY(cs1[0], cs1[1])
 
-    PATH.state.headingDirection = heading
+    PATH.state.heading_direction = heading
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
     )
-    assert minimum_turning_objective.goalHeadingTurnCost(s1()) == pytest.approx(expected, abs=1e-3)
+    assert minimum_turning_objective.goal_heading_turn_cost(s1()) == pytest.approx(
+        expected, abs=1e-3
+    )
 
 
 @pytest.mark.parametrize(
@@ -146,7 +148,7 @@ def test_goalHeadingTurnCost(cs1: tuple, sf: tuple, heading: float, expected: fl
         ((-1, -1), (2, 1), 45.0, 11.310),
     ],
 )
-def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: float):
+def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading: float, expected: float):
     space = ob.SE2StateSpace()
 
     s1 = ob.State(space)
@@ -155,24 +157,24 @@ def test_headingPathTurnCost(cs1: tuple, cs2: tuple, heading: float, expected: f
     s1().setXY(cs1[0], cs1[1])
     s2().setXY(cs2[0], cs2[1])
 
-    PATH.state.headingDirection = heading
+    PATH.state.heading_direction = heading
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.headingDirection
+        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
     )
-    assert minimum_turning_objective.headingPathTurnCost(s1(), s2()) == pytest.approx(
+    assert minimum_turning_objective.heading_path_turn_cost(s1(), s2()) == pytest.approx(
         expected, abs=1e-3
     )
 
 
 @pytest.mark.parametrize(
-    "cs1,cs2,windDirection,expected",
+    "cs1,cs2,wind_direction,expected",
     [
         ((0, 0), (0, 0), 0.0, 0 * UPWIND_MULTIPLIER),
         ((-1, -1), (2, 1), 45.0, 3.605551275 * UPWIND_MULTIPLIER),
     ],
 )
-def test_wind_objective(cs1: tuple, cs2: tuple, windDirection: float, expected: float):
+def test_wind_objective(cs1: tuple, cs2: tuple, wind_direction: float, expected: float):
     space = ob.SE2StateSpace()
 
     s1 = ob.State(space)
@@ -181,48 +183,48 @@ def test_wind_objective(cs1: tuple, cs2: tuple, windDirection: float, expected: 
     s1().setXY(cs1[0], cs1[1])
     s2().setXY(cs2[0], cs2[1])
 
-    PATH.state.windDirection = windDirection
+    PATH.state.wind_direction = wind_direction
 
     wind_objective = objectives.WindObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH.state.windDirection
+        PATH._simple_setup.getSpaceInformation(), PATH.state.wind_direction
     )
 
     assert wind_objective.motionCost(s1(), s2()) == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(
-    "windDirection,heading,expected",
+    "wind_direction,heading,expected",
     [
         (0, 0.0, True),
         (0.0, 45.0, False),
     ],
 )
-def test_isUpwind(windDirection: float, heading: float, expected: float):
-    PATH.state.headingDirection = heading
-    PATH.state.windDirection = windDirection
+def test_is_upwind(wind_direction: float, heading: float, expected: float):
+    PATH.state.heading_direction = heading
+    PATH.state.wind_direction = wind_direction
 
     assert (
-        objectives.isUpwind(
-            math.radians(PATH.state.windDirection), math.radians(PATH.state.headingDirection)
+        objectives.is_upwind(
+            math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
         )
         == expected
     )
 
 
 @pytest.mark.parametrize(
-    "windDirection,heading,expected",
+    "wind_direction,heading,expected",
     [
         (0.0, 0.0, True),
         (25.0, 45.0, False),
     ],
 )
-def test_isDownwind(windDirection: float, heading: float, expected: float):
-    PATH.state.headingDirection = heading
-    PATH.state.windDirection = windDirection
+def test_is_downwind(wind_direction: float, heading: float, expected: float):
+    PATH.state.heading_direction = heading
+    PATH.state.wind_direction = wind_direction
 
     assert (
-        objectives.isDownwind(
-            math.radians(PATH.state.windDirection), math.radians(PATH.state.headingDirection)
+        objectives.is_downwind(
+            math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
         )
         == expected
     )
@@ -231,37 +233,46 @@ def test_isDownwind(windDirection: float, heading: float, expected: float):
 """ Tests for bound_to_180() """
 
 
-def test_bound_basic1():
-    assert bound_to_180(0) == 0
-    assert bound_to_180(-180) == -180
-    assert bound_to_180(180) == -180
-    assert bound_to_180(540) == -180
-    assert bound_to_180(720) == 0
-    assert bound_to_180(60) == 60
-    assert bound_to_180(-45) == -45
-    assert bound_to_180(120) == 120
-    assert bound_to_180(-125) == -125
-    assert bound_to_180(179) == 179
-    assert bound_to_180(-179) == -179
-    assert bound_to_180(-3779) == -179
-    assert bound_to_180(3779) == 179
-    assert bound_to_180(360) == 0
+@pytest.mark.parametrize(
+    "ain,expected",
+    [
+        (0, 0),
+        (-180, -180),
+        (180, -180),
+        (540, -180),
+        (720, 0),
+        (60, 60),
+        (-45, -45),
+        (120, 120),
+        (-125, -125),
+        (179, 179),
+        (-179, -179),
+        (-3779, -179),
+        (3779, 179),
+        (360, 0),
+    ],
+)
+def test_bound_basic1(ain: float, expected: float):
+    assert bound_to_180(ain) == expected
 
 
 """ Tests for is_angle_between() """
 
 
-def test_between_basic1():
+@pytest.mark.parametrize(
+    "afir,amid,asec,expected",
+    [
+        (0, 1, 2, 1),
+        (0, 20, 360, 0),
+        (-20, 10, 40, 1),
+        (0, 30, 60, 1),
+        (-170, -130, -90, 1),
+        (-170, -130, 100, 0),
+    ],
+)
+def test_between_basic1(afir: float, amid: float, asec: float, expected: float):
     """Checks different situations such as boundary conditions.
     For example, what happens when par1 == par2 == par3?
     In addition, what happens if we change the order of the parameters
     """
-    assert is_angle_between(0, 1, 2) == 1
-    assert is_angle_between(0, 20, 360) == 0
-    assert is_angle_between(-20, 10, 40) == 1
-    assert is_angle_between(0, 30, 60) == 1
-
-    # Checks negative angle conditions such as can it identify a negative angle between a positive
-    # and negative angle.
-    assert is_angle_between(-170, -130, -90) == 1
-    assert is_angle_between(-170, -130, 100) == 0
+    assert is_angle_between(afir, amid, asec) == expected
