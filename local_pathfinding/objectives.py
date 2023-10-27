@@ -37,8 +37,9 @@ class Objective(ob.StateCostIntegralObjective):
 class DistanceObjective(Objective):
     """Generates a distance objective function"""
 
-    def __init__(self, space_information):
+    def __init__(self, space_information, implementation="euclidean"):
         super().__init__(space_information)
+        self.implementation = implementation
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -51,14 +52,12 @@ class DistanceObjective(Objective):
             class/int: The distance between two points object or integer
                        (currently it is returning a object)
         """
-
-        # Generates the euclidean distance between two points
-        # euclideanPathObjective = self.get_euclidean_path_length_objective(s1, s2)
-
-        # Generates the latlon distance between two points
-        latlonPathObjective = self.get_latlon_path_length_objective(s1, s2)
-
-        return latlonPathObjective
+        if self.implementation == "euclidean":
+            # Generates the euclidean distance between two points
+            return self.get_euclidean_path_length_objective(s1, s2)
+        elif self.implementation == "latlon":
+            # Generates the latlon distance between two points
+            return self.get_latlon_path_length_objective(s1, s2)
 
     def get_ompl_path_length_objective(self):
         """Generates an OMPL Path Length Objective
@@ -114,11 +113,14 @@ class MinimumTurningObjective(Objective):
         heading (float): The heading of the sailbot in radians
     """
 
-    def __init__(self, space_information, simple_setup, heading_degrees):
+    def __init__(
+        self, space_information, simple_setup, heading_degrees, implementation="goal_heading"
+    ):
         super().__init__(space_information)
         self.goal_x = simple_setup.getGoal().getState().getX()
         self.goal_y = simple_setup.getGoal().getState().getY()
         self.heading = math.radians(heading_degrees)
+        self.implementation = implementation
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -130,16 +132,16 @@ class MinimumTurningObjective(Objective):
         Returns:
             float: The minimum turning angle (degrees)
         """
-        # Calculate the mininum turning cost between s1-goal and heading
-        # s1_goal__heading = self.goal_heading_turn_cost(s1)
 
-        # Calculate the minimum turning cost between s1-s2 and s1-goal
-        s1_s2__s1_goal = self.goal_path_turn_cost(s1, s2)
-
-        # Calculate the minimum turning cost from sl-s2 and heading
-        # s1_s2__heading = self.heading_path_turn_cost(s1, s2)
-
-        return s1_s2__s1_goal
+        if self.implementation == "goal_heading":
+            # Calculate the mininum turning cost between s1-goal and heading
+            return self.goal_heading_turn_cost(s1)
+        elif self.implementation == "goal_path":
+            # Calculate the minimum turning cost between s1-s2 and s1-goal
+            return self.goal_path_turn_cost(s1, s2)
+        else:
+            # Calculate the minimum turning cost from sl-s2 and heading
+            return self.heading_path_turn_cost(s1, s2)
 
     def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
         """Determine the smallest turn angle between s1-s2 and s1-goal
@@ -330,9 +332,11 @@ def get_sailing_objective(
     space_information, simple_setup, heading_degrees: float, wind_direction_degrees: float
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
-    objective.addObjective(objective=DistanceObjective(space_information), weight=1.0)
+    objective.addObjective(objective=DistanceObjective(space_information, "latlon"), weight=1.0)
     objective.addObjective(
-        objective=MinimumTurningObjective(space_information, simple_setup, heading_degrees),
+        objective=MinimumTurningObjective(
+            space_information, simple_setup, heading_degrees, "goal_heading"
+        ),
         weight=100.0,
     )
     objective.addObjective(
