@@ -111,14 +111,14 @@ class MinimumTurningObjective(Objective):
     Attributes:
         goal_x (float): The x coordinate of the goal state
         goal_y (float): The y coordinate of the goal state
-        heading_degrees (float): The heading of the sailbot in degrees
+        heading (float): The heading of the sailbot in radians
     """
 
     def __init__(self, space_information, simple_setup, heading_degrees):
         super().__init__(space_information)
         self.goal_x = simple_setup.getGoal().getState().getX()
         self.goal_y = simple_setup.getGoal().getState().getY()
-        self.heading_degrees = math.radians(heading_degrees)
+        self.heading = math.radians(heading_degrees)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -189,7 +189,7 @@ class MinimumTurningObjective(Objective):
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
         # Calculate the uncorrected turn size [0, 2pi]
-        turn_size_bias = math.fabs(global_goal_direction - self.heading_degrees)
+        turn_size_bias = math.fabs(global_goal_direction - self.heading)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
@@ -218,7 +218,7 @@ class MinimumTurningObjective(Objective):
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
         # Calculate turn size
-        turn_size_bias = math.fabs(path_direction - self.heading_degrees)
+        turn_size_bias = math.fabs(path_direction - self.heading)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
@@ -233,11 +233,15 @@ class MinimumTurningObjective(Objective):
 
 
 class WindObjective(Objective):
-    """Generates a wind objective function"""
+    """Generates a wind objective function
 
-    def __init__(self, space_information, wind_direction_degrees):
+    Attributes:
+        wind_direction (float): The direction of the wind in radians
+    """
+
+    def __init__(self, space_information, wind_direction: float):
         super().__init__(space_information)
-        self.wind_direction_degrees = wind_direction_degrees
+        self.wind_direction = math.radians(wind_direction)
 
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
@@ -254,81 +258,56 @@ class WindObjective(Objective):
         distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s1.getX()) ** 2) ** 0.5
         boat_direction_radians = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
-        if WindObjective.is_upwind(
-            math.radians(self.wind_direction_degrees), boat_direction_radians
-        ):
+        if WindObjective.is_upwind(self.wind_direction, boat_direction_radians):
             return UPWIND_MULTIPLIER * distance
-        elif WindObjective.is_downwind(
-            math.radians(self.wind_direction_degrees), boat_direction_radians
-        ):
+        elif WindObjective.is_downwind(self.wind_direction, boat_direction_radians):
             return DOWNWIND_MULTIPLIER * distance
         else:
             return 0.0
 
     @staticmethod
-    def is_upwind(wind_direction_radians: float, boat_direction_radians: float) -> bool:
+    def is_upwind(wind_direction: float, boat_direction: float) -> bool:
         """Determines whether the boat is upwind or not and its associated cost
 
         Args:
-            wind_direction_radians (float): The true wind direction (radians). [-pi, pi)
-            boat_direction_radians (float): The direction of the boat (radians). [-pi, pi)
+            wind_direction (float): The true wind direction (radians). [-pi, pi)
+            boat_direction (float): The direction of the boat (radians). [-pi, pi)
 
         Returns:
             bool: The cost associated with the upwind direction
         """
-        theta_min = math.degrees(wind_direction_radians - math.radians(UPWIND_MAX_ANGLE_DEGREES))
-        theta_max = math.degrees(wind_direction_radians + math.radians(UPWIND_MAX_ANGLE_DEGREES))
+        theta_min = wind_direction - math.radians(UPWIND_MAX_ANGLE_DEGREES)
+        theta_max = wind_direction + math.radians(UPWIND_MAX_ANGLE_DEGREES)
 
-        return WindObjective.is_angle_between(
-            theta_min, math.degrees(boat_direction_radians), theta_max
-        )
+        return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
     @staticmethod
-    def is_downwind(wind_direction_radians: float, boat_direction_radians: float) -> bool:
+    def is_downwind(wind_direction: float, boat_direction: float) -> bool:
         """Generates the cost associated with the downwind direction
 
         Args:
-            wind_direction_radians (float): The true wind direction (radians). [-pi, pi)
+            wind_direction (float): The true wind direction (radians). [-pi, pi)
             boat_direction_radians (float)): The direction of the boat (radians). [-pi, pi)
 
         Returns:
             bool: The cost associated with the downwind direction
         """
-        downwind_wind_direction_radians = math.radians(
-            WindObjective.bound_to_180(wind_direction_radians + math.pi)
-        )
+        downwind_wind_direction = (wind_direction + math.pi) % (2 * math.pi)
 
-        theta_min = math.degrees(
-            downwind_wind_direction_radians - math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
-        )
-        theta_max = math.degrees(
-            downwind_wind_direction_radians + math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
-        )
+        theta_min = downwind_wind_direction - math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
 
-        return WindObjective.is_angle_between(
-            theta_min, math.degrees(boat_direction_radians), theta_max
-        )
+        theta_max = downwind_wind_direction + math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
 
-    @staticmethod
-    def bound_to_180(angle: float) -> float:
-        """Bounds the provided angle between [-180, 180) degrees.
-
-        Args:
-            angle (float): The input angle in degrees.
-
-        Returns:
-            float: The bounded angle in degrees.
-        """
-        return angle - 360 * ((angle + 180) // 360)
+        return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
     @staticmethod
     def is_angle_between(first_angle: float, middle_angle: float, second_angle: float) -> bool:
         """Determines whether an angle is between two other angles.
 
         Args:
-            first_angle (float): The first bounding angle in degrees.
-            middle_angle (float): The angle in question in degrees.
-            second_angle (float): The second bounding angle in degrees.
+            first_angle (float): The first bounding angle in radians.
+            middle_angle (float): The angle in question in radians.
+            second_angle (float): The second bounding angle in radians.
 
         Returns:
             bool: True when `middle_angle` is not in the reflex angle of
@@ -336,10 +315,10 @@ class WindObjective(Objective):
         """
         if first_angle < second_angle:
             if (
-                second_angle - 180 == first_angle
-            ):  # Assume all angles are between first and second when 180 degrees apart
+                second_angle - math.pi == first_angle
+            ):  # Assume all angles are between first and second when pi degrees apart
                 return middle_angle != first_angle and middle_angle != second_angle
-            elif second_angle - 180 < first_angle:
+            elif second_angle - math.pi < first_angle:
                 return middle_angle > first_angle and middle_angle < second_angle
             else:
                 return middle_angle < first_angle or middle_angle > second_angle
