@@ -41,7 +41,7 @@ def test_get_path_length_objective():
         ((0.5, 0.5), (0.1, 0.2), 0.5),
     ],
 )
-def test_get_euclidean_path_length_objective(cs1: float, cs2: float, expected:float):
+def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: float):
     space = ob.SE2StateSpace()
 
     s1 = ob.State(space)
