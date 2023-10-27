@@ -1,15 +1,11 @@
+import math  # for math.degrees()
+
 import pytest
+from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
-from ompl import base as ob
 import local_pathfinding.objectives as objectives
-from local_pathfinding.objectives import (
-    bound_to_180,
-    is_angle_between,
-)
-import math  # for math.degrees()
 import local_pathfinding.ompl_path as ompl_path
-
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
@@ -204,7 +200,7 @@ def test_is_upwind(wind_direction: float, heading: float, expected: float):
     PATH.state.wind_direction = wind_direction
 
     assert (
-        objectives.is_upwind(
+        objectives.WindObjective.is_upwind(
             math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
         )
         == expected
@@ -223,7 +219,7 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
     PATH.state.wind_direction = wind_direction
 
     assert (
-        objectives.is_downwind(
+        objectives.WindObjective.is_downwind(
             math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
         )
         == expected
@@ -253,7 +249,7 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
     ],
 )
 def test_bound_basic1(ain: float, expected: float):
-    assert bound_to_180(ain) == expected
+    assert objectives.WindObjective.bound_to_180(ain) == expected
 
 
 """ Tests for is_angle_between() """
@@ -275,4 +271,4 @@ def test_between_basic1(afir: float, amid: float, asec: float, expected: float):
     For example, what happens when par1 == par2 == par3?
     In addition, what happens if we change the order of the parameters
     """
-    assert is_angle_between(afir, amid, asec) == expected
+    assert objectives.WindObjective.is_angle_between(afir, amid, asec) == expected
