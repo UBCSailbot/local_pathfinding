@@ -189,7 +189,7 @@ def test_calculate_time_intersection(
     ), "incorrect intersection time"
 
 
-# Test update collision zone raises error when id of passed ais_ship does not match self's id
+# Test create collision zone raises error when id of passed ais_ship does not match self's id
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
     [
@@ -218,7 +218,7 @@ def test_calculate_time_intersection(
         )
     ],
 )
-def test_update_collision_zone_id_mismatch(
+def test_create_collision_zone_id_mismatch(
     reference_point: LatLon,
     sailbot_position: LatLon,
     ais_ship_1: HelperAISShip,
@@ -231,7 +231,120 @@ def test_update_collision_zone_id_mismatch(
         boat1.create_boat_collision_zone(ais_ship_2)
 
 
-# TODO add unit tests for helper functions like proj dist an proj time
+# Test updating Sailbot data
+@pytest.mark.parametrize(
+    "ref_point,sailbot_position_1,sailbot_speed_1,sailbot_position_2,sailbot_speed_2,ais_ship",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.9, -136.2),
+            15.0,
+            LatLon(52.9, -137.2),
+            20.0,
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+        )
+    ],
+)
+def test_update_sailbot_data(
+    ref_point: LatLon,
+    sailbot_position_1: LatLon,
+    sailbot_speed_1: float,
+    sailbot_position_2: LatLon,
+    sailbot_speed_2: float,
+    ais_ship: HelperAISShip,
+):
+    boat1 = Boat(ref_point, sailbot_position_1, sailbot_speed_1, ais_ship)
+    boat1.update_sailbot_data(sailbot_position_2, sailbot_speed_2)
+
+    assert boat1.sailbot_position == pytest.approx(latlon_to_xy(ref_point, sailbot_position_2))
+    assert boat1.sailbot_speed == pytest.approx(sailbot_speed_2)
+
+
+# Test update reference point
+@pytest.mark.parametrize(
+    "reference_point_1,reference_point_2,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.2, -136.9),
+            LatLon(51, -136),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        ),
+        (
+            LatLon(50.06442134644842, -130.7725487868677),
+            LatLon(49.88670956993386, -130.37061359404225),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        ),
+    ],
+)
+def test_update_reference_point(
+    reference_point_1: LatLon,
+    reference_point_2: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point_1, sailbot_position, sailbot_speed, ais_ship)
+    if isinstance(boat1.collision_zone, Polygon):
+        point1 = Point(
+            boat1.collision_zone.exterior.coords.xy[0][0],
+            boat1.collision_zone.exterior.coords.xy[1][0],
+        )
+
+    assert boat1.reference == reference_point_1
+    assert boat1.sailbot_position == pytest.approx(
+        latlon_to_xy(reference_point_1, sailbot_position)
+    )
+    # Change the reference point
+    boat1.update_reference_point(reference_point_2)
+    if isinstance(boat1.collision_zone, Polygon):
+        point2 = Point(
+            boat1.collision_zone.exterior.coords.xy[0][0],
+            boat1.collision_zone.exterior.coords.xy[1][0],
+        )
+
+    assert boat1.reference == reference_point_2
+    assert boat1.sailbot_position_latlon == sailbot_position
+    assert boat1.sailbot_position == pytest.approx(
+        latlon_to_xy(reference_point_2, sailbot_position)
+    )
+
+    # Calculate the expected displacement based on the old and new reference point
+    x_displacement, y_displacement = latlon_to_xy(reference_point_2, reference_point_1)
+    displacement = np.sqrt(x_displacement**2 + y_displacement**2)
+    # calculate how far the collision zone was actually translated on reference point update
+    translation = point1.distance(point2)
+
+    # There is some error in the latlon_to_xy conversion but the results are close
+    assert translation == pytest.approx(displacement, rel=0.1), "incorrect translation"
+
 
 if __name__ == "__main__":
     """VISUAL TESTS
@@ -301,7 +414,7 @@ if __name__ == "__main__":
         (
             boat1.calculate_projected_distance(ais_ship)
             + 2 * COLLISION_ZONE_SAFETY_BUFFER
-            + meters_to_km(boat1.length)
+            + meters_to_km(boat1.ais_ship.length.dimension)
         ),
         4,
     )

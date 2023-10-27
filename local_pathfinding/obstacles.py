@@ -29,7 +29,8 @@ class Obstacle:
 
     def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
         self.reference = reference
-        self.sailbot_position = latlon_to_xy(reference, sailbot_position)
+        self.sailbot_position_latlon = sailbot_position
+        self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
         self.sailbot_speed = sailbot_speed
 
         # Defined later by the child class
@@ -62,6 +63,30 @@ class Obstacle:
             collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
         """
         self.collision_zone = collision_zone
+
+    def update_sailbot_data(self, sailbot_position: LatLon, sailbot_speed: float):
+        """Updates the sailbot's position and speed.
+
+        Args:
+            sailbot_position (LatLon): LatLon position of the SailBot.
+            sailbot_speed (float): Speed of the SailBot in kmph.
+        """
+        self.sailbot_position_latlon = sailbot_position
+        self.sailbot_position = latlon_to_xy(self.reference, sailbot_position)
+        self.sailbot_speed = sailbot_speed
+
+    def update_reference_point(self, reference: LatLon):
+        """Updates the reference point.
+
+        Args:
+            reference (LatLon): LatLon position of the updated global waypoint.
+        """
+        self.reference = reference
+        self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
+
+        if isinstance(self, Boat):
+            # regenerate collision zone with updated reference point
+            self.update_collision_zone(self.create_boat_collision_zone(self.ais_ship))
 
     @staticmethod
     def create_collision_zone(collision_zone_poly, centre_position: XY) -> Polygon:
@@ -97,11 +122,8 @@ class Boat(Obstacle):
     ):
         super().__init__(reference, sailbot_position, sailbot_speed)
 
-        self.id = ais_ship.id
-        self.width = ais_ship.width.dimension
-        self.length = ais_ship.length.dimension
-
-        self.update_collision_zone(self.create_boat_collision_zone(ais_ship))
+        self.ais_ship = ais_ship
+        self.update_collision_zone(self.create_boat_collision_zone(self.ais_ship))
 
     def create_boat_collision_zone(self, ais_ship: HelperAISShip) -> Polygon:
         """Creates a Shapely Polygon that represents the boat's collision zone,
@@ -113,16 +135,20 @@ class Boat(Obstacle):
         Returns:
             Polygon: Shapely Polygon representing the boat's collision zone.
         """
-        if self.id != ais_ship.id:
+        if self.ais_ship.id != ais_ship.id:
             raise ValueError("Argument AIS Ship ID does not match this Boat instance's ID")
+
+        # Ensure the instance variable ais_ship is the most up-to-date version
+        # Because this function may be called outside of the constructor
+        self.ais_ship = ais_ship
 
         # coordinates of the center of the boat
         position = latlon_to_xy(
             self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
 
-        width = meters_to_km(self.width)
-        length = meters_to_km(self.length)
+        width = meters_to_km(self.ais_ship.width.dimension)
+        length = meters_to_km(self.ais_ship.length.dimension)
 
         # Course over ground of the boat
         cog = ais_ship.cog.heading
