@@ -104,7 +104,9 @@ class DistanceObjective(Objective):
 
         return path_objective
 
-    def get_euclidean_path_length_objective(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
+    def get_euclidean_path_length_objective(
+        self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
+    ) -> float:
         """Generates the euclidean distance between two points
 
         Args:
@@ -117,7 +119,9 @@ class DistanceObjective(Objective):
 
         return ((s2.getY() - s1.getY()) ** 2.0 + (s2.getX() - s1.getX()) ** 2.0) ** (0.5)
 
-    def get_latlon_path_length_objective(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
+    def get_latlon_path_length_objective(
+        self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
+    ) -> float:
         """Generates the "great circle" distance between two points
 
         I am assuming that we are using the lat and long coordinates in determining the distance
@@ -185,7 +189,7 @@ class MinimumTurningObjective(Objective):
         else:
             ValueError(f"Implementation {self.implementation} not supported")
 
-    def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
+    def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> float:
         """Determine the smallest turn angle between s1-s2 and s1-goal
 
         Args:
