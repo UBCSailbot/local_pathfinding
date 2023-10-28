@@ -65,3 +65,22 @@ def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
         x=distance * math.sin(true_bearing),
         y=distance * math.cos(true_bearing),
     )
+
+
+def xy_to_latlon(reference: LatLon, xy: XY) -> LatLon:
+    """Convert a 2D Cartesian coordinate to a geographical coordinate given a reference point.
+
+    Args:
+        reference (LatLon): Coordinate that is the origin of the Cartesian coordinate system.
+        xy (XY): Coordinate to be converted to the geographical coordinate system.
+
+    Returns:
+        LatLon: The latitude and longitude in degrees.
+    """
+    true_bearing = math.degrees(math.atan2(xy.x, xy.y))
+    distance = math.hypot(*xy) / M_TO_KM
+    dest_lon, dest_lat, _ = GEODESIC.fwd(
+        reference.longitude, reference.latitude, math.degrees(true_bearing), distance
+    )
+
+    return LatLon(latitude=dest_lat, longitude=dest_lon)
