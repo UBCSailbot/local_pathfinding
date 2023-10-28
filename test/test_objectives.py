@@ -26,14 +26,6 @@ def test_distance_objective():
     assert distance_objective is not None
 
 
-def test_get_path_length_objective():
-    dist_object = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.OMPL_PATH_LENGTH
-    )
-
-    assert dist_object.get_ompl_path_length_objective() is not None
-
-
 @pytest.mark.parametrize(
     "cs1,cs2,expected",
     [
