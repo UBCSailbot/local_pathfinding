@@ -72,6 +72,9 @@ class DistanceObjective(Objective):
 
     def __init__(self, space_information, implementation: DistanceMethod):
         super().__init__(space_information)
+        if implementation == DistanceMethod.OMPL_PATH_LENGTH:
+            self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
+
         self.implementation = implementation
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
@@ -82,27 +85,18 @@ class DistanceObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            class/int: The distance between two points object or integer
-                       (currently it is returning a object)
+            ob.Cost: The distance between two points object
         """
         if self.implementation == DistanceMethod.EUCLIDEAN:
             # Generates the euclidean distance between two points
-            return self.get_euclidean_path_length_objective(s1, s2)
+            return ob.Cost(self.get_euclidean_path_length_objective(s1, s2))
         elif self.implementation == DistanceMethod.LATLON:
             # Generates the latlon distance between two points
-            return self.get_latlon_path_length_objective(s1, s2)
+            return ob.Cost(self.get_latlon_path_length_objective(s1, s2))
+        elif self.implementation == DistanceMethod.OMPL_PATH_LENGTH:
+            return self.ompl_path_objective.motionCost(s1, s2)
         else:
             ValueError(f"Implementation {self.implementation} not supported")
-
-    def get_ompl_path_length_objective(self):
-        """Generates an OMPL Path Length Objective
-
-        Returns:
-            PathLengthOptimizationObjective: An OMPL path length objective object
-        """
-        path_objective = ob.PathLengthOptimizationObjective(self.space_information)
-
-        return path_objective
 
     def get_euclidean_path_length_objective(
         self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
@@ -363,7 +357,7 @@ def get_sailing_objective(
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective.addObjective(
-        objective=DistanceObjective(space_information, DistanceMethod.EUCLIDEAN), weight=1.0
+        objective=DistanceObjective(space_information, DistanceMethod.OMPL_PATH_LENGTH), weight=1.0
     )
     objective.addObjective(
         objective=MinimumTurningObjective(
