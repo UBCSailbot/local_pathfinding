@@ -145,7 +145,7 @@ class MinimumTurningObjective(Objective):
     Attributes:
         goal_x (float): The x coordinate of the goal state
         goal_y (float): The y coordinate of the goal state
-        heading (float): The heading of the sailbot in radians [0, 2pi)
+        heading (float): The heading of the sailbot in radians (-pi, pi]
         implementation (str): The implementation of the minimum turning objective function
     """
 
@@ -159,7 +159,7 @@ class MinimumTurningObjective(Objective):
         super().__init__(space_information)
         self.goal_x = simple_setup.getGoal().getState().getX()
         self.goal_y = simple_setup.getGoal().getState().getY()
-        self.heading = self.bound_to_pi(math.radians(heading_degrees))
+        self.heading = math.radians(heading_degrees)
         self.implementation = implementation
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
@@ -258,19 +258,6 @@ class MinimumTurningObjective(Objective):
             turn_size_unbias = turn_size_bias
 
         return math.degrees(math.fabs(turn_size_unbias))
-
-    @staticmethod
-    def bound_to_pi(angle):
-        """Bounds the provided angle from [0, 2pi) to [-pi, pi).
-
-        Args:
-            angle (float): The input angle in radians.
-
-        Returns:
-            float: The bounded angle in radians.
-        """
-
-        return angle if angle <= math.pi else (angle - 2 * math.pi)
 
 
 class WindObjective(Objective):
