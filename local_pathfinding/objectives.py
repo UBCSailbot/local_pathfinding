@@ -10,8 +10,8 @@ UPWIND_MULTIPLIER = 3000.0
 DOWNWIND_MULTIPLIER = 3000.0
 
 # Upwind downwind constants
-UPWIND_MAX_ANGLE_DEGREES = 40.0
-DOWNWIND_MAX_ANGLE_DEGREES = 20.0
+UPWIND_MAX_ANGLE_DEGREES = math.radians(40.0)
+DOWNWIND_MAX_ANGLE_DEGREES = math.radians(20.0)
 
 
 class DistanceMethod(Enum):
@@ -280,7 +280,7 @@ class WindObjective(Objective):
     """Generates a wind objective function
 
     Attributes:
-        wind_direction (float): The direction of the wind in radians
+        wind_direction (float): The direction of the wind in radians [-pi, pi)
     """
 
     def __init__(self, space_information, wind_direction: float):
@@ -320,8 +320,8 @@ class WindObjective(Objective):
         Returns:
             bool: The cost associated with the upwind direction
         """
-        theta_min = wind_direction - math.radians(UPWIND_MAX_ANGLE_DEGREES)
-        theta_max = wind_direction + math.radians(UPWIND_MAX_ANGLE_DEGREES)
+        theta_min = wind_direction - UPWIND_MAX_ANGLE_DEGREES
+        theta_max = wind_direction + UPWIND_MAX_ANGLE_DEGREES
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
@@ -338,9 +338,9 @@ class WindObjective(Objective):
         """
         downwind_wind_direction = (wind_direction + math.pi) % (2 * math.pi)
 
-        theta_min = downwind_wind_direction - math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
+        theta_min = downwind_wind_direction - DOWNWIND_MAX_ANGLE_DEGREES
 
-        theta_max = downwind_wind_direction + math.radians(DOWNWIND_MAX_ANGLE_DEGREES)
+        theta_max = downwind_wind_direction + DOWNWIND_MAX_ANGLE_DEGREES
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
