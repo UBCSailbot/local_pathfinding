@@ -202,16 +202,7 @@ class MinimumTurningObjective(Objective):
         # Calculate the angle from s1-goal line segment from North
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
-        # Calculate the uncorrected turn size [0, 2pi]
-        turn_size_bias = math.fabs(global_goal_direction - path_direction)
-
-        # Correct the angle in between [0, pi]
-        if turn_size_bias > math.pi:
-            turn_size_unbias = 2 * math.pi - turn_size_bias
-        else:
-            turn_size_unbias = turn_size_bias
-
-        return math.degrees(math.fabs(turn_size_unbias))
+        return self.min_turn_angle(global_goal_direction, path_direction)
 
     def goal_heading_turn_cost(self, s1: ob.SE2StateSpace):
         """Determine the smallest turn angle between s1-s2 and heading
@@ -227,16 +218,7 @@ class MinimumTurningObjective(Objective):
         # Calculate the angle from s1-goal line segment from North
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
-        # Calculate the uncorrected turn size [0, 2pi]
-        turn_size_bias = math.fabs(global_goal_direction - self.heading)
-
-        # Correct the angle in between [0, pi]
-        if turn_size_bias > math.pi:
-            turn_size_unbias = 2 * math.pi - turn_size_bias
-        else:
-            turn_size_unbias = turn_size_bias
-
-        return math.degrees(math.fabs(turn_size_unbias))
+        return self.min_turn_angle(global_goal_direction, self.heading)
 
     def heading_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
         """Generates the turning cost between s1-s2 and heading of the sailbot
@@ -252,8 +234,22 @@ class MinimumTurningObjective(Objective):
         # Calculate the angle of the s1-s2 line segment from North
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
-        # Calculate turn size
-        turn_size_bias = math.fabs(path_direction - self.heading)
+        return self.min_turn_angle(path_direction, self.heading)
+
+    @staticmethod
+    def min_turn_angle(angle1: float, angle2: float) -> float:
+        """Calculates the minimum turning angle between two angles
+
+        Args:
+            angle1 (float): The first angle in radians
+            angle2 (float): The second angle in radians
+
+        Returns:
+            float: The minimum turning angle between the two angles (degrees)
+        """
+
+        # Calculate the uncorrected turn size [0, 2pi]
+        turn_size_bias = math.fabs(angle1 - angle2)
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
