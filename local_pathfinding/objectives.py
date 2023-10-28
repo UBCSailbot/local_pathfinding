@@ -1,6 +1,7 @@
 """Our custom OMPL optimization objectives."""
 
 import math
+from enum import Enum, auto
 
 from ompl import base as ob
 
@@ -11,6 +12,33 @@ DOWNWIND_MULTIPLIER = 3000.0
 # Upwind downwind constants
 UPWIND_MAX_ANGLE_DEGREES = 40.0
 DOWNWIND_MAX_ANGLE_DEGREES = 20.0
+
+
+class DistanceMethod(Enum):
+    """Determines the method of distance objective function
+
+    Attributes:
+        euclidean (str): The euclidean distance objective function
+        latlon (str): The latlon distance objective function
+    """
+
+    EUCLIDEAN = auto()
+    LATLON = auto()
+    OMPL_PATH_LENGTH = auto()
+
+
+class MinimumTurningMethod(Enum):
+    """Determines the method of minimum turning objective function
+
+    Attributes:
+        goal_heading (str): The goal heading objective function
+        goal_path (str): The goal path objective function
+        heading_path (str): The heading path objective function
+    """
+
+    GOAL_HEADING = auto()
+    GOAL_PATH = auto()
+    HEADING_PATH = auto()
 
 
 class Objective(ob.StateCostIntegralObjective):
@@ -35,9 +63,14 @@ class Objective(ob.StateCostIntegralObjective):
 
 
 class DistanceObjective(Objective):
-    """Generates a distance objective function"""
+    """Generates a distance objective function
 
-    def __init__(self, space_information, implementation="euclidean"):
+    Attributes:
+        implementation (str): The implementation of the distance objective function
+
+    """
+
+    def __init__(self, space_information, implementation: DistanceMethod):
         super().__init__(space_information)
         self.implementation = implementation
 
@@ -52,12 +85,14 @@ class DistanceObjective(Objective):
             class/int: The distance between two points object or integer
                        (currently it is returning a object)
         """
-        if self.implementation == "euclidean":
+        if self.implementation == DistanceMethod.EUCLIDEAN:
             # Generates the euclidean distance between two points
             return self.get_euclidean_path_length_objective(s1, s2)
-        elif self.implementation == "latlon":
+        elif self.implementation == DistanceMethod.LATLON:
             # Generates the latlon distance between two points
             return self.get_latlon_path_length_objective(s1, s2)
+        else:
+            ValueError(f"Implementation {self.implementation} not supported")
 
     def get_ompl_path_length_objective(self):
         """Generates an OMPL Path Length Objective
@@ -110,11 +145,16 @@ class MinimumTurningObjective(Objective):
     Attributes:
         goal_x (float): The x coordinate of the goal state
         goal_y (float): The y coordinate of the goal state
-        heading (float): The heading of the sailbot in radians
+        heading (float): The heading of the sailbot in radians [-pi, pi]
+        implementation (str): The implementation of the minimum turning objective function
     """
 
     def __init__(
-        self, space_information, simple_setup, heading_degrees, implementation="goal_heading"
+        self,
+        space_information,
+        simple_setup,
+        heading_degrees,
+        implementation: MinimumTurningMethod,
     ):
         super().__init__(space_information)
         self.goal_x = simple_setup.getGoal().getState().getX()
@@ -133,15 +173,17 @@ class MinimumTurningObjective(Objective):
             float: The minimum turning angle (degrees)
         """
 
-        if self.implementation == "goal_heading":
-            # Calculate the mininum turning cost between s1-goal and heading
+        if self.implementation == MinimumTurningMethod.GOAL_HEADING:
+            # Calculate the minimum turning cost between s1-goal and heading
             return self.goal_heading_turn_cost(s1)
-        elif self.implementation == "goal_path":
+        elif self.implementation == MinimumTurningMethod.GOAL_PATH:
             # Calculate the minimum turning cost between s1-s2 and s1-goal
             return self.goal_path_turn_cost(s1, s2)
-        else:
+        elif self.implementation == MinimumTurningMethod.HEADING_PATH:
             # Calculate the minimum turning cost from sl-s2 and heading
             return self.heading_path_turn_cost(s1, s2)
+        else:
+            ValueError(f"Implementation {self.implementation} not supported")
 
     def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
         """Determine the smallest turn angle between s1-s2 and s1-goal
@@ -332,10 +374,12 @@ def get_sailing_objective(
     space_information, simple_setup, heading_degrees: float, wind_direction_degrees: float
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
-    objective.addObjective(objective=DistanceObjective(space_information, "latlon"), weight=1.0)
+    objective.addObjective(
+        objective=DistanceObjective(space_information, DistanceMethod.EUCLIDEAN), weight=1.0
+    )
     objective.addObjective(
         objective=MinimumTurningObjective(
-            space_information, simple_setup, heading_degrees, "goal_heading"
+            space_information, simple_setup, heading_degrees, MinimumTurningMethod.GOAL_HEADING
         ),
         weight=100.0,
     )

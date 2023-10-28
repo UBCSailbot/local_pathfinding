@@ -20,12 +20,16 @@ PATH = ompl_path.OMPLPath(
 
 
 def test_distance_objective():
-    distance_objective = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
+    distance_objective = objectives.DistanceObjective(
+        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.OMPL_PATH_LENGTH
+    )
     assert distance_objective is not None
 
 
 def test_get_path_length_objective():
-    dist_object = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
+    dist_object = objectives.DistanceObjective(
+        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.OMPL_PATH_LENGTH
+    )
 
     assert dist_object.get_ompl_path_length_objective() is not None
 
@@ -46,7 +50,9 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
     s2 = ob.State(space)
     s2().setXY(cs2[0], cs2[1])
 
-    dist_object = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
+    dist_object = objectives.DistanceObjective(
+        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.EUCLIDEAN
+    )
 
     assert dist_object.get_euclidean_path_length_objective(s1(), s2()) == expected
 
@@ -67,14 +73,19 @@ def test_get_latlon_path_length_objective(cs1: tuple, cs2: tuple, expected: floa
     s2 = ob.State(space)
     s2().setXY(cs2[0], cs2[1])
 
-    dist_object = objectives.DistanceObjective(PATH._simple_setup.getSpaceInformation())
+    dist_object = objectives.DistanceObjective(
+        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.LATLON
+    )
 
     assert round(dist_object.get_latlon_path_length_objective(s1(), s2()), 2) == round(expected, 2)
 
 
 def test_minimum_turning_objective():
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
+        PATH._simple_setup.getSpaceInformation(),
+        PATH._simple_setup,
+        PATH.state.heading_direction,
+        objectives.MinimumTurningMethod.GOAL_PATH,
     )
     assert minimum_turning_objective is not None
 
@@ -101,7 +112,10 @@ def test_goal_path_turn_cost(cs1: tuple, cs2: tuple, sf: tuple, expected: float)
     s2().setXY(cs2[0], cs2[1])
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
+        PATH._simple_setup.getSpaceInformation(),
+        PATH._simple_setup,
+        PATH.state.heading_direction,
+        objectives.MinimumTurningMethod.GOAL_PATH,
     )
     assert minimum_turning_objective.goal_path_turn_cost(s1(), s2()) == pytest.approx(
         expected, abs=1e-3
@@ -130,7 +144,10 @@ def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading: float, expected:
     PATH.state.heading_direction = heading
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
+        PATH._simple_setup.getSpaceInformation(),
+        PATH._simple_setup,
+        PATH.state.heading_direction,
+        objectives.MinimumTurningMethod.GOAL_HEADING,
     )
     assert minimum_turning_objective.goal_heading_turn_cost(s1()) == pytest.approx(
         expected, abs=1e-3
@@ -156,7 +173,10 @@ def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading: float, expected
     PATH.state.heading_direction = heading
 
     minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH._simple_setup, PATH.state.heading_direction
+        PATH._simple_setup.getSpaceInformation(),
+        PATH._simple_setup,
+        PATH.state.heading_direction,
+        objectives.MinimumTurningMethod.HEADING_PATH,
     )
     assert minimum_turning_objective.heading_path_turn_cost(s1(), s2()) == pytest.approx(
         expected, abs=1e-3
@@ -226,6 +246,7 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
         )
         == expected
     )
+
 
 """ Tests for is_angle_between() """
 
