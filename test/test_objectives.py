@@ -248,6 +248,27 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
     )
 
 
+@pytest.mark.parametrize(
+    "angle,expected",
+    [
+        (0, 0),
+        (180, 180),
+        (181, -179),
+        (60, 60),
+        (-45, -45),
+        (120, 120),
+        (-125, -125),
+        (179, 179),
+        (-179, -179),
+        (360, 0),
+    ],
+)
+def test_bound_basic1(angle: float, expected: float):
+    assert objectives.MinimumTurningObjective.bound_to_pi(math.radians(angle)) == pytest.approx(
+        math.radians(expected), abs=1e-3
+    )
+
+
 """ Tests for is_angle_between() """
 
 
@@ -262,11 +283,12 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
         (-170, -130, 100, 0),
     ],
 )
-def test_between_basic1(afir: float, amid: float, asec: float, expected: float):
+def test_angle_between(afir: float, amid: float, asec: float, expected: float):
     """Checks different situations such as boundary conditions.
     For example, what happens when par1 == par2 == par3?
     In addition, what happens if we change the order of the parameters
     """
+
     assert (
         objectives.WindObjective.is_angle_between(
             math.radians(afir), math.radians(amid), math.radians(asec)
