@@ -10,17 +10,12 @@ UPWIND_MULTIPLIER = 3000.0
 DOWNWIND_MULTIPLIER = 3000.0
 
 # Upwind downwind constants
-UPWIND_MAX_ANGLE_DEGREES = math.radians(40.0)
-DOWNWIND_MAX_ANGLE_DEGREES = math.radians(20.0)
+UPWIND_MAX_ANGLE_RADIANS = math.radians(40.0)
+DOWNWIND_MAX_ANGLE_RADIANS = math.radians(20.0)
 
 
 class DistanceMethod(Enum):
-    """Determines the method of distance objective function
-
-    Attributes:
-        euclidean (str): The euclidean distance objective function
-        latlon (str): The latlon distance objective function
-    """
+    """Enumeration for distance objective methods"""
 
     EUCLIDEAN = auto()
     LATLON = auto()
@@ -28,13 +23,7 @@ class DistanceMethod(Enum):
 
 
 class MinimumTurningMethod(Enum):
-    """Determines the method of minimum turning objective function
-
-    Attributes:
-        goal_heading (str): The goal heading objective function
-        goal_path (str): The goal path objective function
-        heading_path (str): The heading path objective function
-    """
+    """Enumeration for minimum turning objective methods"""
 
     GOAL_HEADING = auto()
     GOAL_PATH = auto()
@@ -66,16 +55,14 @@ class DistanceObjective(Objective):
     """Generates a distance objective function
 
     Attributes:
-        implementation (str): The implementation of the distance objective function
-
+        method (DistanceMethod): The method of the distance objective function
     """
 
-    def __init__(self, space_information, implementation: DistanceMethod):
+    def __init__(self, space_information, method: DistanceMethod):
         super().__init__(space_information)
-        if implementation == DistanceMethod.OMPL_PATH_LENGTH:
+        self.method = method
+        if self.method == DistanceMethod.OMPL_PATH_LENGTH:
             self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
-
-        self.implementation = implementation
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -86,21 +73,24 @@ class DistanceObjective(Objective):
 
         Returns:
             ob.Cost: The distance between two points object
+
+        Raises:
+            ValueError: If the distance method is not supported
         """
-        if self.implementation == DistanceMethod.EUCLIDEAN:
+        if self.method == DistanceMethod.EUCLIDEAN:
             # Generates the euclidean distance between two points
-            return ob.Cost(self.get_euclidean_path_length_objective(s1, s2))
-        elif self.implementation == DistanceMethod.LATLON:
+            return self.get_euclidean_path_length_objective(s1, s2)
+        elif self.method == DistanceMethod.LATLON:
             # Generates the latlon distance between two points
-            return ob.Cost(self.get_latlon_path_length_objective(s1, s2))
-        elif self.implementation == DistanceMethod.OMPL_PATH_LENGTH:
+            return self.get_latlon_path_length_objective(s1, s2)
+        elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
             return self.ompl_path_objective.motionCost(s1, s2)
         else:
-            ValueError(f"Implementation {self.implementation} not supported")
+            ValueError(f"Method {self.method} not supported")
 
     def get_euclidean_path_length_objective(
         self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
-    ) -> float:
+    ) -> ob.Cost:
         """Generates the euclidean distance between two points
 
         Args:
@@ -108,24 +98,23 @@ class DistanceObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: The euclidean distance between the two points
+            ob.Cost: The euclidean distance between the two points
         """
-
-        return ((s2.getY() - s1.getY()) ** 2.0 + (s2.getX() - s1.getX()) ** 2.0) ** (0.5)
+        cost = ((s2.getY() - s1.getY()) ** 2.0 + (s2.getX() - s1.getX()) ** 2.0) ** (0.5)
+        return ob.Cost(cost)
 
     def get_latlon_path_length_objective(
         self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
-    ) -> float:
+    ) -> ob.Cost:
         """Generates the "great circle" distance between two points
 
         I am assuming that we are using the lat and long coordinates in determining the distance
         between two points.
 
         Returns:
-            float: The great circle distance between two points
+            ob.Cost: The great circle distance between two points
         """
-
-        return (
+        cost = (
             math.acos(
                 (
                     math.sin(math.radians(s1.getX())) * math.sin(math.radians(s2.getX()))
@@ -135,6 +124,7 @@ class DistanceObjective(Objective):
             )
             * 6378
         )
+        return ob.Cost(cost)
 
 
 class MinimumTurningObjective(Objective):
@@ -144,7 +134,7 @@ class MinimumTurningObjective(Objective):
         goal_x (float): The x coordinate of the goal state
         goal_y (float): The y coordinate of the goal state
         heading (float): The heading of the sailbot in radians (-pi, pi]
-        implementation (str): The implementation of the minimum turning objective function
+        method (MinimumTurningMethod): The method of the minimum turning objective function
     """
 
     def __init__(
@@ -152,13 +142,13 @@ class MinimumTurningObjective(Objective):
         space_information,
         simple_setup,
         heading_degrees,
-        implementation: MinimumTurningMethod,
+        method: MinimumTurningMethod,
     ):
         super().__init__(space_information)
         self.goal_x = simple_setup.getGoal().getState().getX()
         self.goal_y = simple_setup.getGoal().getState().getY()
         self.heading = math.radians(heading_degrees)
-        self.implementation = implementation
+        self.method = method
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -168,22 +158,25 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: The minimum turning angle (degrees)
+            ob.Cost: The minimum turning angle (degrees)
+
+        Raises:
+            ValueError: If the minimum turning method is not supported
         """
 
-        if self.implementation == MinimumTurningMethod.GOAL_HEADING:
+        if self.method == MinimumTurningMethod.GOAL_HEADING:
             # Calculate the minimum turning cost between s1-goal and heading
             return self.goal_heading_turn_cost(s1)
-        elif self.implementation == MinimumTurningMethod.GOAL_PATH:
+        elif self.method == MinimumTurningMethod.GOAL_PATH:
             # Calculate the minimum turning cost between s1-s2 and s1-goal
             return self.goal_path_turn_cost(s1, s2)
-        elif self.implementation == MinimumTurningMethod.HEADING_PATH:
+        elif self.method == MinimumTurningMethod.HEADING_PATH:
             # Calculate the minimum turning cost from sl-s2 and heading
             return self.heading_path_turn_cost(s1, s2)
         else:
-            ValueError(f"Implementation {self.implementation} not supported")
+            ValueError(f"Method {self.method} not supported")
 
-    def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> float:
+    def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Determine the smallest turn angle between s1-s2 and s1-goal
 
         Args:
@@ -191,7 +184,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: the turning angle from s2 to s1 (degrees)
+            ob.Cost: the turning angle from s2 to s1 (degrees)
         """
 
         # Calculate the angle of the s1-s2 line segment from North
@@ -202,7 +195,7 @@ class MinimumTurningObjective(Objective):
 
         return self.min_turn_angle(global_goal_direction, path_direction)
 
-    def goal_heading_turn_cost(self, s1: ob.SE2StateSpace):
+    def goal_heading_turn_cost(self, s1: ob.SE2StateSpace) -> ob.Cost:
         """Determine the smallest turn angle between s1-s2 and heading
 
         Args:
@@ -210,15 +203,16 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: the turning angle from s2 to s1 (degrees)
+            ob.Cost: the turning angle from s2 to s1 (degrees)
         """
 
         # Calculate the angle from s1-goal line segment from North
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
-        return self.min_turn_angle(global_goal_direction, self.heading)
+        angle = self.min_turn_angle(global_goal_direction, self.heading)
+        return ob.Cost(angle)
 
-    def heading_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace):
+    def heading_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1-s2 and heading of the sailbot
 
         Args:
@@ -226,13 +220,14 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: The minimum turning angle between s1-s2 and heading  (degrees)
+            ob.Cost: The minimum turning angle between s1-s2 and heading  (degrees)
         """
 
         # Calculate the angle of the s1-s2 line segment from North
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
-        return self.min_turn_angle(path_direction, self.heading)
+        angle = self.min_turn_angle(path_direction, self.heading)
+        return ob.Cost(angle)
 
     @staticmethod
     def min_turn_angle(angle1: float, angle2: float) -> float:
@@ -302,8 +297,8 @@ class WindObjective(Objective):
         Returns:
             bool: The cost associated with the upwind direction
         """
-        theta_min = wind_direction - UPWIND_MAX_ANGLE_DEGREES
-        theta_max = wind_direction + UPWIND_MAX_ANGLE_DEGREES
+        theta_min = wind_direction - UPWIND_MAX_ANGLE_RADIANS
+        theta_max = wind_direction + UPWIND_MAX_ANGLE_RADIANS
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
@@ -320,9 +315,9 @@ class WindObjective(Objective):
         """
         downwind_wind_direction = (wind_direction + math.pi) % (2 * math.pi)
 
-        theta_min = downwind_wind_direction - DOWNWIND_MAX_ANGLE_DEGREES
+        theta_min = downwind_wind_direction - DOWNWIND_MAX_ANGLE_RADIANS
 
-        theta_max = downwind_wind_direction + DOWNWIND_MAX_ANGLE_DEGREES
+        theta_max = downwind_wind_direction + DOWNWIND_MAX_ANGLE_RADIANS
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 

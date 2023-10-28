@@ -1,11 +1,11 @@
+import math
+
 import pytest
+from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
-from ompl import base as ob
 import local_pathfinding.objectives as objectives
-import math
 import local_pathfinding.ompl_path as ompl_path
-
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
@@ -46,7 +46,7 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
         PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.EUCLIDEAN
     )
 
-    assert dist_object.get_euclidean_path_length_objective(s1(), s2()) == expected
+    assert dist_object.get_euclidean_path_length_objective(s1(), s2()).value() == expected
 
 
 @pytest.mark.parametrize(
@@ -69,7 +69,9 @@ def test_get_latlon_path_length_objective(cs1: tuple, cs2: tuple, expected: floa
         PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.LATLON
     )
 
-    assert round(dist_object.get_latlon_path_length_objective(s1(), s2()), 2) == round(expected, 2)
+    assert round(dist_object.get_latlon_path_length_objective(s1(), s2()).value(), 2) == round(
+        expected, 2
+    )
 
 
 def test_minimum_turning_objective():
@@ -141,7 +143,7 @@ def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading: float, expected:
         PATH.state.heading_direction,
         objectives.MinimumTurningMethod.GOAL_HEADING,
     )
-    assert minimum_turning_objective.goal_heading_turn_cost(s1()) == pytest.approx(
+    assert minimum_turning_objective.goal_heading_turn_cost(s1()).value() == pytest.approx(
         expected, abs=1e-3
     )
 
@@ -170,7 +172,7 @@ def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading: float, expected
         PATH.state.heading_direction,
         objectives.MinimumTurningMethod.HEADING_PATH,
     )
-    assert minimum_turning_objective.heading_path_turn_cost(s1(), s2()) == pytest.approx(
+    assert minimum_turning_objective.heading_path_turn_cost(s1(), s2()).value() == pytest.approx(
         expected, abs=1e-3
     )
 
