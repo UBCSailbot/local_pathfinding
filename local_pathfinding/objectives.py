@@ -195,7 +195,6 @@ class MinimumTurningObjective(Objective):
         Returns:
             float: the turning angle from s2 to s1 (degrees)
         """
-        large_turn_threshold = math.pi / 2
 
         # Calculate the angle of the s1-s2 line segment from North
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
@@ -208,12 +207,9 @@ class MinimumTurningObjective(Objective):
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - 2 * math.pi
+            turn_size_unbias = 2 * math.pi - turn_size_bias
         else:
             turn_size_unbias = turn_size_bias
-
-        if turn_size_unbias > large_turn_threshold:
-            return math.degrees(math.fabs(turn_size_unbias))
 
         return math.degrees(math.fabs(turn_size_unbias))
 
@@ -227,7 +223,6 @@ class MinimumTurningObjective(Objective):
         Returns:
             float: the turning angle from s2 to s1 (degrees)
         """
-        large_turn_threshold = math.pi / 2
 
         # Calculate the angle from s1-goal line segment from North
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
@@ -237,12 +232,9 @@ class MinimumTurningObjective(Objective):
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - 2 * math.pi
+            turn_size_unbias = 2 * math.pi - turn_size_bias
         else:
             turn_size_unbias = turn_size_bias
-
-        if turn_size_unbias > large_turn_threshold:
-            return math.degrees(math.fabs(turn_size_unbias))
 
         return math.degrees(math.fabs(turn_size_unbias))
 
@@ -256,7 +248,6 @@ class MinimumTurningObjective(Objective):
         Returns:
             float: The minimum turning angle between s1-s2 and heading  (degrees)
         """
-        large_turn_threshold = math.pi / 2
 
         # Calculate the angle of the s1-s2 line segment from North
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
@@ -266,12 +257,9 @@ class MinimumTurningObjective(Objective):
 
         # Correct the angle in between [0, pi]
         if turn_size_bias > math.pi:
-            turn_size_unbias = turn_size_bias - 2 * math.pi
+            turn_size_unbias = 2 * math.pi - turn_size_bias
         else:
             turn_size_unbias = turn_size_bias
-
-        if turn_size_bias > large_turn_threshold:
-            return math.degrees(math.fabs(turn_size_unbias))
 
         return math.degrees(math.fabs(turn_size_unbias))
 
