@@ -145,7 +145,7 @@ class MinimumTurningObjective(Objective):
     Attributes:
         goal_x (float): The x coordinate of the goal state
         goal_y (float): The y coordinate of the goal state
-        heading (float): The heading of the sailbot in radians [-pi, pi]
+        heading (float): The heading of the sailbot in radians [0, 2pi)
         implementation (str): The implementation of the minimum turning objective function
     """
 
