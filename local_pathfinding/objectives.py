@@ -100,7 +100,7 @@ class DistanceObjective(Objective):
         Returns:
             ob.Cost: The euclidean distance between the two points
         """
-        cost = ((s2.getY() - s1.getY()) ** 2.0 + (s2.getX() - s1.getX()) ** 2.0) ** (0.5)
+        cost = math.hypot(s2.getY() - s1.getY(), s2.getX() - s1.getX())
         return ob.Cost(cost)
 
     def get_latlon_path_length_objective(
