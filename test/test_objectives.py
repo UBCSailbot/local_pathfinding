@@ -6,6 +6,7 @@ from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.objectives as objectives
 import local_pathfinding.ompl_path as ompl_path
+import local_pathfinding.coord_systems as coord_systems
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
@@ -21,7 +22,8 @@ PATH = ompl_path.OMPLPath(
 
 def test_distance_objective():
     distance_objective = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.OMPL_PATH_LENGTH
+        PATH._simple_setup.getSpaceInformation(),
+        objectives.DistanceMethod.OMPL_PATH_LENGTH,
     )
     assert distance_objective is not None
 
@@ -43,34 +45,45 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
     s2().setXY(cs2[0], cs2[1])
 
     dist_object = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.EUCLIDEAN
+        PATH._simple_setup.getSpaceInformation(),
+        objectives.DistanceMethod.EUCLIDEAN,
     )
 
     assert dist_object.get_euclidean_path_length_objective(s1(), s2()).value() == expected
 
 
 @pytest.mark.parametrize(
-    "cs1,cs2,expected",
+    "rf, cs1,cs2",
     [
-        ((0, 0), (0, 0), 0),
-        ((13.205724, 29.828011), (13.205824, 29.828111), 0.01552),
+        ((10, 10), (0, 0), (0, 0)),
+        ((13.206724, 29.829011), (13.208724, 29.827011), (13.216724, 29.839011)),
     ],
 )
-def test_get_latlon_path_length_objective(cs1: tuple, cs2: tuple, expected: float):
+def test_get_latlon_path_length_objective(rf: tuple, cs1: tuple, cs2: tuple):
     space = ob.SE2StateSpace()
 
+    ls1 = coord_systems.latlon_to_xy(
+        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs1[0], cs2[1])
+    )
+    ls2 = coord_systems.latlon_to_xy(
+        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs2[0], cs2[1])
+    )
+    _, _, distance_m = coord_systems.GEODESIC.inv(cs1[0], cs1[1], cs2[0], cs2[1])
+
     s1 = ob.State(space)
-    s1().setXY(cs1[0], cs1[1])
+    s1().setXY(ls1[0], ls1[1])
 
     s2 = ob.State(space)
-    s2().setXY(cs2[0], cs2[1])
+    s2().setXY(ls2[0], ls2[1])
 
     dist_object = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(), objectives.DistanceMethod.LATLON
+        PATH._simple_setup.getSpaceInformation(),
+        objectives.DistanceMethod.LATLON,
+        coord_systems.LatLon(rf[0], rf[1]),
     )
 
-    assert round(dist_object.get_latlon_path_length_objective(s1(), s2()).value(), 2) == round(
-        expected, 2
+    assert dist_object.get_latlon_path_length_objective(s1(), s2()).value() == pytest.approx(
+        distance_m
     )
 
 

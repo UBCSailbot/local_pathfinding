@@ -2,6 +2,7 @@
 
 import math
 from enum import Enum, auto
+import local_pathfinding.coord_systems as cs
 
 from ompl import base as ob
 
@@ -58,11 +59,14 @@ class DistanceObjective(Objective):
         method (DistanceMethod): The method of the distance objective function
     """
 
-    def __init__(self, space_information, method: DistanceMethod):
+    def __init__(self, space_information, method: DistanceMethod, reference=cs.LatLon(0, 0)):
         super().__init__(space_information)
         self.method = method
         if self.method == DistanceMethod.OMPL_PATH_LENGTH:
             self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
+
+        if self.method == DistanceMethod.LATLON:
+            self.reference = reference
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -114,17 +118,14 @@ class DistanceObjective(Objective):
         Returns:
             ob.Cost: The great circle distance between two points
         """
-        cost = (
-            math.acos(
-                (
-                    math.sin(math.radians(s1.getX())) * math.sin(math.radians(s2.getX()))
-                    + math.cos(math.radians(s1.getX())) * math.cos(math.radians(s2.getX()))
-                )
-                * math.cos(math.radians(s1.getY() - s2.getY()))
-            )
-            * 6378
+        latlons1 = cs.xy_to_latlon(self.reference, cs.XY(s1.getX(), s1.getY()))
+        latlons2 = cs.xy_to_latlon(self.reference, cs.XY(s2.getX(), s2.getY()))
+
+        _, _, distance_m = cs.GEODESIC.inv(
+            latlons1.longitude, latlons1.latitude, latlons2.longitude, latlons2.latitude
         )
-        return ob.Cost(cost)
+
+        return ob.Cost(distance_m)
 
 
 class MinimumTurningObjective(Objective):
@@ -352,7 +353,8 @@ def get_sailing_objective(
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective.addObjective(
-        objective=DistanceObjective(space_information, DistanceMethod.OMPL_PATH_LENGTH), weight=1.0
+        objective=DistanceObjective(space_information, DistanceMethod.LATLON),
+        weight=1.0,
     )
     objective.addObjective(
         objective=MinimumTurningObjective(
