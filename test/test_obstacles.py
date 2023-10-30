@@ -14,6 +14,154 @@ from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_
 from local_pathfinding.obstacles import COLLISION_ZONE_SAFETY_BUFFER, Boat, Obstacle
 
 
+# Test calculate projected distance
+# Boat and Sailbot in same location
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.957, -136.262),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_calculate_projected_distance(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+
+    assert Boat.calculate_projected_distance(
+        boat1.reference, boat1.sailbot_position, boat1.sailbot_speed, ais_ship
+    ) == pytest.approx(0.0), "incorrect projected distance"
+
+
+# Test collision zone is created successfully
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_create_collision_zone(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+    boat1.update_boat_collision_zone()
+
+    assert isinstance(boat1.collision_zone, Polygon)
+    if boat1.collision_zone is not None:
+        assert boat1.collision_zone.exterior.coords is not None
+
+
+# Test collision zone is positioned correctly
+# ais_ship is positioned at the reference point
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship,sailbot_speed",
+    [
+        (
+            LatLon(52.0, -136.0),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=52.0, longitude=-136.0),
+                cog=HelperHeading(heading=0.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_position_collision_zone(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
+
+    if boat1.collision_zone is not None:
+        unbuffered = boat1.collision_zone.buffer(-COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
+        x, y = np.array(unbuffered.exterior.coords.xy)
+        x = np.array(x)
+        y = np.array(y)
+        assert (x[0] + meters_to_km(boat1.ais_ship.width.dimension) / 2) == pytest.approx(0)
+        assert (y[0] + meters_to_km(boat1.ais_ship.length.dimension) / 2) == pytest.approx(0)
+
+
+# Test create collision zone raises error when id of passed ais_ship does not match self's id
+@pytest.mark.parametrize(
+    "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
+    [
+        (
+            LatLon(52.268119490007756, -136.9133983613776),
+            LatLon(51.95785651405779, -136.26282894969611),
+            HelperAISShip(
+                id=1,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            HelperAISShip(
+                id=2,
+                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
+                cog=HelperHeading(heading=30.0),
+                sog=HelperSpeed(speed=20.0),
+                width=HelperDimension(dimension=20.0),
+                length=HelperDimension(dimension=100.0),
+                rot=HelperROT(rot=0.0),
+            ),
+            15.0,
+        )
+    ],
+)
+def test_create_collision_zone_id_mismatch(
+    reference_point: LatLon,
+    sailbot_position: LatLon,
+    ais_ship_1: HelperAISShip,
+    ais_ship_2: HelperAISShip,
+    sailbot_speed: float,
+):
+    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship_1)
+
+    with pytest.raises(ValueError):
+        boat1.update_boat_collision_zone(ais_ship_2)
+
+
 # Test is_valid
 @pytest.mark.parametrize(
     "reference_point,sailbot_position,ais_ship,sailbot_speed,invalid_point,valid_point",
@@ -85,150 +233,6 @@ def test_is_valid_no_collision_zone(
         obstacle.is_valid(invalid_point)
     with pytest.raises(ValueError):
         obstacle.is_valid(valid_point)
-
-
-# Test collision zone is created successfully
-@pytest.mark.parametrize(
-    "reference_point,sailbot_position,ais_ship,sailbot_speed",
-    [
-        (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
-            HelperAISShip(
-                id=1,
-                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-                cog=HelperHeading(heading=30.0),
-                sog=HelperSpeed(speed=20.0),
-                width=HelperDimension(dimension=20.0),
-                length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
-            ),
-            15.0,
-        )
-    ],
-)
-def test_create_collision_zone(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
-    ais_ship: HelperAISShip,
-    sailbot_speed: float,
-):
-    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-    boat1.collision_zone = boat1.create_boat_collision_zone(ais_ship)
-
-    assert isinstance(boat1.collision_zone, Polygon)
-    if boat1.collision_zone is not None:
-        assert boat1.collision_zone.exterior.coords is not None
-
-
-# Test calculate projected distance
-# Boat and Sailbot in same location
-@pytest.mark.parametrize(
-    "reference_point,sailbot_position,ais_ship,sailbot_speed",
-    [
-        (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.957, -136.262),
-            HelperAISShip(
-                id=1,
-                lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
-                cog=HelperHeading(heading=30.0),
-                sog=HelperSpeed(speed=20.0),
-                width=HelperDimension(dimension=20.0),
-                length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
-            ),
-            15.0,
-        )
-    ],
-)
-def test_calculate_projected_distance(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
-    ais_ship: HelperAISShip,
-    sailbot_speed: float,
-):
-    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-
-    assert boat1.calculate_projected_distance(ais_ship) == pytest.approx(
-        0.0
-    ), "incorrect projected distance"
-
-
-# Test calculate projected time
-# Boat and Sailbot in same location
-@pytest.mark.parametrize(
-    "reference_point,sailbot_position,ais_ship,sailbot_speed",
-    [
-        (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.957, -136.262),
-            HelperAISShip(
-                id=1,
-                lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
-                cog=HelperHeading(heading=30.0),
-                sog=HelperSpeed(speed=20.0),
-                width=HelperDimension(dimension=20.0),
-                length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
-            ),
-            15.0,
-        )
-    ],
-)
-def test_calculate_time_intersection(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
-    ais_ship: HelperAISShip,
-    sailbot_speed: float,
-):
-    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
-
-    assert boat1.calculate_time_to_intersection(ais_ship) == pytest.approx(
-        0.0
-    ), "incorrect intersection time"
-
-
-# Test create collision zone raises error when id of passed ais_ship does not match self's id
-@pytest.mark.parametrize(
-    "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
-    [
-        (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
-            HelperAISShip(
-                id=1,
-                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-                cog=HelperHeading(heading=30.0),
-                sog=HelperSpeed(speed=20.0),
-                width=HelperDimension(dimension=20.0),
-                length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
-            ),
-            HelperAISShip(
-                id=2,
-                lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
-                cog=HelperHeading(heading=30.0),
-                sog=HelperSpeed(speed=20.0),
-                width=HelperDimension(dimension=20.0),
-                length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
-            ),
-            15.0,
-        )
-    ],
-)
-def test_create_collision_zone_id_mismatch(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
-    ais_ship_1: HelperAISShip,
-    ais_ship_2: HelperAISShip,
-    sailbot_speed: float,
-):
-    boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship_1)
-
-    with pytest.raises(ValueError):
-        boat1.create_boat_collision_zone(ais_ship_2)
 
 
 # Test updating Sailbot data
@@ -412,7 +416,9 @@ if __name__ == "__main__":
     # - the safety buffer
     collision_zone_length = round(
         (
-            boat1.calculate_projected_distance(ais_ship)
+            Boat.calculate_projected_distance(
+                boat1.reference, boat1.sailbot_position, boat1.sailbot_speed, ais_ship
+            )
             + 2 * COLLISION_ZONE_SAFETY_BUFFER
             + meters_to_km(boat1.ais_ship.length.dimension)
         ),
