@@ -43,9 +43,9 @@ def test_calculate_projected_distance(
 ):
     boat1 = Boat(reference_point, sailbot_position, sailbot_speed, ais_ship)
 
-    assert Boat.calculate_projected_distance(
-        boat1.reference, boat1.sailbot_position, boat1.sailbot_speed, ais_ship
-    ) == pytest.approx(0.0), "incorrect projected distance"
+    assert boat1.calculate_projected_distance() == pytest.approx(
+        0.0
+    ), "incorrect projected distance"
 
 
 # Test collision zone is created successfully
@@ -416,9 +416,7 @@ if __name__ == "__main__":
     # - the safety buffer
     collision_zone_length = round(
         (
-            Boat.calculate_projected_distance(
-                boat1.reference, boat1.sailbot_position, boat1.sailbot_speed, ais_ship
-            )
+            boat1.calculate_projected_distance()
             + 2 * COLLISION_ZONE_SAFETY_BUFFER
             + meters_to_km(boat1.ais_ship.length.dimension)
         ),

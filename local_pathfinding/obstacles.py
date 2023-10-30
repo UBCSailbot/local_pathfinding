@@ -1,6 +1,7 @@
 """Describes obstacles which the Sailbot must avoid: Boats and Land"""
 
 import math
+from typing import Optional
 
 import numpy as np
 from custom_interfaces.msg import HelperAISShip
@@ -110,12 +111,12 @@ class Boat(Obstacle):
         self.ais_ship = ais_ship
         self.update_boat_collision_zone()
 
-    def update_boat_collision_zone(self, ais_ship: HelperAISShip = None):
+    def update_boat_collision_zone(self, ais_ship: Optional[HelperAISShip] = None):
         """Sets or regenerates a Shapely Polygon that represents the boat's collision zone,
         which is shaped like a cone.
 
         Args:
-            ais_ship (Optional [HelperAISShip]): AIS Ship message containing boat information.
+            ais_ship (Optional[HelperAISShip]): AIS Ship message containing boat information.
 
         Returns:
             Polygon: Shapely Polygon representing the boat's collision zone.
@@ -139,9 +140,7 @@ class Boat(Obstacle):
         cog = self.ais_ship.cog.heading
 
         # Calculate distance the boat will travel before soonest possible collision with Sailbot
-        projected_distance = Boat.calculate_projected_distance(
-            self.reference, self.sailbot_position, self.sailbot_speed, self.ais_ship
-        )
+        projected_distance = self.calculate_projected_distance()
 
         # TODO This feels too arbitrary, maybe will incorporate ROT at a later time
         collision_zone_stretch = projected_distance * COLLISION_ZONE_STRETCH_FACTOR
@@ -160,13 +159,7 @@ class Boat(Obstacle):
 
         self.update_collision_zone(boat_collision_zone, position)
 
-    @staticmethod
-    def calculate_projected_distance(
-        reference: LatLon,
-        sailbot_position: XY,
-        sailbot_speed: float,
-        ais_ship: HelperAISShip,
-    ) -> float:
+    def calculate_projected_distance(self) -> float:
         """Calculates the distance the boat obstacle will travel before collision, if
         Sailbot moves directly towards the soonest possible collision point at its current speed.
         The system is modeled by two parametric lines extending from the positions of the boat
@@ -179,16 +172,14 @@ class Boat(Obstacle):
         An in-depth explanation for this function can be found here:
         https://ubcsailbot.atlassian.net/wiki/spaces/prjt22/pages/1881145358/Obstacle+Class+Planning
 
-
         Returns:
             float: Distance the boat will travel before collision or the max projection distance
                    if a collision is not possible.
-
         """
-        sog = ais_ship.sog.speed
-        cog = ais_ship.cog.heading
+        sog = self.ais_ship.sog.speed
+        cog = self.ais_ship.cog.heading
         position = latlon_to_xy(
-            reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
+            self.reference, LatLon(self.ais_ship.lat_lon.latitude, self.ais_ship.lat_lon.longitude)
         )
 
         # vector components of the boat's speed over ground
@@ -200,12 +191,12 @@ class Boat(Obstacle):
         b = position[1]
 
         # coordinates of Sailbot
-        c = sailbot_position[0]
-        d = sailbot_position[1]
+        c = self.sailbot_position[0]
+        d = self.sailbot_position[1]
 
         quadratic_coefficients = np.array(
             [
-                v1**2 + v2**2 - (sailbot_speed**2),
+                v1**2 + v2**2 - (self.sailbot_speed**2),
                 2 * (v1 * (a - c) + v2 * (b - d)),
                 (a - c) ** 2 + (b - d) ** 2,
             ]
@@ -214,11 +205,11 @@ class Boat(Obstacle):
         # If the radicand of the quadratic formula is negative, there is no real time
         # when the boats will collide
         if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
-            v1**2 + v2**2 - (sailbot_speed**2)
+            v1**2 + v2**2 - (self.sailbot_speed**2)
         ) * (a - c) ** 2 + (b - d) ** 2 < 0:
             print("no real times")
             # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * ais_ship.sog.speed
+            return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
 
         # The solution to the quadratic formula is the time until the boats collide
         roots = np.roots(quadratic_coefficients)
@@ -229,10 +220,10 @@ class Boat(Obstacle):
         if len(roots) == 0:
             print("no positive times")
             # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * ais_ship.sog.speed
+            return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
 
         else:
             # Use the smaller positive time, if there is one
             t = min(roots)
 
-        return t * ais_ship.sog.speed
+        return t * self.ais_ship.sog.speed
