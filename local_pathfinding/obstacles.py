@@ -1,11 +1,11 @@
 """Describes obstacles which the Sailbot must avoid: Boats and Land"""
 
-import math
+from math import radians
 from typing import Optional
 
-import numpy as np
 from custom_interfaces.msg import HelperAISShip
-from shapely import affinity as af
+from numpy import array, cos, roots, sin
+from shapely.affinity import affine_transform
 from shapely.geometry import Point, Polygon
 
 from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_km
@@ -57,13 +57,24 @@ class Obstacle:
 
         return not self.collision_zone.contains(point)
 
-    def update_collision_zone(self, collision_zone: Polygon, centre_position: XY):
+    def update_collision_zone(self, collision_zone: Polygon, offset: XY, angle: float):
         """Updates the collision zone of the obstacle. Called by the child classes.
 
         Args:
             collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
+            offset (XY): position of the collision zone relative to the reference point.
+            angle (float): rotation angle of the collision zone in degrees.
         """
-        collision_zone = af.translate(collision_zone, *centre_position)
+        dx, dy = offset
+        angle = radians(angle)
+        sin_theta = sin(angle)
+        cos_theta = cos(angle)
+
+        # coefficient matrix for the 2D affine transformation of the collision zone
+        transformation = array([cos_theta, -sin_theta, sin_theta, cos_theta, dx, dy])
+
+        collision_zone = affine_transform(collision_zone, transformation)
+
         self.collision_zone = collision_zone.buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
 
     def update_sailbot_data(self, sailbot_position: LatLon, sailbot_speed: float):
@@ -97,6 +108,8 @@ class Boat(Obstacle):
 
     Attributes:
        ais_ship (HelperAISShip): AIS Ship message containing information about the boat.
+       width (float): Width of the boat in km.
+       length (float): Length of the boat in km.
     """
 
     def __init__(
@@ -109,6 +122,8 @@ class Boat(Obstacle):
         super().__init__(reference, sailbot_position, sailbot_speed)
 
         self.ais_ship = ais_ship
+        self.width = meters_to_km(self.ais_ship.width.dimension)
+        self.length = meters_to_km(self.ais_ship.length.dimension)
         self.update_boat_collision_zone()
 
     def update_boat_collision_zone(self, ais_ship: Optional[HelperAISShip] = None):
@@ -128,36 +143,36 @@ class Boat(Obstacle):
             # Ensure ais_ship instance variable is the most up to date one
             self.ais_ship = ais_ship
 
+        # Store as local variables for performance
+        ais_ship = self.ais_ship
+        width = self.width
+        length = self.length
+
         # coordinates of the center of the boat
         position = latlon_to_xy(
-            self.reference, LatLon(self.ais_ship.lat_lon.latitude, self.ais_ship.lat_lon.longitude)
+            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
 
-        width = meters_to_km(self.ais_ship.width.dimension)
-        length = meters_to_km(self.ais_ship.length.dimension)
-
         # Course over ground of the boat
-        cog = self.ais_ship.cog.heading
+        cog = ais_ship.cog.heading
 
         # Calculate distance the boat will travel before soonest possible collision with Sailbot
         projected_distance = self.calculate_projected_distance()
 
         # TODO This feels too arbitrary, maybe will incorporate ROT at a later time
-        collision_zone_stretch = projected_distance * COLLISION_ZONE_STRETCH_FACTOR
+        collision_zone_width = projected_distance * COLLISION_ZONE_STRETCH_FACTOR * width
 
         # Points of the boat collision cone polygon before rotation and centred at the origin
         boat_collision_zone = Polygon(
             [
                 [-width / 2, -length / 2],
-                [-collision_zone_stretch * width, length / 2 + projected_distance],
-                [collision_zone_stretch * width, length / 2 + projected_distance],
+                [-collision_zone_width, length / 2 + projected_distance],
+                [collision_zone_width, length / 2 + projected_distance],
                 [width / 2, -length / 2],
             ]
         )
 
-        boat_collision_zone = af.rotate(boat_collision_zone, -cog, origin=(0, 0))
-
-        self.update_collision_zone(boat_collision_zone, position)
+        self.update_collision_zone(boat_collision_zone, position, -cog)
 
     def calculate_projected_distance(self) -> float:
         """Calculates the distance the boat obstacle will travel before collision, if
@@ -176,54 +191,45 @@ class Boat(Obstacle):
             float: Distance the boat will travel before collision or the max projection distance
                    if a collision is not possible.
         """
-        sog = self.ais_ship.sog.speed
-        cog = self.ais_ship.cog.heading
+        # Store as local variables for performance
+        ais_ship = self.ais_ship
+        sailbot_speed = self.sailbot_speed
+        sog = ais_ship.sog.speed
+        cog = ais_ship.cog.heading
         position = latlon_to_xy(
-            self.reference, LatLon(self.ais_ship.lat_lon.latitude, self.ais_ship.lat_lon.longitude)
+            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
         )
 
         # vector components of the boat's speed over ground
-        v1 = sog * np.sin(math.radians(cog))
-        v2 = sog * np.cos(math.radians(cog))
+        v1 = sog * sin(radians(cog))
+        v2 = sog * cos(radians(cog))
 
         # coordinates of the boat
-        a = position[0]
-        b = position[1]
+        a, b = position
 
         # coordinates of Sailbot
-        c = self.sailbot_position[0]
-        d = self.sailbot_position[1]
+        c, d = self.sailbot_position
 
-        quadratic_coefficients = np.array(
+        quadratic_coefficients = array(
             [
-                v1**2 + v2**2 - (self.sailbot_speed**2),
+                v1**2 + v2**2 - (sailbot_speed**2),
                 2 * (v1 * (a - c) + v2 * (b - d)),
                 (a - c) ** 2 + (b - d) ** 2,
             ]
         )
 
-        # If the radicand of the quadratic formula is negative, there is no real time
-        # when the boats will collide
-        if (2 * (v1 * (a - c) - v2 * (b - d))) ** 2 - 4 * (
-            v1**2 + v2**2 - (self.sailbot_speed**2)
-        ) * (a - c) ** 2 + (b - d) ** 2 < 0:
-            print("no real times")
-            # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
-
         # The solution to the quadratic formula is the time until the boats collide
-        roots = np.roots(quadratic_coefficients)
+        quad_roots = roots(quadratic_coefficients)
 
-        # filter out only positive roots
-        roots = [i for i in roots if i >= 0]
+        # filter out only positive and real roots
+        quad_roots = [i for i in quad_roots if i >= 0 and i.imag == 0]
 
-        if len(roots) == 0:
-            print("no positive times")
+        if len(quad_roots) == 0:
             # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
+            return PROJ_TIME_NO_COLLISION * sog
 
         else:
             # Use the smaller positive time, if there is one
-            t = min(roots)
+            t = min(quad_roots)
 
-        return t * self.ais_ship.sog.speed
+        return t * sog

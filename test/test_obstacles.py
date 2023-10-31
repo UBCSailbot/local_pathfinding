@@ -353,7 +353,20 @@ def test_update_reference_point(
 if __name__ == "__main__":
     """VISUAL TESTS
 
+    TODO: verify calculate_projected_distance via numerical/approximation method and show it
+    converges to the analytical solution given by calculate_projected_distance. Maybe turn into
+    an animation.
+
     The collision zone length can be verified visually, using the plotly chart below.
+
+    The values for the measured and calculated/expected length of the collision zones
+    match, shown in the top right.
+
+    The invalid state point is within the collision zone and the valid state point is outside.
+    Validity for the same points is checked above in: test_is_valid
+
+    Increasing the cog of the ais_ship, starting from zero, corresponds to a clockwise rotation,
+    starting from true north (the y axis) as expected.
     """
     import plotly.graph_objects as go
     from numpy import ndarray
