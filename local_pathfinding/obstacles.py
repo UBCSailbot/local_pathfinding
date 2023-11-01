@@ -1,10 +1,10 @@
 """Describes obstacles which the Sailbot must avoid: Boats and Land"""
 
-from math import radians
+import math
 from typing import Optional
 
+import numpy as np
 from custom_interfaces.msg import HelperAISShip
-from numpy import array, cos, roots, sin
 from shapely.affinity import affine_transform
 from shapely.geometry import Point, Polygon
 
@@ -66,12 +66,12 @@ class Obstacle:
             angle (float): rotation angle of the collision zone in degrees.
         """
         dx, dy = offset
-        angle = radians(angle)
-        sin_theta = sin(angle)
-        cos_theta = cos(angle)
+        angle_rad = math.radians(angle)
+        sin_theta = math.sin(angle_rad)
+        cos_theta = math.cos(angle_rad)
 
         # coefficient matrix for the 2D affine transformation of the collision zone
-        transformation = array([cos_theta, -sin_theta, sin_theta, cos_theta, dx, dy])
+        transformation = np.array([cos_theta, -sin_theta, sin_theta, cos_theta, dx, dy])
 
         collision_zone = affine_transform(collision_zone, transformation)
 
@@ -201,8 +201,9 @@ class Boat(Obstacle):
         )
 
         # vector components of the boat's speed over ground
-        v1 = sog * sin(radians(cog))
-        v2 = sog * cos(radians(cog))
+        cog_rad = math.radians(cog)
+        v1 = sog * math.sin(cog_rad)
+        v2 = sog * math.cos(cog_rad)
 
         # coordinates of the boat
         a, b = position
@@ -210,7 +211,7 @@ class Boat(Obstacle):
         # coordinates of Sailbot
         c, d = self.sailbot_position
 
-        quadratic_coefficients = array(
+        quadratic_coefficients = np.array(
             [
                 v1**2 + v2**2 - (sailbot_speed**2),
                 2 * (v1 * (a - c) + v2 * (b - d)),
@@ -219,7 +220,7 @@ class Boat(Obstacle):
         )
 
         # The solution to the quadratic formula is the time until the boats collide
-        quad_roots = roots(quadratic_coefficients)
+        quad_roots = np.roots(quadratic_coefficients)
 
         # filter out only positive and real roots
         quad_roots = [i for i in quad_roots if i >= 0 and i.imag == 0]
