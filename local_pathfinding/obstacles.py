@@ -191,19 +191,14 @@ class Boat(Obstacle):
             float: Distance the boat will travel before collision or the max projection distance
                    if a collision is not possible.
         """
-        # Store as local variables for performance
-        ais_ship = self.ais_ship
-        sailbot_speed = self.sailbot_speed
-        sog = ais_ship.sog.speed
-        cog = ais_ship.cog.heading
         position = latlon_to_xy(
-            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
+            self.reference, LatLon(self.ais_ship.lat_lon.latitude, self.ais_ship.lat_lon.longitude)
         )
 
         # vector components of the boat's speed over ground
-        cog_rad = math.radians(cog)
-        v1 = sog * math.sin(cog_rad)
-        v2 = sog * math.cos(cog_rad)
+        cog_rad = math.radians(self.ais_ship.cog.heading)
+        v1 = self.ais_ship.sog.speed * math.sin(cog_rad)
+        v2 = self.ais_ship.sog.speed * math.cos(cog_rad)
 
         # coordinates of the boat
         a, b = position
@@ -213,7 +208,7 @@ class Boat(Obstacle):
 
         quadratic_coefficients = np.array(
             [
-                v1**2 + v2**2 - (sailbot_speed**2),
+                v1**2 + v2**2 - (self.sailbot_speed**2),
                 2 * (v1 * (a - c) + v2 * (b - d)),
                 (a - c) ** 2 + (b - d) ** 2,
             ]
@@ -227,10 +222,10 @@ class Boat(Obstacle):
 
         if len(quad_roots) == 0:
             # Sailbot and this Boat will never collide
-            return PROJ_TIME_NO_COLLISION * sog
+            return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
 
         else:
             # Use the smaller positive time, if there is one
             t = min(quad_roots)
 
-        return t * sog
+        return t * self.ais_ship.sog.speed
