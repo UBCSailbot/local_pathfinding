@@ -224,8 +224,6 @@ class Boat(Obstacle):
             # Sailbot and this Boat will never collide
             return PROJ_TIME_NO_COLLISION * self.ais_ship.sog.speed
 
-        else:
-            # Use the smaller positive time, if there is one
-            t = min(quad_roots)
-
+        # Use the smaller positive time, if there is one
+        t = min(quad_roots)
         return t * self.ais_ship.sog.speed
