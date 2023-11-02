@@ -90,4 +90,3 @@ def test_xy_to_latlon(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
 )
 def test_meters_to_km(meters: float, km: float):
     assert coord_systems.meters_to_km(meters) == pytest.approx(km), "incorrect distance conversion"
-
