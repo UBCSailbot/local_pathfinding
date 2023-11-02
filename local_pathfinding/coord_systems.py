@@ -80,7 +80,7 @@ def xy_to_latlon(reference: LatLon, xy: XY) -> LatLon:
     true_bearing = math.degrees(math.atan2(xy.x, xy.y))
     distance = math.hypot(*xy) / M_TO_KM
     dest_lon, dest_lat, _ = GEODESIC.fwd(
-        reference.longitude, reference.latitude, math.degrees(true_bearing), distance
+        reference.longitude, reference.latitude, true_bearing, distance
     )
 
     return LatLon(latitude=dest_lat, longitude=dest_lon)
