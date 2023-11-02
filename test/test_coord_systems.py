@@ -50,3 +50,35 @@ def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
     assert coord_systems.latlon_to_xy(reference, latlon) == pytest.approx(
         xy
     ), "incorrect coordinate conversion"
+
+
+@pytest.mark.parametrize(
+    "ref_lat,ref_lon,true_bearing_deg,dist_km",
+    [
+        (30.0, -123.0, 0.00, 30.0),
+        (30.0, -123.0, 45.0, 30.0),
+        (30.0, -123.0, 90.0, 30.0),
+        (60.0, -123.0, 0.00, 30.0),
+        (60.0, -123.0, 45.0, 30.0),
+        (60.0, -123.0, 90.0, 30.0),
+        (60.0, -123.0, -120.0, 30.0),
+    ],
+)
+def test_xy_to_latlon(ref_lat: float, ref_lon: float, true_bearing_deg: float, dist_km: float):
+    # create inputs
+    true_bearing = math.radians(true_bearing_deg)
+    xy = XY(
+        x=dist_km * math.sin(true_bearing),
+        y=dist_km * math.cos(true_bearing),
+    )
+
+    # create expected output
+    reference = LatLon(latitude=ref_lat, longitude=ref_lon)
+    lon, lat, _ = coord_systems.GEODESIC.fwd(
+        lons=ref_lon, lats=ref_lat, az=true_bearing_deg, dist=dist_km * 1000
+    )
+    latlon = LatLon(latitude=lat, longitude=lon)
+
+    assert coord_systems.xy_to_latlon(reference, xy) == pytest.approx(
+        latlon
+    ), "incorrect coordinate conversion"
