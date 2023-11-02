@@ -45,6 +45,10 @@ def cartesian_to_true_bearing(cartesian: float) -> float:
     return (90 - cartesian + 360) % 360
 
 
+def meters_to_km(meters: float) -> float:
+    return meters / 1000
+
+
 def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
     """Convert a geographical coordinate to a 2D Cartesian coordinate given a reference point.
 
