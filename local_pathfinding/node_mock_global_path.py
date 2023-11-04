@@ -33,9 +33,6 @@ class GlobalPath(Node):
 
     Attributes from subscribers:
         gps (GPS): Data from the GPS sensor.
-
-    Attributes:
-        global_path (Path): Global path to follow.
     """
 
     def __init__(self):
@@ -66,10 +63,8 @@ class GlobalPath(Node):
         # attributes from subscribers
         self.gps = None
 
-        # attributes
-        # self.local_path = LocalPath(parent_logger=self.get_logger())
-
     # subscriber callbacks
+
     def gps_callback(self, msg: GPS):
         self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
@@ -78,16 +73,17 @@ class GlobalPath(Node):
 
     def global_path_callback(self):
         """Get and publish the global path."""
-        global_path = self.get_global_path()
+        if self.gps is not None:
+            global_path = self.get_global_path()
 
-        if len(global_path) < NUM_INTERVALS + 1 or global_path is None:
-            self.get_logger().warning("Global path is invalid")
+            if global_path is None or len(global_path) < NUM_INTERVALS + 1:
+                self.get_logger().warning("Global path is invalid")
 
-        msg = Path()
-        msg.waypoints = global_path
+            msg = Path()
+            msg.waypoints = global_path
 
-        self.global_path_pub.publish(msg)
-        self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
+            self.global_path_pub.publish(msg)
+            self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
 
     # get_global_path and its helper functions
 
@@ -95,7 +91,7 @@ class GlobalPath(Node):
         """Get the global path.
 
         Returns:
-            HelperLatLon[]: The global path.
+            List[HelperLatLon]: The global path.
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
