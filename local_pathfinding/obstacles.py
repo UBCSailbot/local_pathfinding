@@ -132,9 +132,6 @@ class Boat(Obstacle):
 
         Args:
             ais_ship (Optional[HelperAISShip]): AIS Ship message containing boat information.
-
-        Returns:
-            Polygon: Shapely Polygon representing the boat's collision zone.
         """
         if ais_ship is not None:
             if ais_ship.id != self.ais_ship.id:
