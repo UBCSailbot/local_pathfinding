@@ -2,8 +2,8 @@
 
 from typing import List
 
-import rclpy
 import numpy as np
+import rclpy
 from custom_interfaces.msg import GPS, HelperLatLon, Path
 from rclpy.node import Node
 
@@ -106,16 +106,15 @@ class GlobalPath(Node):
         global_path = self.get_parameter("global_path_param").get_parameter_value
 
         # Check if global path parameter is just a destination point
-        if len(global_path)<2:
-
-            if len(global_path)<1:
+        if len(global_path) < 2:
+            if len(global_path) < 1:
                 self.get_logger().warning("Global path has 0 elements. Must have at least 1.")
                 # TODO do something here to handle this
 
             # Create a simple global path from the single destination point
             # There will be some distortion here, so the intermediate points wont be evenly spaced
-            latitudes = np.linspace(current_location.lat, global_path[0].lat, NUM_INTERVALS+1)
-            longitudes = np.linspace(current_location.lon, global_path[0].lon, NUM_INTERVALS+1)
+            latitudes = np.linspace(current_location.lat, global_path[0].lat, NUM_INTERVALS + 1)
+            longitudes = np.linspace(current_location.lon, global_path[0].lon, NUM_INTERVALS + 1)
 
             global_path = []
 
