@@ -3,11 +3,14 @@
 from typing import List
 
 import rclpy
+import numpy as np
 from custom_interfaces.msg import GPS, HelperLatLon, Path
 from rclpy.node import Node
 
-# Hard Coded Destination
-DESTINATION = HelperLatLon(lat=49.263, lon=-123.138)
+# Destination is hardcoded temporarily as a single element list
+DESTINATION = []
+DESTINATION.append(HelperLatLon(lat=49.263, lon=-123.138))
+
 NUM_INTERVALS = 100
 
 
@@ -42,6 +45,7 @@ class GlobalPath(Node):
             namespace="",
             parameters=[
                 ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
+                ("global_path_param", DESTINATION),
             ],
         )
 
@@ -97,25 +101,32 @@ class GlobalPath(Node):
             self._log_inactive_subs_warning()
             return []
 
-        # Calculate global path based on gps msg and destination
         current_location = self.gps.latlon
 
-        latitudinal_interval = (DESTINATION.lat - current_location.lat) / NUM_INTERVALS
-        longitudinal_interval = (DESTINATION.lon - current_location.lon) / NUM_INTERVALS
+        global_path = self.get_parameter("global_path_param").get_parameter_value
 
-        global_path = []
+        # Check if global path parameter is just a destination point
+        if len(global_path)<2:
 
-        for i in range(NUM_INTERVALS - 1):
-            global_path.append(
-                HelperLatLon(
-                    lat=current_location.lat + latitudinal_interval * i,
-                    lon=current_location.lon + longitudinal_interval * i,
+            if len(global_path)<1:
+                self.get_logger().warning("Global path has 0 elements. Must have at least 1.")
+                # TODO do something here to handle this
+
+            # Create a simple global path from the single destination point
+            # There will be some distortion here, so the intermediate points wont be evenly spaced
+            latitudes = np.linspace(current_location.lat, global_path[0].lat, NUM_INTERVALS+1)
+            longitudes = np.linspace(current_location.lon, global_path[0].lon, NUM_INTERVALS+1)
+
+            global_path = []
+
+            for i in range(NUM_INTERVALS):
+                global_path.append(
+                    HelperLatLon(
+                        lat=latitudes[i],
+                        lon=longitudes[i],
+                    )
                 )
-            )
-
-        # Add destination manually to avoid floating point errors
-        # There may be some accuracy error in the intermediate points but that is not as important
-        global_path.append(DESTINATION)
+            return global_path
 
         return global_path
 
