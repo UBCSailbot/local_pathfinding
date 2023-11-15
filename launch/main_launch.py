@@ -16,7 +16,15 @@ from launch.substitutions import LaunchConfiguration
 PACKAGE_NAME = "local_pathfinding"
 
 # Add args with DeclareLaunchArguments object(s) and utilize in setup_launch()
-LOCAL_LAUNCH_ARGUMENTS: List[DeclareLaunchArgument] = []
+LOCAL_LAUNCH_ARGUMENTS: List[DeclareLaunchArgument] = [
+    DeclareLaunchArgument(
+        name="mode",
+        default_value="development",
+        choices=["production", "development"],
+        description="System mode. Decides whether the system is ran with development or production"
+        + " interfaces",
+    ),
+]
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -65,9 +73,11 @@ def setup_launch(context: LaunchContext) -> List[Node]:
     Returns:
         List[Node]: Nodes to launch.
     """
-    launch_description_entities = list()
+    mode = LaunchConfiguration("mode").perform(context)
+    launch_description_entities = []
     launch_description_entities.append(get_navigate_node_description(context))
-    launch_description_entities.append(get_mock_global_path_node_description(context))
+    if mode == "development":
+        launch_description_entities.append(get_mock_global_path_node_description(context))
     return launch_description_entities
 
 
