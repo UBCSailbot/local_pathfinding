@@ -8,8 +8,11 @@ from custom_interfaces.msg import GPS, HelperLatLon, Path
 from rclpy.node import Node
 
 # Destination is hardcoded temporarily as a single element list
-DESTINATION = []
-DESTINATION.append(HelperLatLon(lat=49.263, lon=-123.138))
+MOCK_DESTINATION = []
+# List of doubles is an allowed type for a ros2 parameter
+MOCK_DESTINATION.append("49.263,123.138")
+# Mock gps data to get things running until we have a running gps node
+MOCK_GPS = GPS(lat_lon=HelperLatLon(latitude=48.9594, longitude=-123.3634))
 
 NUM_INTERVALS = 100
 
@@ -45,7 +48,7 @@ class GlobalPath(Node):
             namespace="",
             parameters=[
                 ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
-                ("global_path_param", DESTINATION),
+                ("global_path_param", rclpy.Parameter.Type.STRING_ARRAY),
             ],
         )
 
@@ -63,9 +66,16 @@ class GlobalPath(Node):
         self.global_path_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.global_path_callback
         )
+        self.set_parameters(
+            [
+                rclpy.parameter.Parameter(
+                    "global_path_param", rclpy.Parameter.Type.STRING_ARRAY, MOCK_DESTINATION
+                )
+            ]
+        )
 
         # attributes from subscribers
-        self.gps = None
+        self.gps = MOCK_GPS
 
     # subscriber callbacks
 
@@ -80,14 +90,24 @@ class GlobalPath(Node):
         if self.gps is not None:
             global_path = self.get_global_path()
 
-            if global_path is None or len(global_path) < NUM_INTERVALS + 1:
-                self.get_logger().warning("Global path is invalid")
-
             msg = Path()
             msg.waypoints = global_path
 
             self.global_path_pub.publish(msg)
             self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
+
+            # Set the new global path parameter
+            self.set_parameters(
+                [
+                    rclpy.parameter.Parameter(
+                        "global_path_param",
+                        rclpy.Parameter.Type.STRING_ARRAY,
+                        GlobalPath.to_string_array(global_path),
+                    )
+                ]
+            )
+        else:
+            self.get_logger().info("No GPS data")
 
     # get_global_path and its helper functions
 
@@ -101,9 +121,16 @@ class GlobalPath(Node):
             self._log_inactive_subs_warning()
             return []
 
-        current_location = self.gps.latlon
+        current_location = self.gps.lat_lon
 
-        global_path = self.get_parameter("global_path_param").get_parameter_value
+        global_path = self.get_parameter("global_path_param")._value
+
+        # Parse string array into list of HelperLatLon objects
+        for i in range(len(global_path)):
+            global_path[i] = HelperLatLon(
+                latitude=float(global_path[i].split(",")[0]),
+                longitude=float(global_path[i].split(",")[1]),
+            )
 
         # Check if global path parameter is just a destination point
         if len(global_path) < 2:
@@ -113,18 +140,23 @@ class GlobalPath(Node):
 
             # Create a simple global path from the single destination point
             # There will be some distortion here, so the intermediate points wont be evenly spaced
-            latitudes = np.linspace(current_location.lat, global_path[0].lat, NUM_INTERVALS + 1)
-            longitudes = np.linspace(current_location.lon, global_path[0].lon, NUM_INTERVALS + 1)
+            latitudes = np.linspace(
+                current_location.latitude, global_path[0].latitude, NUM_INTERVALS + 1
+            )
+            longitudes = np.linspace(
+                current_location.longitude, global_path[0].longitude, NUM_INTERVALS + 1
+            )
 
             global_path = []
 
             for i in range(NUM_INTERVALS):
                 global_path.append(
                     HelperLatLon(
-                        lat=latitudes[i],
-                        lon=longitudes[i],
+                        latitude=latitudes[i],
+                        longitude=longitudes[i],
                     )
                 )
+
             return global_path
 
         return global_path
@@ -135,6 +167,15 @@ class GlobalPath(Node):
     def _log_inactive_subs_warning(self):
         # TODO: log which subscribers are inactive
         self.get_logger().warning("There are inactive subscribers")
+
+    @staticmethod
+    def to_string_array(list: List[HelperLatLon]) -> List[str]:
+        """Convert a list of HelperLatLon objects to a String array compatible with ROS2 parameter
+        typing."""
+        string_array = []
+        for item in list:
+            string_array.append(str(item.latitude) + "," + str(item.longitude))
+        return string_array
 
 
 if __name__ == "__main__":
