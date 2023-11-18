@@ -4,9 +4,9 @@ import pytest
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.coord_systems as coord_systems
 import local_pathfinding.objectives as objectives
 import local_pathfinding.ompl_path as ompl_path
-import local_pathfinding.coord_systems as coord_systems
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
@@ -57,18 +57,26 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
     [
         ((10, 10), (0, 0), (0, 0)),
         ((13.206724, 29.829011), (13.208724, 29.827011), (13.216724, 29.839011)),
+        ((0, 0), (0, 0.1), (0, -0.1)),
+        ((0, 0), (0.1, 0), (-0.1, 0)),
+        ((0, 0), (0.1, 0.1), (-0.1, -0.1)),
     ],
 )
 def test_get_latlon_path_length_objective(rf: tuple, cs1: tuple, cs2: tuple):
     space = ob.SE2StateSpace()
 
     ls1 = coord_systems.latlon_to_xy(
-        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs1[0], cs2[1])
+        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs1[0], cs1[1])
     )
     ls2 = coord_systems.latlon_to_xy(
         coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs2[0], cs2[1])
     )
-    _, _, distance_m = coord_systems.GEODESIC.inv(cs1[0], cs1[1], cs2[0], cs2[1])
+    _, _, distance_m = coord_systems.GEODESIC.inv(
+        lats1=cs1[0],
+        lons1=cs1[1],
+        lats2=cs2[0],
+        lons2=cs2[1],
+    )
 
     s1 = ob.State(space)
     s1().setXY(ls1[0], ls1[1])
