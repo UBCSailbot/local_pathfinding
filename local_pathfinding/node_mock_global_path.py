@@ -27,6 +27,16 @@ def main(args=None):
     rclpy.shutdown()
 
 
+# TODO Write tests
+def to_string_array(list: List[HelperLatLon]) -> List[str]:
+    """Convert a list of HelperLatLon objects to a String array compatible with ROS2 parameter
+    typing."""
+    string_array = []
+    for item in list:
+        string_array.append(str(item.latitude) + "," + str(item.longitude))
+    return string_array
+
+
 class GlobalPath(Node):
     """Stores, and publishes the global path.
 
@@ -167,15 +177,6 @@ class GlobalPath(Node):
     def _log_inactive_subs_warning(self):
         # TODO: log which subscribers are inactive
         self.get_logger().warning("There are inactive subscribers")
-
-    @staticmethod
-    def to_string_array(list: List[HelperLatLon]) -> List[str]:
-        """Convert a list of HelperLatLon objects to a String array compatible with ROS2 parameter
-        typing."""
-        string_array = []
-        for item in list:
-            string_array.append(str(item.latitude) + "," + str(item.longitude))
-        return string_array
 
 
 if __name__ == "__main__":
