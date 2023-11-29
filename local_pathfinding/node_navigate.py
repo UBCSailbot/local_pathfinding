@@ -1,7 +1,8 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
 import rclpy
-from custom_interfaces.msg import GPS, AISShips, DesiredHeading, Path, WindSensor
+from custom_interfaces.msg import GPS, AISShips, DesiredHeading, WindSensor
+from custom_interfaces.srv import GlobalPathService
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -50,18 +51,17 @@ class Sailbot(Node):
             ],
         )
 
+        # Services
+        self.srv = self.create_service(
+            GlobalPathService, "global_path_srv", self.global_path_srv_callback
+        )
+
         # subscribers
         self.ais_ships_sub = self.create_subscription(
             msg_type=AISShips, topic="ais_ships", callback=self.ais_ships_callback, qos_profile=10
         )
         self.gps_sub = self.create_subscription(
             msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
-        )
-        self.global_path_sub = self.create_subscription(
-            msg_type=Path,
-            topic="global_path",
-            callback=self.global_path_callback,
-            qos_profile=10,
         )
         self.filtered_wind_sensor_sub = self.create_subscription(
             msg_type=WindSensor,
@@ -83,11 +83,22 @@ class Sailbot(Node):
         # attributes from subscribers
         self.ais_ships = None
         self.gps = None
-        self.global_path = None
         self.filtered_wind_sensor = None
+
+        # attributes from services
+        self.global_path = None
 
         # attributes
         self.local_path = LocalPath(parent_logger=self.get_logger())
+
+    # service callbacks
+
+    def global_path_srv_callback(self, request, response):
+        self.global_path = request.global_path
+        response.response = True
+        self.get_logger().info(f"Received new global path: {self.global_path}")
+
+        return response
 
     # subscriber callbacks
 
@@ -98,10 +109,6 @@ class Sailbot(Node):
     def gps_callback(self, msg: GPS):
         self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
-
-    def global_path_callback(self, msg: Path):
-        self.get_logger().info(f"Received data from {self.global_path_sub.topic}: {msg}")
-        self.global_path = msg
 
     def filtered_wind_sensor_callback(self, msg: WindSensor):
         self.get_logger().info(f"Received data from {self.filtered_wind_sensor_sub.topic}: {msg}")
