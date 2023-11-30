@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import rclpy
 from custom_interfaces.msg import GPS, HelperLatLon, Path
-from custom_interfaces.srv import GlobalPathService
+from custom_interfaces.srv import GlobalPath
 from rclpy.node import Node
 
 # Destination is hardcoded temporarily as a single element list
@@ -67,11 +67,11 @@ class MockGlobalPath(Node):
         )
         # services
 
-        self.client = self.create_client(GlobalPathService, "global_path_srv")
+        self.client = self.create_client(GlobalPath, "global_path_srv")
 
         while not self.client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("connection to node_navigate failed, waiting again...")
-        self.req = GlobalPathService.Request()
+        self.req = GlobalPath.Request()
 
         # subscribers
 
@@ -110,13 +110,14 @@ class MockGlobalPath(Node):
                 self.get_logger().info("No GPS data")
 
         # check if navigate responded to the service call
-        if self.future.done():
+        if self.future is not None and self.future.done():
             try:
                 response = self.future.result()
             except Exception as e:
                 self.get_logger().info("Failed to send global path %r" % (e,))
             else:
                 self.get_logger().info(f"Navigate node response: {response.response}")
+            self.future = None
 
     def set_global_path(self):
         """update the global path from the global path parameter value. If the global_path_param

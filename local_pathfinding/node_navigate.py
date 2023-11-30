@@ -2,7 +2,7 @@
 
 import rclpy
 from custom_interfaces.msg import GPS, AISShips, DesiredHeading, WindSensor
-from custom_interfaces.srv import GlobalPathService
+from custom_interfaces.srv import GlobalPath
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -53,7 +53,7 @@ class Sailbot(Node):
 
         # Services
         self.srv = self.create_service(
-            GlobalPathService, "global_path_srv", self.global_path_srv_callback
+            GlobalPath, "global_path_srv", self.global_path_srv_callback
         )
 
         # subscribers
