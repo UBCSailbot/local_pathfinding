@@ -1,4 +1,5 @@
-"""The main node of the local_pathfinding package, represented by the `Sailbot` class."""
+"""The mock global path node. This node is responsible for sending the mock global path to
+ Local Pathfinding"""
 
 import csv
 import os
@@ -108,14 +109,12 @@ class MockGlobalPath(Node):
         """
 
         # check when global path was changed last
-        path_mod_tmstmp = time.ctime(
-            os.path.getmtime("/local_pathfinding/resource/mock_global_path.csv")
-        )
+        path_mod_tmstmp = time.ctime(os.path.getmtime("resource/mock_global_path.csv"))
 
         if path_mod_tmstmp != self.path_mod_tmstmp:
-            with open("resource/mock_global_path.csv") as file:
+            with open("resource/mock_global_path.csv", "r") as file:
                 reader = csv.reader(file)
-                reader.next()
+                reader.__next__()
                 global_path = []
                 for row in reader:
                     global_path.append(row[0] + "," + row[1])
