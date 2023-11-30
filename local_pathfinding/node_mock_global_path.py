@@ -1,5 +1,8 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
+import csv
+import os
+import time
 from typing import List
 
 import numpy as np
@@ -66,7 +69,6 @@ class MockGlobalPath(Node):
             ]
         )
         # services
-
         self.client = self.create_client(GlobalPath, "global_path_srv")
 
         while not self.client.wait_for_service(timeout_sec=1.0):
@@ -74,7 +76,6 @@ class MockGlobalPath(Node):
         self.req = GlobalPath.Request()
 
         # subscribers
-
         self.gps_sub = self.create_subscription(
             msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
         )
@@ -90,9 +91,9 @@ class MockGlobalPath(Node):
         # attributes
         self.gps = MOCK_GPS
         self.global_path = []
+        self.path_mod_tmstmp = None
 
     # subscriber callbacks
-
     def gps_callback(self, msg: GPS):
         self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
@@ -100,7 +101,37 @@ class MockGlobalPath(Node):
     # Service callbacks
     def global_path_callback(self):
         """Check if the global path parameter has changed, on a regular time interval.
-        If it has changed, the new path is sent to node_navigate"""
+        If it has changed, the new path is sent to node_navigate
+
+        Global path can be changed through a ros2 param set command in the terminal
+        or by modifying mock_global_path.csv
+        """
+
+        # check when global path was changed last
+        path_mod_tmstmp = time.ctime(
+            os.path.getmtime("/local_pathfinding/resource/mock_global_path.csv")
+        )
+
+        if path_mod_tmstmp != self.path_mod_tmstmp:
+            with open("resource/mock_global_path.csv") as file:
+                reader = csv.reader(file)
+                reader.next()
+                global_path = []
+                for row in reader:
+                    global_path.append(row[0] + "," + row[1])
+
+            self.path_mod_tmstmp = path_mod_tmstmp
+
+            # Set the new global path parameter
+            self.set_parameters(
+                [
+                    rclpy.parameter.Parameter(
+                        "global_path_param",
+                        rclpy.Parameter.Type.STRING_ARRAY,
+                        global_path,
+                    )
+                ]
+            )
 
         if self.global_path != self.get_parameter("global_path_param")._value:
             if self.gps is not None:
@@ -128,13 +159,13 @@ class MockGlobalPath(Node):
             self._log_inactive_subs_warning()
             return
 
-        current_location = self.gps.lat_lon
-
         global_path = self.get_parameter("global_path_param")._value
 
         # Check if global path parameter is just a destination point
         if len(global_path) < 2:
-            # Create a simple global path from the single destination point
+            # Create a simple global path location and destination
+            current_location = self.gps.lat_lon
+
             latitudes = np.linspace(
                 current_location.latitude, float(global_path[0].split(",")[0]), NUM_INTERVALS + 1
             )
@@ -149,18 +180,20 @@ class MockGlobalPath(Node):
 
             self.global_path = global_path
 
-        self.global_path = global_path
+            # Set the new global path parameter
+            self.set_parameters(
+                [
+                    rclpy.parameter.Parameter(
+                        "global_path_param",
+                        rclpy.Parameter.Type.STRING_ARRAY,
+                        self.global_path,
+                    )
+                ]
+            )
 
-        # Set the new global path parameter
-        self.set_parameters(
-            [
-                rclpy.parameter.Parameter(
-                    "global_path_param",
-                    rclpy.Parameter.Type.STRING_ARRAY,
-                    self.global_path,
-                )
-            ]
-        )
+            return
+
+        self.global_path = global_path
 
     def send_global_path(self):
         self.req.global_path = MockGlobalPath.str_list_to_path(self.global_path)
