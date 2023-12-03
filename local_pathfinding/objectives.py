@@ -2,17 +2,18 @@
 
 import math
 from enum import Enum, auto
-import local_pathfinding.coord_systems as cs
 
 from ompl import base as ob
+
+import local_pathfinding.coord_systems as cs
 
 # Upwind downwind cost multipliers
 UPWIND_MULTIPLIER = 3000.0
 DOWNWIND_MULTIPLIER = 3000.0
 
 # Upwind downwind constants
-UPWIND_MAX_ANGLE_RADIANS = math.radians(40.0)
-DOWNWIND_MAX_ANGLE_RADIANS = math.radians(20.0)
+HIGHEST_UPWIND_ANGLE_RADIANS = math.radians(40.0)
+LOWEST_DOWNWIND_ANGLE_RADIANS = math.radians(20.0)
 
 
 class DistanceMethod(Enum):
@@ -188,10 +189,10 @@ class MinimumTurningObjective(Objective):
             ob.Cost: the turning angle from s2 to s1 (degrees)
         """
 
-        # Calculate the angle of the s1-s2 line segment from North
+        # Calculate the true bearing of s2 from s1
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
-        # Calculate the angle from s1-goal line segment from North
+        # Calculate the true bearing of the goal from s1
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
         return self.min_turn_angle(global_goal_direction, path_direction)
@@ -207,7 +208,7 @@ class MinimumTurningObjective(Objective):
             ob.Cost: the turning angle from s2 to s1 (degrees)
         """
 
-        # Calculate the angle from s1-goal line segment from North
+        # Calculate the true bearing of the goal from s1
         global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
 
         angle = self.min_turn_angle(global_goal_direction, self.heading)
@@ -224,7 +225,7 @@ class MinimumTurningObjective(Objective):
             ob.Cost: The minimum turning angle between s1-s2 and heading  (degrees)
         """
 
-        # Calculate the angle of the s1-s2 line segment from North
+        # Calculate the true bearing of s2 from s1
         path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
 
         angle = self.min_turn_angle(path_direction, self.heading)
@@ -236,7 +237,8 @@ class MinimumTurningObjective(Objective):
 
         Args:
             angle1 (float): The first angle in radians
-            angle2 (float): The second angle in radians
+            angle2 (float): The second angle in radians. Must be bounded within 2pi radians of
+                            angle1.
 
         Returns:
             float: The minimum turning angle between the two angles (degrees)
@@ -298,8 +300,8 @@ class WindObjective(Objective):
         Returns:
             bool: The cost associated with the upwind direction
         """
-        theta_min = wind_direction - UPWIND_MAX_ANGLE_RADIANS
-        theta_max = wind_direction + UPWIND_MAX_ANGLE_RADIANS
+        theta_min = wind_direction - HIGHEST_UPWIND_ANGLE_RADIANS
+        theta_max = wind_direction + HIGHEST_UPWIND_ANGLE_RADIANS
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
@@ -316,9 +318,9 @@ class WindObjective(Objective):
         """
         downwind_wind_direction = (wind_direction + math.pi) % (2 * math.pi)
 
-        theta_min = downwind_wind_direction - DOWNWIND_MAX_ANGLE_RADIANS
+        theta_min = downwind_wind_direction - LOWEST_DOWNWIND_ANGLE_RADIANS
 
-        theta_max = downwind_wind_direction + DOWNWIND_MAX_ANGLE_RADIANS
+        theta_max = downwind_wind_direction + LOWEST_DOWNWIND_ANGLE_RADIANS
 
         return WindObjective.is_angle_between(theta_min, boat_direction, theta_max)
 
@@ -335,7 +337,13 @@ class WindObjective(Objective):
             bool: True when `middle_angle` is not in the reflex angle of
                 `first_angle` and `second_angle`, false otherwise.
         """
-        if first_angle < second_angle:
+
+        # Bound the angles to [0, 2pi)
+        first_angle = first_angle % (2 * math.pi)
+        middle_angle = middle_angle % (2 * math.pi)
+        second_angle = second_angle % (2 * math.pi)
+
+        if first_angle <= second_angle:
             if (
                 second_angle - math.pi == first_angle
             ):  # Assume all angles are between first and second when pi degrees apart

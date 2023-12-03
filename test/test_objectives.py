@@ -275,6 +275,11 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
         (0, 30, 60, 1),
         (-170, -130, -90, 1),
         (-170, -130, 100, 0),
+        (400, 410, 420, 1),
+        (400, 420, 410, 0),
+        (370, 0, -370, 1),
+        (370, 15, -370, 0),
+        (-90, 270, 450, 0)
     ],
 )
 def test_angle_between(afir: float, amid: float, asec: float, expected: float):
