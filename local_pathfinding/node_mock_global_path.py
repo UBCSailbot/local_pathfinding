@@ -10,16 +10,18 @@ import numpy as np
 import rclpy
 from custom_interfaces.msg import GPS, HelperLatLon, Path
 from custom_interfaces.srv import GlobalPath
+from pyproj import Geod
 from rclpy.node import Node
 
-# Destination is hardcoded temporarily as a single element list
-MOCK_DESTINATION = []
-# List of doubles is an allowed type for a ros2 parameter
-MOCK_DESTINATION.append("49.263,123.138")
-# Mock gps data to get things running until we have a running gps node
-MOCK_GPS = GPS(lat_lon=HelperLatLon(latitude=48.9594, longitude=-123.3634))
+GEODESIC = Geod(ellps="WGS84")
+M_to_KM = 0.001
 
-NUM_INTERVALS = 100
+# Mock gps data to get things running until we have a running gps node
+# TODO Remove when NET publishes GPS
+MOCK_GPS = GPS(lat_lon=HelperLatLon(latitude=48.9594, longitude=-123.3634))
+DEFAULT_PATH = "global_paths/mock_global_path.csv"
+
+INTERVAL_SPACING = 30  # km
 GLOBAL_PATH_UPDATE_DELAY = 10
 
 
@@ -49,6 +51,18 @@ class MockGlobalPath(Node):
     Attributes:
         global_path (List[Str]): The global path that will be converted to List[HelperLatLon] and
         sent to the navigate node as a service request message.
+
+        path_mod_tmstmp (Str): The timestamp of the last time the source global path csv was
+        modified.
+
+        future (Future): The future object returned by the service call to node_navigate.
+
+        client (Client): The client object used to send the global path to node_navigate.
+
+        global_path_update_timer (Timer): The timer object used to periodically run the global path
+        callback.
+
+        req (Request): The request object used to send the global path to node_navigate.
     """
 
     def __init__(self):
@@ -58,22 +72,31 @@ class MockGlobalPath(Node):
             namespace="",
             parameters=[
                 ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
-                ("global_path_param", rclpy.Parameter.Type.STRING_ARRAY),
+                ("global_path_filepath", rclpy.Parameter.Type.STRING),
+                ("interval_spacing", rclpy.Parameter.Type.DOUBLE),
             ],
         )
 
         self.set_parameters(
             [
                 rclpy.parameter.Parameter(
-                    "global_path_param", rclpy.Parameter.Type.STRING_ARRAY, MOCK_DESTINATION
-                )
+                    name="global_path_filepath",
+                    type_=rclpy.Parameter.Type.STRING_ARRAY,
+                    value=DEFAULT_PATH,
+                ),
+                rclpy.parameter.Parameter(
+                    name="interval_spacing",
+                    type_=rclpy.Parameter.Type.DOUBLE,
+                    value=INTERVAL_SPACING,
+                ),
             ]
         )
         # services
         self.client = self.create_client(GlobalPath, "global_path_srv")
 
+        # wait for connection to node_navigate
         while not self.client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info("connection to node_navigate failed, waiting again...")
+            self.get_logger().warn("connection to node_navigate failed, waiting again...")
         self.req = GlobalPath.Request()
 
         # subscribers
@@ -90,9 +113,10 @@ class MockGlobalPath(Node):
         )
 
         # attributes
-        self.gps = MOCK_GPS
+        self.gps = MOCK_GPS  # TODO Remove when NET publishes GPS
         self.global_path = []
         self.path_mod_tmstmp = None
+        self.future = None
 
     # subscriber callbacks
     def gps_callback(self, msg: GPS):
@@ -101,96 +125,76 @@ class MockGlobalPath(Node):
 
     # Service callbacks
     def global_path_callback(self):
-        """Check if the global path parameter has changed, on a regular time interval.
+        """Check if the global path csv file has changed, on a regular time interval.
         If it has changed, the new path is sent to node_navigate
 
-        Global path can be changed through a ros2 param set command in the terminal
-        or by modifying mock_global_path.csv
+        Global path can be changed by modifying mock_global_path.csv or setting the
+        global_path_filepath parameter to a filepath to a new csv file.
         """
 
+        file_path = self.get_parameter("global_path_filepath")._value
+
         # check when global path was changed last
-        path_mod_tmstmp = time.ctime(os.path.getmtime("resource/mock_global_path.csv"))
+        path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
         if path_mod_tmstmp != self.path_mod_tmstmp:
-            with open("resource/mock_global_path.csv", "r") as file:
+            # read in new path and send to node_navigate
+            global_path = []
+            with open(file_path, "r") as file:
                 reader = csv.reader(file)
+                # skip header
                 reader.__next__()
-                global_path = []
                 for row in reader:
                     global_path.append(row[0] + "," + row[1])
 
             self.path_mod_tmstmp = path_mod_tmstmp
 
-            # Set the new global path parameter
-            self.set_parameters(
-                [
-                    rclpy.parameter.Parameter(
-                        "global_path_param",
-                        rclpy.Parameter.Type.STRING_ARRAY,
-                        global_path,
-                    )
-                ]
-            )
-
-        if self.global_path != self.get_parameter("global_path_param")._value:
             if self.gps is not None:
-                self.set_global_path()
+                if len(global_path) < 2:
+                    self.generate_path(global_path)
+                else:
+                    self.global_path = global_path
+
                 self.send_global_path()
             else:
-                self.get_logger().info("No GPS data")
+                self.get_logger().warn("No GPS data")
 
         # check if navigate responded to the service call
         if self.future is not None and self.future.done():
             try:
                 response = self.future.result()
             except Exception as e:
-                self.get_logger().info("Failed to send global path %r" % (e,))
+                self.get_logger().warn("Failed to send global path %r" % (e,))
             else:
                 self.get_logger().info(f"Navigate node response: {response.response}")
             self.future = None
 
-    def set_global_path(self):
-        """update the global path from the global path parameter value. If the global_path_param
-        is a single LatLon point, then this function will create a path of evenly-ish spaced
-        intermediate points"""
+    def generate_path(self, destination: List[str]):
+        """Generates a path from the current GPS location to the destination point. Waypoints are
+        evenly spaced along the path according to the interval_spacing parameter."""
 
-        if not self._all_subs_active():
-            self._log_inactive_subs_warning()
-            return
+        interval_spacing = self.get_parameter("interval_spacing")._value
+        global_path = []
 
-        global_path = self.get_parameter("global_path_param")._value
+        pos = self.gps.lat_lon
+        dest = HelperLatLon(
+            latitude=float(destination[0].split("'")[0]),
+            longitude=float(destination[0].split(",")[1]),
+        )
 
-        # Check if global path parameter is just a destination point
-        if len(global_path) < 2:
-            # Create a simple global path location and destination
-            current_location = self.gps.lat_lon
+        distance = (
+            GEODESIC.inv(pos.longitude, pos.latitude, dest.longitude, dest.latitude)[2] * M_to_KM
+        )
 
-            latitudes = np.linspace(
-                current_location.latitude, float(global_path[0].split(",")[0]), NUM_INTERVALS + 1
-            )
-            longitudes = np.linspace(
-                current_location.longitude, float(global_path[0].split(",")[1]), NUM_INTERVALS + 1
-            )
+        n = np.ceil(distance / interval_spacing)
 
-            global_path = []
-
-            for i in range(NUM_INTERVALS):
-                global_path.append(str(latitudes[i]) + "," + str(longitudes[i]))
-
-            self.global_path = global_path
-
-            # Set the new global path parameter
-            self.set_parameters(
-                [
-                    rclpy.parameter.Parameter(
-                        "global_path_param",
-                        rclpy.Parameter.Type.STRING_ARRAY,
-                        self.global_path,
-                    )
-                ]
-            )
-
-            return
+        global_path = GEODESIC.npts(
+            lon1=pos.longitude,
+            lat1=pos.latitude,
+            lon2=dest.longitude,
+            lat2=dest.latitude,
+            npts=n,
+        )
 
         self.global_path = global_path
 
