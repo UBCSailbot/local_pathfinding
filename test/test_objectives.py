@@ -20,10 +20,18 @@ PATH = ompl_path.OMPLPath(
 )
 
 
-def test_distance_objective():
+@pytest.mark.parametrize(
+    "method",
+    [
+        objectives.DistanceMethod.EUCLIDEAN,
+        objectives.DistanceMethod.LATLON,
+        objectives.DistanceMethod.OMPL_PATH_LENGTH,
+    ],
+)
+def test_distance_objective(method: objectives.DistanceMethod):
     distance_objective = objectives.DistanceObjective(
         PATH._simple_setup.getSpaceInformation(),
-        objectives.DistanceMethod.OMPL_PATH_LENGTH,
+        method,
     )
     assert distance_objective is not None
 
@@ -44,12 +52,10 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
     s2 = ob.State(space)
     s2().setXY(cs2[0], cs2[1])
 
-    dist_object = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(),
-        objectives.DistanceMethod.EUCLIDEAN,
+    assert (
+        objectives.DistanceObjective.get_euclidean_path_length_objective(s1(), s2()).value()
+        == expected
     )
-
-    assert dist_object.get_euclidean_path_length_objective(s1(), s2()).value() == expected
 
 
 @pytest.mark.parametrize(
@@ -84,15 +90,11 @@ def test_get_latlon_path_length_objective(rf: tuple, cs1: tuple, cs2: tuple):
     s2 = ob.State(space)
     s2().setXY(ls2[0], ls2[1])
 
-    dist_object = objectives.DistanceObjective(
-        PATH._simple_setup.getSpaceInformation(),
-        objectives.DistanceMethod.LATLON,
-        coord_systems.LatLon(rf[0], rf[1]),
-    )
-
-    assert dist_object.get_latlon_path_length_objective(s1(), s2()).value() == pytest.approx(
-        distance_m
-    )
+    assert objectives.DistanceObjective.get_latlon_path_length_objective(
+        s1(),
+        s2(),
+        reference=coord_systems.LatLon(rf[0], rf[1]),
+    ).value() == pytest.approx(distance_m)
 
 
 def test_minimum_turning_objective():
@@ -279,7 +281,7 @@ def test_is_downwind(wind_direction: float, heading: float, expected: float):
         (400, 420, 410, 0),
         (370, 0, -370, 1),
         (370, 15, -370, 0),
-        (-90, 270, 450, 0)
+        (-90, 270, 450, 0),
     ],
 )
 def test_angle_between(afir: float, amid: float, asec: float, expected: float):

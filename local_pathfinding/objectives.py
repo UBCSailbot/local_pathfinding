@@ -86,24 +86,22 @@ class DistanceObjective(Objective):
             ValueError: If the distance method is not supported
         """
         if self.method == DistanceMethod.EUCLIDEAN:
-            # Generates the euclidean distance between two points
-            return self.get_euclidean_path_length_objective(s1, s2)
+            return DistanceObjective.get_euclidean_path_length_objective(s1, s2)
         elif self.method == DistanceMethod.LATLON:
-            # Generates the latlon distance between two points
-            return self.get_latlon_path_length_objective(s1, s2)
+            return DistanceObjective.get_latlon_path_length_objective(s1, s2, self.reference)
         elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
             return self.ompl_path_objective.motionCost(s1, s2)
         else:
             ValueError(f"Method {self.method} not supported")
 
-    def get_euclidean_path_length_objective(
-        self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
-    ) -> ob.Cost:
+    @staticmethod
+    def get_euclidean_path_length_objective(s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the euclidean distance between two points
 
         Args:
             s1 (SE2StateInternal): The starting point of the local start state
             s2 (SE2StateInternal): The ending point of the local goal state
+            reference (cs.LatLon): The XY origin when converting from latlon to XY.
 
         Returns:
             ob.Cost: The euclidean distance between the two points
@@ -111,8 +109,9 @@ class DistanceObjective(Objective):
         cost = math.hypot(s2.getY() - s1.getY(), s2.getX() - s1.getX())
         return ob.Cost(cost)
 
+    @staticmethod
     def get_latlon_path_length_objective(
-        self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace
+        s1: ob.SE2StateSpace, s2: ob.SE2StateSpace, reference: cs.LatLon
     ) -> ob.Cost:
         """Generates the "great circle" distance between two points
 
@@ -122,11 +121,11 @@ class DistanceObjective(Objective):
         Returns:
             ob.Cost: The great circle distance between two points
         """
-        latlons1 = cs.xy_to_latlon(self.reference, cs.XY(s1.getX(), s1.getY()))
-        latlons2 = cs.xy_to_latlon(self.reference, cs.XY(s2.getX(), s2.getY()))
+        latlon1 = cs.xy_to_latlon(reference, cs.XY(s1.getX(), s1.getY()))
+        latlon2 = cs.xy_to_latlon(reference, cs.XY(s2.getX(), s2.getY()))
 
         _, _, distance_m = cs.GEODESIC.inv(
-            latlons1.longitude, latlons1.latitude, latlons2.longitude, latlons2.latitude
+            latlon1.longitude, latlon1.latitude, latlon2.longitude, latlon2.latitude
         )
 
         return ob.Cost(distance_m)
