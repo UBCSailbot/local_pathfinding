@@ -22,6 +22,22 @@ def test_cartesian_to_true_bearing(cartesian: float, true_bearing: float):
 
 
 @pytest.mark.parametrize(
+    "meters,km",
+    [(0.0, 0.0), (30, 0.03), (500, 0.5), (-30.5, -0.0305), (-0.0, 0.0)],
+)
+def test_meters_to_km(meters: float, km: float):
+    assert coord_systems.meters_to_km(meters) == pytest.approx(km), "incorrect distance conversion"
+
+
+@pytest.mark.parametrize(
+    "km,meters",
+    [(0.0, 0.0), (0.03, 30), (0.5, 500), (-0.0305, -30.5), (-0.0, 0.0)],
+)
+def test_km_to_meters(km: float, meters: float):
+    assert coord_systems.km_to_meters(km) == pytest.approx(meters), "incorrect distance conversion"
+
+
+@pytest.mark.parametrize(
     "ref_lat,ref_lon,true_bearing_deg,dist_km",
     [
         (30.0, -123.0, 0.00, 30.0),
@@ -82,19 +98,3 @@ def test_xy_to_latlon(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
     assert coord_systems.xy_to_latlon(reference, xy) == pytest.approx(
         latlon
     ), "incorrect coordinate conversion"
-
-
-@pytest.mark.parametrize(
-    "meters,km",
-    [(0.0, 0.0), (30, 0.03), (500, 0.5), (-30.5, -0.0305), (-0.0, 0.0)],
-)
-def test_meters_to_km(meters: float, km: float):
-    assert coord_systems.meters_to_km(meters) == pytest.approx(km), "incorrect distance conversion"
-
-
-@pytest.mark.parametrize(
-    "km,meters",
-    [(0.0, 0.0), (0.03, 30), (0.5, 500), (-0.0305, -30.5), (-0.0, 0.0)],
-)
-def test_km_to_meters(km: float, meters: float):
-    assert coord_systems.km_to_meters(km) == pytest.approx(meters), "incorrect distance conversion"
