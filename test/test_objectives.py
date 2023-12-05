@@ -1,7 +1,6 @@
 import math
 
 import pytest
-from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.coord_systems as coord_systems
@@ -98,6 +97,22 @@ def test_minimum_turning_objective(method: objectives.MinimumTurningMethod):
 
 
 @pytest.mark.parametrize(
+    "cs1,sf,heading_degrees,expected",
+    [
+        ((0, 0), (0, 0), 0, 0),
+        ((-1, -1), (0.1, 0.2), 45, 2.490),
+    ],
+)
+def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading_degrees: float, expected: float):
+    s1 = coord_systems.XY(*cs1)
+    goal = coord_systems.XY(*sf)
+    heading = math.radians(heading_degrees)
+    assert objectives.MinimumTurningObjective.goal_heading_turn_cost(
+        s1, goal, heading
+    ) == pytest.approx(expected, abs=1e-3)
+
+
+@pytest.mark.parametrize(
     "cs1,cs2,sf,expected",
     [
         ((0, 0), (0, 0), (0, 0), 0),
@@ -112,22 +127,6 @@ def test_goal_path_turn_cost(cs1: tuple, cs2: tuple, sf: tuple, expected: float)
     assert objectives.MinimumTurningObjective.goal_path_turn_cost(s1, s2, goal) == pytest.approx(
         expected, abs=1e-3
     )
-
-
-@pytest.mark.parametrize(
-    "cs1,sf,heading_degrees,expected",
-    [
-        ((0, 0), (0, 0), 0, 0),
-        ((-1, -1), (0.1, 0.2), 45, 2.490),
-    ],
-)
-def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading_degrees: float, expected: float):
-    s1 = coord_systems.XY(*cs1)
-    goal = coord_systems.XY(*sf)
-    heading = math.radians(heading_degrees)
-    assert objectives.MinimumTurningObjective.goal_heading_turn_cost(
-        s1, goal, heading
-    ) == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(
@@ -148,51 +147,37 @@ def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading_degrees: float, 
 
 
 @pytest.mark.parametrize(
-    "cs1,cs2,wind_direction,expected",
+    "cs1,cs2,wind_direction_deg,expected",
     [
         ((0, 0), (0, 0), 0.0, 0 * UPWIND_MULTIPLIER),
         ((-1, -1), (2, 1), 45.0, 3.605551275 * UPWIND_MULTIPLIER),
     ],
 )
-def test_wind_objective(cs1: tuple, cs2: tuple, wind_direction: float, expected: float):
-    space = ob.SE2StateSpace()
-
-    s1 = ob.State(space)
-    s2 = ob.State(space)
-
-    s1().setXY(cs1[0], cs1[1])
-    s2().setXY(cs2[0], cs2[1])
-
-    PATH.state.wind_direction = wind_direction
-
-    wind_objective = objectives.WindObjective(
-        PATH._simple_setup.getSpaceInformation(), PATH.state.wind_direction
+def test_wind_direction_cost(cs1: tuple, cs2: tuple, wind_direction_deg: float, expected: float):
+    s1 = coord_systems.XY(*cs1)
+    s2 = coord_systems.XY(*cs2)
+    wind_direction = math.radians(wind_direction_deg)
+    assert objectives.WindObjective.wind_direction_cost(s1, s2, wind_direction) == pytest.approx(
+        expected, abs=1e-3
     )
-
-    assert wind_objective.motionCost(s1(), s2()).value() == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(
-    "wind_direction,heading,expected",
+    "wind_direction_deg,heading_deg,expected",
     [
         (0, 0.0, True),
         (0.0, 45.0, False),
     ],
 )
-def test_is_upwind(wind_direction: float, heading: float, expected: float):
-    PATH.state.heading_direction = heading
-    PATH.state.wind_direction = wind_direction
+def test_is_upwind(wind_direction_deg: float, heading_deg: float, expected: float):
+    wind_direction = math.radians(wind_direction_deg)
+    heading = math.radians(heading_deg)
 
-    assert (
-        objectives.WindObjective.is_upwind(
-            math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
-        )
-        == expected
-    )
+    assert objectives.WindObjective.is_upwind(wind_direction, heading) == expected
 
 
 @pytest.mark.parametrize(
-    "wind_direction,heading,expected",
+    "wind_direction_deg,heading_deg,expected",
     [
         (0.0, 0.0, False),
         (25.0, 46.0, False),
@@ -200,16 +185,11 @@ def test_is_upwind(wind_direction: float, heading: float, expected: float):
         (225, 45, True),
     ],
 )
-def test_is_downwind(wind_direction: float, heading: float, expected: float):
-    PATH.state.heading_direction = heading
-    PATH.state.wind_direction = wind_direction
+def test_is_downwind(wind_direction_deg: float, heading_deg: float, expected: float):
+    wind_direction = math.radians(wind_direction_deg)
+    heading = math.radians(heading_deg)
 
-    assert (
-        objectives.WindObjective.is_downwind(
-            math.radians(PATH.state.wind_direction), math.radians(PATH.state.heading_direction)
-        )
-        == expected
-    )
+    assert objectives.WindObjective.is_downwind(wind_direction, heading) == expected
 
 
 """ Tests for is_angle_between() """

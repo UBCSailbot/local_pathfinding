@@ -277,10 +277,9 @@ class WindObjective(Objective):
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
 
-    # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the upwind and downwind directions of the boat in
-           relation to the wind
+        relation to the wind.
 
         Args:
             s1 (SE2StateInternal): The starting point of the local start state
@@ -289,19 +288,32 @@ class WindObjective(Objective):
         Returns:
             ob.Cost: The cost of going upwind or downwind
         """
-        s1_x, s1_y = s1.getX(), s1.getY()
-        s2_x, s2_y = s2.getX(), s2.getY()
-        distance = math.hypot(s2_y - s1_y, s2_x - s1_x)
-        boat_direction_radians = math.atan2(s2_x - s1_x, s2_y - s1_y)
+        s1_xy = cs.XY(s1.getX(), s1.getY())
+        s2_xy = cs.XY(s2.getX(), s2.getY())
+        return ob.Cost(WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction))
+
+    @staticmethod
+    def wind_direction_cost(s1: cs.XY, s2: cs.XY, wind_direction: float) -> float:
+        """Punishes the boat for going up/downwind.
+
+        Args:
+            s1 (cs.XY): The starting point of the local start state
+            s2 (cs.XY): The ending point of the local goal state
+            wind_direction (float): The direction of the wind in radians (-pi, pi]
+
+        Returns:
+            float: The cost of going upwind or downwind
+        """
+        distance = math.hypot(s2.y - s1.y, s2.x - s1.x)
+        boat_direction_radians = math.atan2(s2.x - s1.x, s2.y - s1.y)
         assert -math.pi <= boat_direction_radians <= math.pi
 
-        if WindObjective.is_upwind(self.wind_direction, boat_direction_radians):
-            cost = UPWIND_MULTIPLIER * distance
-        elif WindObjective.is_downwind(self.wind_direction, boat_direction_radians):
-            cost = DOWNWIND_MULTIPLIER * distance
+        if WindObjective.is_upwind(wind_direction, boat_direction_radians):
+            return UPWIND_MULTIPLIER * distance
+        elif WindObjective.is_downwind(wind_direction, boat_direction_radians):
+            return DOWNWIND_MULTIPLIER * distance
         else:
-            cost = 0.0
-        return ob.Cost(cost)
+            return 0.0
 
     @staticmethod
     def is_upwind(wind_direction: float, boat_direction: float) -> bool:
@@ -351,7 +363,6 @@ class WindObjective(Objective):
             bool: True when `middle_angle` is not in the reflex angle of
                 `first_angle` and `second_angle`, false otherwise.
         """
-
         # Bound the angles to [0, 2pi)
         first_angle = first_angle % (2 * math.pi)
         middle_angle = middle_angle % (2 * math.pi)
