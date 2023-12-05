@@ -169,7 +169,7 @@ def test_wind_objective(cs1: tuple, cs2: tuple, wind_direction: float, expected:
         PATH._simple_setup.getSpaceInformation(), PATH.state.wind_direction
     )
 
-    assert wind_objective.motionCost(s1(), s2()) == pytest.approx(expected, abs=1e-3)
+    assert wind_objective.motionCost(s1(), s2()).value() == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(

@@ -158,6 +158,7 @@ class MinimumTurningObjective(Objective):
         self.goal = cs.XY(
             simple_setup.getGoal().getState().getX(), simple_setup.getGoal().getState().getY()
         )
+        assert -180 < heading_degrees <= 180
         self.heading = math.radians(heading_degrees)
         self.method = method
 
@@ -268,12 +269,13 @@ class WindObjective(Objective):
     """Generates a wind objective function
 
     Attributes:
-        wind_direction (float): The direction of the wind in radians [-pi, pi)
+        wind_direction (float): The direction of the wind in radians (-pi, pi]
     """
 
-    def __init__(self, space_information, wind_direction: float):
+    def __init__(self, space_information, wind_direction_degrees: float):
         super().__init__(space_information)
-        self.wind_direction = math.radians(wind_direction)
+        assert -180 < wind_direction_degrees <= 180
+        self.wind_direction = math.radians(wind_direction_degrees)
 
     # This objective function punishes the boat for going up/downwind
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
@@ -285,25 +287,29 @@ class WindObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            float: The cost of going upwind or downwind
+            ob.Cost: The cost of going upwind or downwind
         """
-        distance = ((s2.getY() - s1.getY()) ** 2 + (s2.getX() - s1.getX()) ** 2) ** 0.5
-        boat_direction_radians = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
+        s1_x, s1_y = s1.getX(), s1.getY()
+        s2_x, s2_y = s2.getX(), s2.getY()
+        distance = math.hypot(s2_y - s1_y, s2_x - s1_x)
+        boat_direction_radians = math.atan2(s2_x - s1_x, s2_y - s1_y)
+        assert -math.pi <= boat_direction_radians <= math.pi
 
         if WindObjective.is_upwind(self.wind_direction, boat_direction_radians):
-            return UPWIND_MULTIPLIER * distance
+            cost = UPWIND_MULTIPLIER * distance
         elif WindObjective.is_downwind(self.wind_direction, boat_direction_radians):
-            return DOWNWIND_MULTIPLIER * distance
+            cost = DOWNWIND_MULTIPLIER * distance
         else:
-            return 0.0
+            cost = 0.0
+        return ob.Cost(cost)
 
     @staticmethod
     def is_upwind(wind_direction: float, boat_direction: float) -> bool:
         """Determines whether the boat is upwind or not and its associated cost
 
         Args:
-            wind_direction (float): The true wind direction (radians). [-pi, pi)
-            boat_direction (float): The direction of the boat (radians). [-pi, pi)
+            wind_direction (float): The true wind direction (radians). (-pi, pi]
+            boat_direction (float): The direction of the boat (radians). [-pi, pi]
 
         Returns:
             bool: The cost associated with the upwind direction
@@ -318,8 +324,8 @@ class WindObjective(Objective):
         """Generates the cost associated with the downwind direction
 
         Args:
-            wind_direction (float): The true wind direction (radians). [-pi, pi)
-            boat_direction_radians (float)): The direction of the boat (radians). [-pi, pi)
+            wind_direction (float): The true wind direction (radians). (-pi, pi]
+            boat_direction_radians (float)): The direction of the boat (radians). [-pi, pi]
 
         Returns:
             bool: The cost associated with the downwind direction
@@ -334,12 +340,12 @@ class WindObjective(Objective):
 
     @staticmethod
     def is_angle_between(first_angle: float, middle_angle: float, second_angle: float) -> bool:
-        """Determines whether an angle is between two other angles.
+        """Determines whether an angle is between two other angles
 
         Args:
-            first_angle (float): The first bounding angle in radians.
-            middle_angle (float): The angle in question in radians.
-            second_angle (float): The second bounding angle in radians.
+            first_angle (float): The first bounding angle in radians
+            middle_angle (float): The angle in question in radians
+            second_angle (float): The second bounding angle in radians
 
         Returns:
             bool: True when `middle_angle` is not in the reflex angle of
@@ -352,9 +358,8 @@ class WindObjective(Objective):
         second_angle = second_angle % (2 * math.pi)
 
         if first_angle <= second_angle:
-            if (
-                second_angle - math.pi == first_angle
-            ):  # Assume all angles are between first and second when pi degrees apart
+            if second_angle - math.pi == first_angle:
+                # Assume all angles are between first and second
                 return middle_angle != first_angle and middle_angle != second_angle
             elif second_angle - math.pi < first_angle:
                 return middle_angle > first_angle and middle_angle < second_angle
