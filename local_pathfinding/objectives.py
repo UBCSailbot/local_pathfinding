@@ -85,58 +85,64 @@ class DistanceObjective(Objective):
         Raises:
             ValueError: If the distance method is not supported
         """
+        s1_xy = cs.XY(s1.getX(), s1.getY())
+        s2_xy = cs.XY(s2.getX(), s2.getY())
         if self.method == DistanceMethod.EUCLIDEAN:
-            return DistanceObjective.get_euclidean_path_length_objective(s1, s2)
+            distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
+            cost = ob.Cost(distance)
         elif self.method == DistanceMethod.LATLON:
-            return DistanceObjective.get_latlon_path_length_objective(s1, s2, self.reference)
+            distance = DistanceObjective.get_latlon_path_length_objective(
+                s1_xy, s2_xy, self.reference
+            )
+            cost = ob.Cost(distance)
         elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
-            return self.ompl_path_objective.motionCost(s1, s2)
+            cost = self.ompl_path_objective.motionCost(s1_xy, s2_xy)
         else:
             ValueError(f"Method {self.method} not supported")
+        return cost
 
     @staticmethod
-    def get_euclidean_path_length_objective(s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
+    def get_euclidean_path_length_objective(s1: cs.XY, s2: cs.XY) -> float:
         """Generates the euclidean distance between two points
 
         Args:
-            s1 (SE2StateInternal): The starting point of the local start state
-            s2 (SE2StateInternal): The ending point of the local goal state
-            reference (cs.LatLon): The XY origin when converting from latlon to XY.
+            s1 (cs.XY): The starting point of the local start state
+            s2 (cs.XY): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The euclidean distance between the two points
+            float: The euclidean distance between the two points
         """
-        cost = math.hypot(s2.getY() - s1.getY(), s2.getX() - s1.getX())
-        return ob.Cost(cost)
+        return math.hypot(s2.y - s1.y, s2.x - s1.x)
 
     @staticmethod
-    def get_latlon_path_length_objective(
-        s1: ob.SE2StateSpace, s2: ob.SE2StateSpace, reference: cs.LatLon
-    ) -> ob.Cost:
+    def get_latlon_path_length_objective(s1: cs.XY, s2: cs.XY, reference: cs.LatLon) -> float:
         """Generates the "great circle" distance between two points
 
         I am assuming that we are using the lat and long coordinates in determining the distance
         between two points.
 
+        Args:
+            s1 (cs.XY): The starting point of the local start state
+            s2 (cs.XY): The ending point of the local goal state
+
         Returns:
-            ob.Cost: The great circle distance between two points
+            float: The great circle distance between two points
         """
-        latlon1 = cs.xy_to_latlon(reference, cs.XY(s1.getX(), s1.getY()))
-        latlon2 = cs.xy_to_latlon(reference, cs.XY(s2.getX(), s2.getY()))
+        latlon1 = cs.xy_to_latlon(reference, s1)
+        latlon2 = cs.xy_to_latlon(reference, s2)
 
         _, _, distance_m = cs.GEODESIC.inv(
             latlon1.longitude, latlon1.latitude, latlon2.longitude, latlon2.latitude
         )
 
-        return ob.Cost(distance_m)
+        return distance_m
 
 
 class MinimumTurningObjective(Objective):
     """Generates a minimum turning objective function
 
     Attributes:
-        goal_x (float): The x coordinate of the goal state
-        goal_y (float): The y coordinate of the goal state
+        goal (cs.XY): The goal position of the sailbot
         heading (float): The heading of the sailbot in radians (-pi, pi]
         method (MinimumTurningMethod): The method of the minimum turning objective function
     """
@@ -145,12 +151,13 @@ class MinimumTurningObjective(Objective):
         self,
         space_information,
         simple_setup,
-        heading_degrees,
+        heading_degrees: float,
         method: MinimumTurningMethod,
     ):
         super().__init__(space_information)
-        self.goal_x = simple_setup.getGoal().getState().getX()
-        self.goal_y = simple_setup.getGoal().getState().getY()
+        self.goal = cs.XY(
+            simple_setup.getGoal().getState().getX(), simple_setup.getGoal().getState().getY()
+        )
         self.heading = math.radians(heading_degrees)
         self.method = method
 
@@ -162,76 +169,76 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The minimum turning angle (degrees)
+            ob.Cost: The minimum turning angle in degrees
 
         Raises:
             ValueError: If the minimum turning method is not supported
         """
-
+        s1_xy = cs.XY(s1.getX(), s1.getY())
+        s2_xy = cs.XY(s2.getX(), s2.getY())
         if self.method == MinimumTurningMethod.GOAL_HEADING:
-            # Calculate the minimum turning cost between s1-goal and heading
-            return self.goal_heading_turn_cost(s1)
+            angle = self.goal_heading_turn_cost(s1_xy, self.goal, self.heading)
         elif self.method == MinimumTurningMethod.GOAL_PATH:
-            # Calculate the minimum turning cost between s1-s2 and s1-goal
-            return self.goal_path_turn_cost(s1, s2)
+            angle = self.goal_path_turn_cost(s1_xy, s2_xy, self.goal)
         elif self.method == MinimumTurningMethod.HEADING_PATH:
-            # Calculate the minimum turning cost from sl-s2 and heading
-            return self.heading_path_turn_cost(s1, s2)
+            angle = self.heading_path_turn_cost(s1_xy, s2_xy, self.heading)
         else:
             ValueError(f"Method {self.method} not supported")
+        return ob.Cost(angle)
 
-    def goal_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
+    @staticmethod
+    def goal_heading_turn_cost(s1: cs.XY, goal: cs.XY, heading: float) -> float:
+        """Determine the smallest turn angle between s1-goal and heading
+
+        Args:
+            s1 (cs.XY): The starting point of the local start state
+            goal (cs.XY): The goal position of the sailbot
+            heading (float): The heading of the sailbot in radians (-pi, pi]
+
+        Returns:
+            float: the turning angle from s2 to s1 in degrees
+        """
+        # Calculate the true bearing of the goal from s1
+        global_goal_direction = math.atan2(goal.x - s1.x, goal.y - s1.y)
+
+        return MinimumTurningObjective.min_turn_angle(global_goal_direction, heading)
+
+    @staticmethod
+    def goal_path_turn_cost(s1: cs.XY, s2: cs.XY, goal: cs.XY) -> float:
         """Determine the smallest turn angle between s1-s2 and s1-goal
 
         Args:
-            s1 (SE2StateInternal): The starting point of the local start state
-            s2 (SE2StateInternal): The ending point of the local goal state
+            s1 (cs.XY): The starting point of the local start state
+            s2 (cs.XY): The ending point of the local goal state
+            goal (cs.XY): The goal position of the sailbot
 
         Returns:
-            ob.Cost: the turning angle from s2 to s1 (degrees)
+            float: the turning angle from s2 to s1 in degrees
         """
-
         # Calculate the true bearing of s2 from s1
-        path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
+        path_direction = math.atan2(s2.x - s1.x, s2.y - s1.y)
 
         # Calculate the true bearing of the goal from s1
-        global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
+        global_goal_direction = math.atan2(goal.x - s1.x, goal.y - s1.y)
 
-        return self.min_turn_angle(global_goal_direction, path_direction)
+        return MinimumTurningObjective.min_turn_angle(global_goal_direction, path_direction)
 
-    def goal_heading_turn_cost(self, s1: ob.SE2StateSpace) -> ob.Cost:
-        """Determine the smallest turn angle between s1-s2 and heading
-
-        Args:
-            s1 (SE2StateInternal): The starting point of the local start state
-            s2 (SE2StateInternal): The ending point of the local goal state
-
-        Returns:
-            ob.Cost: the turning angle from s2 to s1 (degrees)
-        """
-
-        # Calculate the true bearing of the goal from s1
-        global_goal_direction = math.atan2(self.goal_x - s1.getX(), self.goal_y - s1.getY())
-
-        angle = self.min_turn_angle(global_goal_direction, self.heading)
-        return ob.Cost(angle)
-
-    def heading_path_turn_cost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
+    @staticmethod
+    def heading_path_turn_cost(s1: cs.XY, s2: cs.XY, heading: float) -> float:
         """Generates the turning cost between s1-s2 and heading of the sailbot
 
         Args:
-            s1 (SE2StateInternal): The starting point of the local start state
-            s2 (SE2StateInternal): The ending point of the local goal state
+            s1 (cs.XY): The starting point of the local start state
+            s2 (cs.XY): The ending point of the local goal state
+            heading (float): The heading of the sailbot in radians (-pi, pi]
 
         Returns:
-            ob.Cost: The minimum turning angle between s1-s2 and heading  (degrees)
+            float: The minimum turning angle between s1-s2 and heading in degrees
         """
-
         # Calculate the true bearing of s2 from s1
-        path_direction = math.atan2(s2.getX() - s1.getX(), s2.getY() - s1.getY())
+        path_direction = math.atan2(s2.x - s1.x, s2.y - s1.y)
 
-        angle = self.min_turn_angle(path_direction, self.heading)
-        return ob.Cost(angle)
+        return MinimumTurningObjective.min_turn_angle(path_direction, heading)
 
     @staticmethod
     def min_turn_angle(angle1: float, angle2: float) -> float:
@@ -239,13 +246,12 @@ class MinimumTurningObjective(Objective):
 
         Args:
             angle1 (float): The first angle in radians
-            angle2 (float): The second angle in radians. Must be bounded within 2pi radians of
-                            angle1.
+            angle2 (float): The second angle in radians
+                Must be bounded within 2pi radians of `angle1`
 
         Returns:
-            float: The minimum turning angle between the two angles (degrees)
+            float: The minimum turning angle between the two angles in degrees
         """
-
         # Calculate the uncorrected turn size [0, 2pi]
         turn_size_bias = math.fabs(angle1 - angle2)
 

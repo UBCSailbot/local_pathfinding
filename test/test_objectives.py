@@ -44,18 +44,9 @@ def test_distance_objective(method: objectives.DistanceMethod):
     ],
 )
 def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: float):
-    space = ob.SE2StateSpace()
-
-    s1 = ob.State(space)
-    s1().setXY(cs1[0], cs1[1])
-
-    s2 = ob.State(space)
-    s2().setXY(cs2[0], cs2[1])
-
-    assert (
-        objectives.DistanceObjective.get_euclidean_path_length_objective(s1(), s2()).value()
-        == expected
-    )
+    s1 = coord_systems.XY(*cs1)
+    s2 = coord_systems.XY(*cs2)
+    assert objectives.DistanceObjective.get_euclidean_path_length_objective(s1, s2) == expected
 
 
 @pytest.mark.parametrize(
@@ -69,40 +60,39 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
     ],
 )
 def test_get_latlon_path_length_objective(rf: tuple, cs1: tuple, cs2: tuple):
-    space = ob.SE2StateSpace()
-
-    ls1 = coord_systems.latlon_to_xy(
-        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs1[0], cs1[1])
-    )
-    ls2 = coord_systems.latlon_to_xy(
-        coord_systems.LatLon(rf[0], rf[1]), coord_systems.LatLon(cs2[0], cs2[1])
-    )
+    reference = coord_systems.LatLon(*rf)
+    s1 = coord_systems.LatLon(*cs1)
+    s2 = coord_systems.LatLon(*cs2)
+    ls1 = coord_systems.latlon_to_xy(reference, s1)
+    ls2 = coord_systems.latlon_to_xy(reference, s2)
     _, _, distance_m = coord_systems.GEODESIC.inv(
-        lats1=cs1[0],
-        lons1=cs1[1],
-        lats2=cs2[0],
-        lons2=cs2[1],
+        lats1=s1.latitude,
+        lons1=s1.longitude,
+        lats2=s2.latitude,
+        lons2=s2.longitude,
     )
-
-    s1 = ob.State(space)
-    s1().setXY(ls1[0], ls1[1])
-
-    s2 = ob.State(space)
-    s2().setXY(ls2[0], ls2[1])
 
     assert objectives.DistanceObjective.get_latlon_path_length_objective(
-        s1(),
-        s2(),
-        reference=coord_systems.LatLon(rf[0], rf[1]),
-    ).value() == pytest.approx(distance_m)
+        ls1,
+        ls2,
+        reference,
+    ) == pytest.approx(distance_m)
 
 
-def test_minimum_turning_objective():
+@pytest.mark.parametrize(
+    "method",
+    [
+        objectives.MinimumTurningMethod.GOAL_HEADING,
+        objectives.MinimumTurningMethod.GOAL_PATH,
+        objectives.MinimumTurningMethod.HEADING_PATH,
+    ],
+)
+def test_minimum_turning_objective(method: objectives.MinimumTurningMethod):
     minimum_turning_objective = objectives.MinimumTurningObjective(
         PATH._simple_setup.getSpaceInformation(),
         PATH._simple_setup,
         PATH.state.heading_direction,
-        objectives.MinimumTurningMethod.GOAL_PATH,
+        method,
     )
     assert minimum_turning_objective is not None
 
@@ -115,89 +105,46 @@ def test_minimum_turning_objective():
     ],
 )
 def test_goal_path_turn_cost(cs1: tuple, cs2: tuple, sf: tuple, expected: float):
-    space = ob.SE2StateSpace()
+    s1 = coord_systems.XY(*cs1)
+    s2 = coord_systems.XY(*cs2)
+    goal = coord_systems.XY(*sf)
 
-    goal = ob.State(space)
-
-    s1 = ob.State(space)
-    s2 = ob.State(space)
-
-    goal().setXY(sf[0], sf[1])
-    PATH._simple_setup.setGoalState(goal)
-
-    s1().setXY(cs1[0], cs1[1])
-    s2().setXY(cs2[0], cs2[1])
-
-    minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(),
-        PATH._simple_setup,
-        PATH.state.heading_direction,
-        objectives.MinimumTurningMethod.GOAL_PATH,
-    )
-    assert minimum_turning_objective.goal_path_turn_cost(s1(), s2()) == pytest.approx(
+    assert objectives.MinimumTurningObjective.goal_path_turn_cost(s1, s2, goal) == pytest.approx(
         expected, abs=1e-3
     )
 
 
 @pytest.mark.parametrize(
-    "cs1,sf,heading,expected",
+    "cs1,sf,heading_degrees,expected",
     [
         ((0, 0), (0, 0), 0, 0),
         ((-1, -1), (0.1, 0.2), 45, 2.490),
     ],
 )
-def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading: float, expected: float):
-    space = ob.SE2StateSpace()
-
-    goal = ob.State(space)
-
-    s1 = ob.State(space)
-
-    goal().setXY(sf[0], sf[1])
-    PATH._simple_setup.setGoalState(goal)
-
-    s1().setXY(cs1[0], cs1[1])
-
-    PATH.state.heading_direction = heading
-
-    minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(),
-        PATH._simple_setup,
-        PATH.state.heading_direction,
-        objectives.MinimumTurningMethod.GOAL_HEADING,
-    )
-    assert minimum_turning_objective.goal_heading_turn_cost(s1()).value() == pytest.approx(
-        expected, abs=1e-3
-    )
+def test_goal_heading_turn_cost(cs1: tuple, sf: tuple, heading_degrees: float, expected: float):
+    s1 = coord_systems.XY(*cs1)
+    goal = coord_systems.XY(*sf)
+    heading = math.radians(heading_degrees)
+    assert objectives.MinimumTurningObjective.goal_heading_turn_cost(
+        s1, goal, heading
+    ) == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(
-    "cs1,cs2,heading,expected",
+    "cs1,cs2,heading_degrees,expected",
     [
         ((0, 0), (0, 0), 0.0, 0),
         ((-1, -1), (2, 1), 45.0, 11.310),
     ],
 )
-def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading: float, expected: float):
-    space = ob.SE2StateSpace()
+def test_heading_path_turn_cost(cs1: tuple, cs2: tuple, heading_degrees: float, expected: float):
+    s1 = coord_systems.XY(*cs1)
+    s2 = coord_systems.XY(*cs2)
+    heading = math.radians(heading_degrees)
 
-    s1 = ob.State(space)
-    s2 = ob.State(space)
-
-    s1().setXY(cs1[0], cs1[1])
-    s2().setXY(cs2[0], cs2[1])
-
-    PATH.state.heading_direction = heading
-
-    minimum_turning_objective = objectives.MinimumTurningObjective(
-        PATH._simple_setup.getSpaceInformation(),
-        PATH._simple_setup,
-        PATH.state.heading_direction,
-        objectives.MinimumTurningMethod.HEADING_PATH,
-    )
-    assert minimum_turning_objective.heading_path_turn_cost(s1(), s2()).value() == pytest.approx(
-        expected, abs=1e-3
-    )
+    assert objectives.MinimumTurningObjective.heading_path_turn_cost(
+        s1, s2, heading
+    ) == pytest.approx(expected, abs=1e-3)
 
 
 @pytest.mark.parametrize(
