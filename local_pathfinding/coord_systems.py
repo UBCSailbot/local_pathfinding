@@ -6,7 +6,6 @@ from typing import NamedTuple
 from pyproj import Geod
 
 GEODESIC = Geod(ellps="WGS84")
-M_TO_KM = 0.001
 
 
 class LatLon(NamedTuple):
@@ -49,6 +48,10 @@ def meters_to_km(meters: float) -> float:
     return meters / 1000
 
 
+def km_to_meters(km: float) -> float:
+    return km * 1000
+
+
 def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
     """Convert a geographical coordinate to a 2D Cartesian coordinate given a reference point.
 
@@ -63,7 +66,7 @@ def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
         reference.longitude, reference.latitude, latlon.longitude, latlon.latitude
     )
     true_bearing = math.radians(forward_azimuth_deg)
-    distance = distance_m * M_TO_KM
+    distance = meters_to_km(distance_m)
 
     return XY(
         x=distance * math.sin(true_bearing),
@@ -82,7 +85,7 @@ def xy_to_latlon(reference: LatLon, xy: XY) -> LatLon:
         LatLon: The latitude and longitude in degrees.
     """
     true_bearing = math.degrees(math.atan2(xy.x, xy.y))
-    distance = math.hypot(*xy) / M_TO_KM
+    distance = km_to_meters(math.hypot(*xy))
     dest_lon, dest_lat, _ = GEODESIC.fwd(
         reference.longitude, reference.latitude, true_bearing, distance
     )
