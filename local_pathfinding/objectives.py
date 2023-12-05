@@ -58,6 +58,10 @@ class DistanceObjective(Objective):
 
     Attributes:
         method (DistanceMethod): The method of the distance objective function
+        ompl_path_objective (ob.PathLengthOptimizationObjective): The OMPL path length objective.
+            Only defined if the method is OMPL path length.
+        reference (cs.LatLon): The XY origin when converting from latlon to XY.
+            Only defined if the method is latlon.
     """
 
     def __init__(self, space_information, method: DistanceMethod, reference=cs.LatLon(0, 0)):
@@ -65,8 +69,7 @@ class DistanceObjective(Objective):
         self.method = method
         if self.method == DistanceMethod.OMPL_PATH_LENGTH:
             self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
-
-        if self.method == DistanceMethod.LATLON:
+        elif self.method == DistanceMethod.LATLON:
             self.reference = reference
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
