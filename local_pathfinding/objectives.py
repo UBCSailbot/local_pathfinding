@@ -3,6 +3,7 @@
 import math
 from enum import Enum, auto
 
+import numpy as np
 from ompl import base as ob
 
 import local_pathfinding.coord_systems as cs
@@ -64,13 +65,23 @@ class DistanceObjective(Objective):
             Only defined if the method is latlon.
     """
 
-    def __init__(self, space_information, method: DistanceMethod, reference=cs.LatLon(0, 0)):
+    def __init__(
+        self,
+        space_information,
+        method: DistanceMethod,
+        reference=cs.LatLon(0, 0),
+        num_samples: int = 10,
+    ):
         super().__init__(space_information)
         self.method = method
         if self.method == DistanceMethod.OMPL_PATH_LENGTH:
             self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
         elif self.method == DistanceMethod.LATLON:
             self.reference = reference
+
+        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.max_motionCost = 1
+        self.max_motionCost = self._find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -136,6 +147,29 @@ class DistanceObjective(Objective):
         )
 
         return distance_m
+
+    def _find_maximum_motion_cost(self):
+        max_cost = 0
+        n = len(self.sampled_states)
+        for i in range(n):
+            for j in range(i + 1, n):
+                cost = self.motionCost(self.sampled_states[i], self.sampled_states[j])
+                max_cost = max(max_cost, cost)
+
+        return max_cost
+
+    def _sample_states(self, si: ob.SpaceInformation, num_samples: int):
+        sampler = si.getStateSpace().allocDefaultStateSampler()
+
+        sampled_states = []
+
+        for _ in range(num_samples):
+            state = si.getStateSpace().allocState()
+            sampler.sampleUniform(state)
+            state_array = np.array([state[0], state[1]])
+            sampled_states.append(state_array)
+
+        return sampled_states
 
 
 class MinimumTurningObjective(Objective):
