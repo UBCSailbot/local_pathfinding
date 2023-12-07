@@ -58,10 +58,7 @@ class Sailbot(Node):
             msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
         )
         self.global_path_sub = self.create_subscription(
-            msg_type=Path,
-            topic="global_path",
-            callback=self.global_path_callback,
-            qos_profile=10,
+            msg_type=Path, topic="global_path", callback=self.global_path_callback, qos_profile=10
         )
         self.filtered_wind_sensor_sub = self.create_subscription(
             msg_type=WindSensor,
