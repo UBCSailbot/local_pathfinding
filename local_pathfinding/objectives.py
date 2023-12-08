@@ -45,9 +45,13 @@ class Objective(ob.StateCostIntegralObjective):
             the space planning is done in.
     """
 
-    def __init__(self, space_information):
+    def __init__(self, space_information, num_samples: int):
         super().__init__(si=space_information, enableMotionCostInterpolation=True)
         self.space_information = space_information
+
+        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
+        self.max_motionCost = 1.0
+        self.max_motionCost = self.find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         raise NotImplementedError
@@ -94,16 +98,13 @@ class DistanceObjective(Objective):
         reference: cs.LatLon = cs.LatLon(0, 0),
         num_samples: int = 100,
     ):
-        super().__init__(space_information)
         self.method = method
         if self.method == DistanceMethod.OMPL_PATH_LENGTH:
-            self.ompl_path_objective = ob.PathLengthOptimizationObjective(self.space_information)
+            self.ompl_path_objective = ob.PathLengthOptimizationObjective(space_information)
         elif self.method == DistanceMethod.LATLON:
             self.reference = reference
 
-        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
-        self.max_motionCost = 1.0
-        self.max_motionCost = self.find_maximum_motion_cost()
+        super().__init__(space_information, num_samples)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -188,7 +189,6 @@ class MinimumTurningObjective(Objective):
         method: MinimumTurningMethod,
         num_samples: int = 100,
     ):
-        super().__init__(space_information)
         self.goal = cs.XY(
             simple_setup.getGoal().getState().getX(), simple_setup.getGoal().getState().getY()
         )
@@ -196,9 +196,7 @@ class MinimumTurningObjective(Objective):
         self.heading = math.radians(heading_degrees)
         self.method = method
 
-        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
-        self.max_motionCost = 1.0
-        self.max_motionCost = self.find_maximum_motion_cost()
+        super().__init__(space_information, num_samples)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -318,13 +316,10 @@ class WindObjective(Objective):
         wind_direction_degrees: float,
         num_samples: int = 100,
     ):
-        super().__init__(space_information)
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
 
-        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
-        self.max_motionCost = 1.0
-        self.max_motionCost = self.find_maximum_motion_cost()
+        super().__init__(space_information, num_samples)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the upwind and downwind directions of the boat in
