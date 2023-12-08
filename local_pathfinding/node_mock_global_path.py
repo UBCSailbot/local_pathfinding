@@ -8,11 +8,9 @@ import time
 import numpy as np
 import rclpy
 from custom_interfaces.msg import GPS, HelperLatLon, Path
-from pyproj import Geod
 from rclpy.node import Node
 
-ELLIPSOID = Geod(ellps="WGS84")
-M_to_KM = 0.001
+from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 
 # Mock gps data to get things running until we have a running gps node
 # TODO Remove when NET publishes GPS
@@ -168,10 +166,10 @@ class MockGlobalPath(Node):
         lat2 = dest.latitude
         lon2 = dest.longitude
 
-        distance = ELLIPSOID.inv(lats1=lat1, lons1=lon1, lats2=lat2, lons2=lon2)[2] * M_to_KM
+        distance = meters_to_km(GEODESIC.inv(lats1=lat1, lons1=lon1, lats2=lat2, lons2=lon2)[2])
         n = np.ceil(distance / interval_spacing)
 
-        global_path_tuples = ELLIPSOID.npts(
+        global_path_tuples = GEODESIC.npts(
             lon1=lon1,
             lat1=lat1,
             lon2=lon2,
