@@ -1,5 +1,6 @@
+import argparse
 import csv
-import sys
+from typing import Dict, List, Tuple
 
 import plotly.graph_objects as go
 from custom_interfaces.msg import HelperLatLon
@@ -8,8 +9,23 @@ from local_pathfinding.node_mock_global_path import MOCK_GPS, MockGlobalPath
 
 
 def main():
-    file_name = sys.argv[1]
-    file_path = f"/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/{file_name}"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file_path", help="The relative path to the global path file")
+    parser.add_argument(
+        "-i",
+        "--interval_spacing",
+        type=float,
+        default=30.0,
+        help="The distance between waypoints km, default 30.0",
+    )
+    args = parser.parse_args()
+
+    lats, lons = get_lats_and_lons(args.file_path, args.interval_spacing)
+    plot_global_path(lats, lons)
+    print("global path:", lats_and_lons_to_dict(lats, lons), sep="\n")
+
+
+def get_lats_and_lons(file_path: str, interval_spacing: float) -> Tuple[List[float], List[float]]:
     lats = []
     lons = []
 
@@ -22,7 +38,6 @@ def main():
             lons.append(float(row[1]))
 
     if len(lats) < 2:
-        interval_spacing = float(sys.argv[2])
         pos = HelperLatLon(
             latitude=MOCK_GPS.lat_lon.latitude, longitude=MOCK_GPS.lat_lon.longitude
         )
@@ -39,6 +54,10 @@ def main():
             lats.append(item.latitude)
             lons.append(item.longitude)
 
+    return lats, lons
+
+
+def plot_global_path(lats, lons):
     fig = go.Figure(
         data=go.Scattergeo(
             lat=lats,
@@ -68,5 +87,13 @@ def main():
     fig.show()
 
 
+def lats_and_lons_to_dict(
+    lats: List[float], lons: List[float], num_decimals: int = 4
+) -> Dict[int, str]:
+    return {
+        i: f"({lats[i]:.{num_decimals}f}, {lons[i]:.{num_decimals}f})" for i in range(len(lats))
+    }
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
