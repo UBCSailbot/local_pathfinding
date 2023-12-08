@@ -106,46 +106,44 @@ class MockGlobalPath(Node):
         Global path can be changed by modifying mock_global_path.csv or setting the
         global_path_filepath parameter to a filepath to a new csv file.
         """
-        if self._all_subs_active():
-
-            file_path = self.get_parameter("global_path_filepath")._value
-
-            # check when global path was changed last
-            path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
-
-            # Only publish if the path has changed
-            if (path_mod_tmstmp != self.path_mod_tmstmp) or (self.file_path != file_path):
-                global_path = Path()
-                with open(file_path, "r") as file:
-                    reader = csv.reader(file)
-                    # skip header
-                    reader.__next__()
-                    for row in reader:
-                        global_path.waypoints.append(
-                            HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
-                        )
-
-                self.path_mod_tmstmp = path_mod_tmstmp
-                self.file_path = file_path
-
-                # check if global path is just a destination point
-                if len(global_path.waypoints) < 2:
-                    interval_spacing = self.get_parameter("interval_spacing")._value
-                    pos = self.gps.lat_lon
-
-                    self.global_path = MockGlobalPath.generate_path(
-                        dest=global_path.waypoints[0], interval_spacing=interval_spacing, pos=pos
-                    )
-                else:
-                    self.global_path = global_path
-
-                # publish global path
-                msg = self.global_path
-                self.global_path_pub.publish(msg)
-                self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
-
-        else:
+        if not self._all_subs_active():
             self._log_inactive_subs_warning()
+
+        file_path = self.get_parameter("global_path_filepath")._value
+
+        # check when global path was changed last
+        path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
+
+        # Only publish if the path has changed
+        if (path_mod_tmstmp != self.path_mod_tmstmp) or (self.file_path != file_path):
+            global_path = Path()
+            with open(file_path, "r") as file:
+                reader = csv.reader(file)
+                # skip header
+                reader.__next__()
+                for row in reader:
+                    global_path.waypoints.append(
+                        HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
+                    )
+
+            self.path_mod_tmstmp = path_mod_tmstmp
+            self.file_path = file_path
+
+            # check if global path is just a destination point
+            if len(global_path.waypoints) < 2:
+                interval_spacing = self.get_parameter("interval_spacing")._value
+                pos = self.gps.lat_lon
+
+                self.global_path = MockGlobalPath.generate_path(
+                    dest=global_path.waypoints[0], interval_spacing=interval_spacing, pos=pos
+                )
+            else:
+                self.global_path = global_path
+
+            # publish global path
+            msg = self.global_path
+            self.global_path_pub.publish(msg)
+            self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
 
     @staticmethod
     def generate_path(
@@ -207,7 +205,6 @@ class MockGlobalPath(Node):
         return self.gps is not None
 
     def _log_inactive_subs_warning(self):
-        # TODO: log which subscribers are inactive
         self.get_logger().warning("Waiting for GPS to be published")
 
 
