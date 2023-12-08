@@ -170,30 +170,14 @@ class MockGlobalPath(Node):
         distance = meters_to_km(GEODESIC.inv(lats1=lat1, lons1=lon1, lats2=lat2, lons2=lon2)[2])
         n = np.ceil(distance / interval_spacing)
 
-        global_path_tuples = GEODESIC.npts(
-            lon1=lon1,
-            lat1=lat1,
-            lon2=lon2,
-            lat2=lat2,
-            npts=n,
-        )
+        global_path_tuples = GEODESIC.npts(lon1=lon1, lat1=lat1, lon2=lon2, lat2=lat2, npts=n)
 
-        for item in global_path_tuples:
-            global_path.waypoints.append(
-                # npts returns (lon,lat) tuples, its backwards for some reason
-                HelperLatLon(
-                    latitude=item[1],
-                    longitude=item[0],
-                )
-            )
+        # npts returns (lon,lat) tuples, its backwards for some reason
+        for lon, lat in global_path_tuples:
+            global_path.waypoints.append(HelperLatLon(latitude=lat, longitude=lon))
 
         # append the destination
-        global_path.waypoints.append(
-            HelperLatLon(
-                latitude=lat2,
-                longitude=lon2,
-            )
-        )
+        global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
 
         return global_path
 
