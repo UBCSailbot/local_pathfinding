@@ -122,20 +122,17 @@ class DistanceObjective(Objective):
         s2_xy = cs.XY(s2.getX(), s2.getY())
         if self.method == DistanceMethod.EUCLIDEAN:
             distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
-            cost_value = distance / self.max_motionCost
         elif self.method == DistanceMethod.LATLON:
             distance = DistanceObjective.get_latlon_path_length_objective(
                 s1_xy, s2_xy, self.reference
             )
-            cost_value = distance / self.max_motionCost
         elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
-            cost = self.ompl_path_objective.motionCost(s1, s2)
-            cost_value = cost.value() / self.max_motionCost
+            distance = self.ompl_path_objective.motionCost(s1, s2).value()
         else:
             raise ValueError(f"Method {self.method} not supported")
 
-        normalized_cost = ob.Cost(cost_value)
-        return normalized_cost
+        normalized_distance = distance / self.max_motionCost
+        return ob.Cost(normalized_distance)
 
     @staticmethod
     def get_euclidean_path_length_objective(s1: cs.XY, s2: cs.XY) -> float:
@@ -228,8 +225,7 @@ class MinimumTurningObjective(Objective):
             raise ValueError(f"Method {self.method} not supported")
 
         normalized_angle = angle / self.max_motionCost
-        normalized_cost = ob.Cost(normalized_angle)
-        return normalized_cost
+        return ob.Cost(normalized_angle)
 
     @staticmethod
     def goal_heading_turn_cost(s1: cs.XY, goal: cs.XY, heading: float) -> float:
@@ -346,8 +342,7 @@ class WindObjective(Objective):
 
         wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
         normalized_wind_cost = wind_cost / self.max_motionCost
-        normalized_cost = ob.Cost(normalized_wind_cost)
-        return normalized_cost
+        return ob.Cost(normalized_wind_cost)
 
     @staticmethod
     def wind_direction_cost(s1: cs.XY, s2: cs.XY, wind_direction: float) -> float:
