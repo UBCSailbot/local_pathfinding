@@ -3,7 +3,6 @@
 import math
 from enum import Enum, auto
 
-import numpy as np
 from ompl import base as ob
 
 import local_pathfinding.coord_systems as cs
@@ -107,7 +106,7 @@ class DistanceObjective(Objective):
             )
             cost = ob.Cost(distance)
         elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
-            cost = self.ompl_path_objective.motionCost(s1_xy, s2_xy)
+            cost = self.ompl_path_objective.motionCost(s1, s2)
         else:
             ValueError(f"Method {self.method} not supported")
         return cost
@@ -151,10 +150,11 @@ class DistanceObjective(Objective):
     def _find_maximum_motion_cost(self):
         max_cost = 0
         n = len(self.sampled_states)
+
         for i in range(n):
             for j in range(i + 1, n):
                 cost = self.motionCost(self.sampled_states[i], self.sampled_states[j])
-                max_cost = max(max_cost, cost)
+                max_cost = max(max_cost, cost.value())
 
         return max_cost
 
@@ -166,8 +166,7 @@ class DistanceObjective(Objective):
         for _ in range(num_samples):
             state = si.getStateSpace().allocState()
             sampler.sampleUniform(state)
-            state_array = np.array([state[0], state[1]])
-            sampled_states.append(state_array)
+            sampled_states.append(state)
 
         return sampled_states
 
@@ -418,10 +417,10 @@ def get_sailing_objective(
     space_information, simple_setup, heading_degrees: float, wind_direction_degrees: float
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
-    objective.addObjective(
-        objective=DistanceObjective(space_information, DistanceMethod.LATLON),
-        weight=1.0,
+    objective_1 = DistanceObjective(
+        space_information=space_information, method=DistanceMethod.LATLON, num_samples=20
     )
+    objective.addObjective(objective=objective_1, weight=1.0)
     objective.addObjective(
         objective=MinimumTurningObjective(
             space_information, simple_setup, heading_degrees, MinimumTurningMethod.GOAL_HEADING
