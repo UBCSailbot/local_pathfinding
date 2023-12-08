@@ -198,11 +198,11 @@ class MockGlobalPath(Node):
         return global_path
 
     @staticmethod
-    def path_to_dict(global_path: Path, num_decimals: int = 4) -> dict[int, str]:
+    def path_to_dict(path: Path, num_decimals: int = 4) -> dict[int, str]:
         """Converts a Path msg to a dictionary suitable for printing.
 
         Args:
-            global_path (Path): The Path msg to be converted.
+            path (Path): The Path msg to be converted.
             num_decimals (int, optional): The number of decimal places to round to, default 4.
 
         Returns:
@@ -210,7 +210,7 @@ class MockGlobalPath(Node):
         """
         return {
             i: f"({waypoint.latitude:.{num_decimals}f}, {waypoint.longitude:.{num_decimals}f})"
-            for i, waypoint in enumerate(global_path.waypoints)
+            for i, waypoint in enumerate(path.waypoints)
         }
 
     def _all_subs_active(self) -> bool:
