@@ -91,7 +91,7 @@ class DistanceObjective(Objective):
         self,
         space_information,
         method: DistanceMethod,
-        reference=cs.LatLon(0, 0),
+        reference: cs.LatLon = cs.LatLon(0, 0),
         num_samples: int = 100,
     ):
         super().__init__(space_information)
