@@ -111,7 +111,7 @@ class MockGlobalPath(Node):
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
         # Only publish if the path has changed
-        if (path_mod_tmstmp != self.path_mod_tmstmp) or (self.file_path != file_path):
+        if (self.file_path != file_path) or (path_mod_tmstmp != self.path_mod_tmstmp):
             global_path = Path()
             with open(file_path, "r") as file:
                 reader = csv.reader(file)
