@@ -131,7 +131,10 @@ class MockGlobalPath(Node):
                 pos = self.gps.lat_lon
 
                 msg = MockGlobalPath.generate_path(
-                    dest=global_path.waypoints[0], interval_spacing=interval_spacing, pos=pos
+                    dest=global_path.waypoints[0],
+                    interval_spacing=interval_spacing,
+                    pos=pos,
+                    dst_file_path=file_path,
                 )
             else:
                 msg = global_path
@@ -147,6 +150,7 @@ class MockGlobalPath(Node):
         dest: HelperLatLon,
         interval_spacing: float,
         pos: HelperLatLon,
+        dst_file_path: str,
     ) -> Path:
         """Returns a path from the current GPS location to the destination point.
         Waypoints are evenly spaced along the path according to the interval_spacing parameter.
@@ -178,6 +182,13 @@ class MockGlobalPath(Node):
 
         # append the destination
         global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
+
+        # write to a new file
+        with open(dst_file_path, "w") as file:
+            writer = csv.writer(file)
+            writer.writerow(["latitude", "longitude"])
+            for waypoint in global_path.waypoints:
+                writer.writerow([waypoint.latitude, waypoint.longitude])
 
         return global_path
 

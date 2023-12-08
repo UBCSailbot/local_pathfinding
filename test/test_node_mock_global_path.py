@@ -32,8 +32,8 @@ def test_generate_path(dest: HelperLatLon, pos: HelperLatLon, interval_spacing: 
 
     Args:
         dest (HelperLatLon): The destination of the global path.
-        pos (HelperLatLon): The position of the robot.
-        mgp_node (MockGlobalPath): The MockGlobalPath node.
+        pos (HelperLatLon): The position of Sailbot.
+        interval_spacing (float): The desired spacing between waypoints.
     """
     global_path = MockGlobalPath.generate_path(
         dest=dest, pos=pos, interval_spacing=interval_spacing
