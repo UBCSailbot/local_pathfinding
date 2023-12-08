@@ -348,8 +348,8 @@ class WindObjective(Objective):
         """
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
-
         wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
+
         normalized_wind_cost = wind_cost / self.max_motion_cost
         return ob.Cost(normalized_wind_cost)
 
