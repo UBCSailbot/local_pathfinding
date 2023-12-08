@@ -44,7 +44,6 @@ class MockGlobalPath(Node):
         gps (GPS): Data from the GPS sensor.
 
     Attributes:
-        global_path (Path): The global path that will be published for use by navigate.
         path_mod_tmstmp (Str): The modification timestamp of the csv file containing
         the global path
         file_path (Str): The filepath to the csv file containing the global path
@@ -89,7 +88,6 @@ class MockGlobalPath(Node):
 
         # Attributes
         self.gps = MOCK_GPS  # TODO Remove when NET publishes GPS
-        self.global_path = None
         self.path_mod_tmstmp = None
         self.file_path = None
 
@@ -134,14 +132,13 @@ class MockGlobalPath(Node):
                 interval_spacing = self.get_parameter("interval_spacing")._value
                 pos = self.gps.lat_lon
 
-                self.global_path = MockGlobalPath.generate_path(
+                msg = MockGlobalPath.generate_path(
                     dest=global_path.waypoints[0], interval_spacing=interval_spacing, pos=pos
                 )
             else:
-                self.global_path = global_path
+                msg = global_path
 
             # publish global path
-            msg = self.global_path
             self.global_path_pub.publish(msg)
             self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
 
