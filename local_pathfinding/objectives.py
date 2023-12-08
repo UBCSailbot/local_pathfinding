@@ -52,7 +52,7 @@ class Objective(ob.StateCostIntegralObjective):
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         raise NotImplementedError
 
-    def _find_maximum_motion_cost(self):
+    def find_maximum_motion_cost(self):
         max_cost = 0
         n = len(self.sampled_states)
 
@@ -63,7 +63,7 @@ class Objective(ob.StateCostIntegralObjective):
 
         return max_cost
 
-    def _sample_states(self, si: ob.SpaceInformation, num_samples: int):
+    def sample_states(self, si: ob.SpaceInformation, num_samples: int):
         sampler = si.getStateSpace().allocDefaultStateSampler()
 
         sampled_states = []
@@ -101,9 +101,9 @@ class DistanceObjective(Objective):
         elif self.method == DistanceMethod.LATLON:
             self.reference = reference
 
-        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
         self.max_motionCost = 1.0
-        self.max_motionCost = self._find_maximum_motion_cost()
+        self.max_motionCost = self.find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -199,9 +199,9 @@ class MinimumTurningObjective(Objective):
         self.heading = math.radians(heading_degrees)
         self.method = method
 
-        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
         self.max_motionCost = 1.0
-        self.max_motionCost = self._find_maximum_motion_cost()
+        self.max_motionCost = self.find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -326,9 +326,9 @@ class WindObjective(Objective):
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
 
-        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
         self.max_motionCost = 1.0
-        self.max_motionCost = self._find_maximum_motion_cost()
+        self.max_motionCost = self.find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the upwind and downwind directions of the boat in
