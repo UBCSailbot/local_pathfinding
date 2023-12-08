@@ -52,6 +52,29 @@ class Objective(ob.StateCostIntegralObjective):
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         raise NotImplementedError
 
+    def _find_maximum_motion_cost(self):
+        max_cost = 0
+        n = len(self.sampled_states)
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                cost = self.motionCost(self.sampled_states[i], self.sampled_states[j])
+                max_cost = max(max_cost, cost.value())
+
+        return max_cost
+
+    def _sample_states(self, si: ob.SpaceInformation, num_samples: int):
+        sampler = si.getStateSpace().allocDefaultStateSampler()
+
+        sampled_states = []
+
+        for _ in range(num_samples):
+            state = si.getStateSpace().allocState()
+            sampler.sampleUniform(state)
+            sampled_states.append(state)
+
+        return sampled_states
+
 
 class DistanceObjective(Objective):
     """Generates a distance objective function
@@ -69,7 +92,7 @@ class DistanceObjective(Objective):
         space_information,
         method: DistanceMethod,
         reference=cs.LatLon(0, 0),
-        num_samples: int = 10,
+        num_samples: int = 100,
     ):
         super().__init__(space_information)
         self.method = method
@@ -79,7 +102,7 @@ class DistanceObjective(Objective):
             self.reference = reference
 
         self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
-        self.max_motionCost = 1
+        self.max_motionCost = 1.0
         self.max_motionCost = self._find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
@@ -99,17 +122,20 @@ class DistanceObjective(Objective):
         s2_xy = cs.XY(s2.getX(), s2.getY())
         if self.method == DistanceMethod.EUCLIDEAN:
             distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
-            cost = ob.Cost(distance)
+            cost_value = distance / self.max_motionCost
         elif self.method == DistanceMethod.LATLON:
             distance = DistanceObjective.get_latlon_path_length_objective(
                 s1_xy, s2_xy, self.reference
             )
-            cost = ob.Cost(distance)
+            cost_value = distance / self.max_motionCost
         elif self.method == DistanceMethod.OMPL_PATH_LENGTH:
             cost = self.ompl_path_objective.motionCost(s1, s2)
+            cost_value = cost.value() / self.max_motionCost
         else:
-            ValueError(f"Method {self.method} not supported")
-        return cost
+            raise ValueError(f"Method {self.method} not supported")
+
+        normalized_cost = ob.Cost(cost_value)
+        return normalized_cost
 
     @staticmethod
     def get_euclidean_path_length_objective(s1: cs.XY, s2: cs.XY) -> float:
@@ -147,29 +173,6 @@ class DistanceObjective(Objective):
 
         return distance_m
 
-    def _find_maximum_motion_cost(self):
-        max_cost = 0
-        n = len(self.sampled_states)
-
-        for i in range(n):
-            for j in range(i + 1, n):
-                cost = self.motionCost(self.sampled_states[i], self.sampled_states[j])
-                max_cost = max(max_cost, cost.value())
-
-        return max_cost
-
-    def _sample_states(self, si: ob.SpaceInformation, num_samples: int):
-        sampler = si.getStateSpace().allocDefaultStateSampler()
-
-        sampled_states = []
-
-        for _ in range(num_samples):
-            state = si.getStateSpace().allocState()
-            sampler.sampleUniform(state)
-            sampled_states.append(state)
-
-        return sampled_states
-
 
 class MinimumTurningObjective(Objective):
     """Generates a minimum turning objective function
@@ -186,6 +189,7 @@ class MinimumTurningObjective(Objective):
         simple_setup,
         heading_degrees: float,
         method: MinimumTurningMethod,
+        num_samples: int = 100,
     ):
         super().__init__(space_information)
         self.goal = cs.XY(
@@ -194,6 +198,10 @@ class MinimumTurningObjective(Objective):
         assert -180 < heading_degrees <= 180
         self.heading = math.radians(heading_degrees)
         self.method = method
+
+        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.max_motionCost = 1.0
+        self.max_motionCost = self._find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -217,8 +225,11 @@ class MinimumTurningObjective(Objective):
         elif self.method == MinimumTurningMethod.HEADING_PATH:
             angle = self.heading_path_turn_cost(s1_xy, s2_xy, self.heading)
         else:
-            ValueError(f"Method {self.method} not supported")
-        return ob.Cost(angle)
+            raise ValueError(f"Method {self.method} not supported")
+
+        normalized_angle = angle / self.max_motionCost
+        normalized_cost = ob.Cost(normalized_angle)
+        return normalized_cost
 
     @staticmethod
     def goal_heading_turn_cost(s1: cs.XY, goal: cs.XY, heading: float) -> float:
@@ -305,10 +316,19 @@ class WindObjective(Objective):
         wind_direction (float): The direction of the wind in radians (-pi, pi]
     """
 
-    def __init__(self, space_information, wind_direction_degrees: float):
+    def __init__(
+        self,
+        space_information,
+        wind_direction_degrees: float,
+        num_samples: int = 100,
+    ):
         super().__init__(space_information)
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
+
+        self.sampled_states = self._sample_states(si=space_information, num_samples=num_samples)
+        self.max_motionCost = 1.0
+        self.max_motionCost = self._find_maximum_motion_cost()
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the upwind and downwind directions of the boat in
@@ -319,11 +339,15 @@ class WindObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The cost of going upwind or downwind
+            ob.Cost: The cost of going upwind or downwind normalized by max_motionCost
         """
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
-        return ob.Cost(WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction))
+
+        wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
+        normalized_wind_cost = wind_cost / self.max_motionCost
+        normalized_cost = ob.Cost(normalized_wind_cost)
+        return normalized_cost
 
     @staticmethod
     def wind_direction_cost(s1: cs.XY, s2: cs.XY, wind_direction: float) -> float:
@@ -418,17 +442,17 @@ def get_sailing_objective(
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective_1 = DistanceObjective(
-        space_information=space_information, method=DistanceMethod.LATLON, num_samples=20
+        space_information=space_information, method=DistanceMethod.LATLON, num_samples=100
     )
-    objective.addObjective(objective=objective_1, weight=1.0)
-    objective.addObjective(
-        objective=MinimumTurningObjective(
-            space_information, simple_setup, heading_degrees, MinimumTurningMethod.GOAL_HEADING
-        ),
-        weight=100.0,
+    objective_2 = MinimumTurningObjective(
+        space_information,
+        simple_setup,
+        heading_degrees,
+        MinimumTurningMethod.GOAL_HEADING,
+        num_samples=100,
     )
-    objective.addObjective(
-        objective=WindObjective(space_information, wind_direction_degrees), weight=1.0
-    )
-
+    objective_3 = WindObjective(space_information, wind_direction_degrees, num_samples=100)
+    objective.addObjective(objective=objective_1, weight=0.33)
+    objective.addObjective(objective=objective_2, weight=0.33)
+    objective.addObjective(objective=objective_3, weight=0.34)
     return objective
