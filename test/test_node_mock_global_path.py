@@ -27,7 +27,11 @@ ELLIPSOID = Geod(ellps="WGS84")
         ),
     ],
 )
-def test_generate_path(dest: HelperLatLon, pos: HelperLatLon, interval_spacing: float):
+def test_generate_path(
+    dest: HelperLatLon,
+    pos: HelperLatLon,
+    interval_spacing: float,
+):
     """Test the generate_path method of MockGlobalPath.
 
     Args:
@@ -36,7 +40,7 @@ def test_generate_path(dest: HelperLatLon, pos: HelperLatLon, interval_spacing: 
         interval_spacing (float): The desired spacing between waypoints.
     """
     global_path = MockGlobalPath.generate_path(
-        dest=dest, pos=pos, interval_spacing=interval_spacing
+        dest=dest, pos=pos, interval_spacing=interval_spacing, dst_file_path=str(None)
     )
 
     assert isinstance(global_path, Path)

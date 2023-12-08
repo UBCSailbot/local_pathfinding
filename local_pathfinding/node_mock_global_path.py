@@ -183,12 +183,13 @@ class MockGlobalPath(Node):
         # append the destination
         global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
 
-        # write to a new file
-        with open(dst_file_path, "w") as file:
-            writer = csv.writer(file)
-            writer.writerow(["latitude", "longitude"])
-            for waypoint in global_path.waypoints:
-                writer.writerow([waypoint.latitude, waypoint.longitude])
+        if dst_file_path is not None:
+            # write to a new file
+            with open(dst_file_path, "w") as file:
+                writer = csv.writer(file)
+                writer.writerow(["latitude", "longitude"])
+                for waypoint in global_path.waypoints:
+                    writer.writerow([waypoint.latitude, waypoint.longitude])
 
         return global_path
 
