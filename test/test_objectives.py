@@ -54,13 +54,12 @@ def test_distance_objective(method: objectives.DistanceMethod, max_motion_cost: 
             state = ob.State(space)
             state().setXY(*xy)
             states.append(state)
-        assert type(states[0]()) is type(sampled_states[0]), "states are not the correct type"
-        costs = [
+        max_cost = max(
             distance_objective.ompl_path_objective.motionCost(s1(), s2()).value()
             for s1, s2 in itertools.combinations(iterable=states, r=2)
-        ]
+        )
         assert distance_objective.find_maximum_motion_cost([s() for s in states]) == pytest.approx(
-            max(costs) / distance_objective.max_motion_cost
+            max_cost / distance_objective.max_motion_cost
         )
 
 

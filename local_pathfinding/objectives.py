@@ -40,6 +40,7 @@ class Objective(ob.StateCostIntegralObjective):
     - This class inherits from the OMPL class StateCostIntegralObjective:
         https://ompl.kavrakilab.org/classompl_1_1base_1_1StateCostIntegralObjective.html
     - Camelcase is used for functions that override OMPL functions, as that is their convention.
+    - Also computes the maximum motion cost for normalization purposes.
 
     Attributes:
         space_information (StateSpacePtr): Contains all the information about
