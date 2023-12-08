@@ -1,9 +1,8 @@
-# import itertools
+import itertools
 import math
 
 import pytest
-
-# from ompl import base as ob
+from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.coord_systems as coord_systems
@@ -48,18 +47,21 @@ def test_distance_objective(method: objectives.DistanceMethod, max_motion_cost: 
     assert distance_objective.max_motion_cost == pytest.approx(max_motion_cost, rel=1e0)
     # explicitly for the easiest method to set up
     # don't need to test for all methods since they each have their own tests
-    # if method == objectives.DistanceMethod.OMPL_PATH_LENGTH:
-    #     states = []
-    #     for xy in [(-0.5, 0.4), (0.1, 0.2), (0.3, -0.6)]:
-    #         state = ob.State(distance_objective.space_information)
-    #         state().setXY(*xy)
-    #         states.append(state)
-    #     assert type(states[0]) is type(sampled_states[0]), "states are not the correct type"
-    #     costs = [
-    #         distance_objective.ompl_path_objective.motionCost(s1(), s2()).value()
-    #         for s1, s2 in itertools.combinations(iterable=states, r=2)
-    #     ]
-    #     assert distance_objective.find_maximum_motion_cost(states) == pytest.approx(max(costs))
+    if method == objectives.DistanceMethod.OMPL_PATH_LENGTH:
+        states = []
+        space = PATH._simple_setup.getStateSpace()
+        for xy in [(-0.5, 0.4), (0.1, 0.2), (0.3, -0.6)]:
+            state = ob.State(space)
+            state().setXY(*xy)
+            states.append(state)
+        assert type(states[0]()) is type(sampled_states[0]), "states are not the correct type"
+        costs = [
+            distance_objective.ompl_path_objective.motionCost(s1(), s2()).value()
+            for s1, s2 in itertools.combinations(iterable=states, r=2)
+        ]
+        assert distance_objective.find_maximum_motion_cost([s() for s in states]) == pytest.approx(
+            max(costs) / distance_objective.max_motion_cost
+        )
 
 
 @pytest.mark.parametrize(
