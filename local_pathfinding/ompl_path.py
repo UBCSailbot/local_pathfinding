@@ -83,7 +83,7 @@ class OMPLPath:
                   Output an empty list and print a warning message if path not solved.
         """
         if not self.solved:
-            self._logger.warn("Trying to get the waypoints of an unsolved OMPLPath")
+            self._logger.warning("Trying to get the waypoints of an unsolved OMPLPath")
             return []
 
         solution_path = self._simple_setup.getSolutionPath()

@@ -80,7 +80,7 @@ class MockGlobalPath(Node):
 
         # Path callback timer
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
-        self.get_logger().info(f"Got parameter: {pub_period_sec=}")
+        self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
 
         self.global_path_timer = self.create_timer(
             timer_period_sec=pub_period_sec,
@@ -95,7 +95,7 @@ class MockGlobalPath(Node):
 
     # Subscriber callbacks
     def gps_callback(self, msg: GPS):
-        self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
+        self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
 
     # Timer callbacks
