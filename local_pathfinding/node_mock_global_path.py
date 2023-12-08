@@ -16,11 +16,7 @@ M_to_KM = 0.001
 
 # Mock gps data to get things running until we have a running gps node
 # TODO Remove when NET publishes GPS
-MOCK_GPS = GPS(lat_lon=HelperLatLon(latitude=48.9594, longitude=-123.3634))
-
-DEFAULT_PATH = "local_pathfinding/global_paths/mock_global_path.csv"
-INTERVAL_SPACING = 30.0  # km
-GLOBAL_PATH_UPDATE_DELAY = 5.0  # seconds
+MOCK_GPS = GPS(lat_lon=HelperLatLon(latitude=49.1154488073483, longitude=-125.95696431913618))
 
 
 def main(args=None):
@@ -34,15 +30,15 @@ def main(args=None):
 
 
 class MockGlobalPath(Node):
-    """Stores and sends the global path to the navigate node.
+    """Stores and publishes the mock global path to the global_path topic.
 
     Subscribers:
         gps_sub (Subscription): Subscribe to a `GPS` msg
 
     Publishers and their timers:
-        global_path_pub (): Publishes a `Path` msg of the global path
+        global_path_pub (): Publishes a `Path` msg containing the global path
         global_path_timer (Timer): The timer object used to periodically run the global path
-        callback and check if the global path has updated.
+        callback and check if the global path has been updated.
 
     Attributes from subscribers:
         gps (GPS): Data from the GPS sensor.
@@ -51,9 +47,11 @@ class MockGlobalPath(Node):
         global_path (Path): The global path that will be published for use by navigate.
         path_mod_tmstmp (Str): The modification timestamp of the csv file containing
         the global path
+        file_path (Str): The filepath to the csv file containing the global path
 
     Parameters:
-        path_update_period (Double): The time interval for checking if the global path was changed
+        pub_period_sec (Double): This parameter is used to set the period of the global path
+        callback function
         global_path_filepath (Str): The filepath to the csv file containing the global path
         interval_spacing (Double): The distance between waypoints on the global path
     """
@@ -64,30 +62,10 @@ class MockGlobalPath(Node):
         self.declare_parameters(
             namespace="",
             parameters=[
-                ("path_update_period", rclpy.Parameter.Type.DOUBLE),
+                ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
                 ("global_path_filepath", rclpy.Parameter.Type.STRING),
                 ("interval_spacing", rclpy.Parameter.Type.DOUBLE),
             ],
-        )
-
-        self.set_parameters(
-            [
-                rclpy.parameter.Parameter(
-                    name="path_update_period",
-                    type_=rclpy.Parameter.Type.DOUBLE,
-                    value=GLOBAL_PATH_UPDATE_DELAY,
-                ),
-                rclpy.parameter.Parameter(
-                    name="global_path_filepath",
-                    type_=rclpy.Parameter.Type.STRING,
-                    value=DEFAULT_PATH,
-                ),
-                rclpy.parameter.Parameter(
-                    name="interval_spacing",
-                    type_=rclpy.Parameter.Type.DOUBLE,
-                    value=INTERVAL_SPACING,
-                ),
-            ]
         )
 
         # Subscribers
@@ -100,14 +78,12 @@ class MockGlobalPath(Node):
             msg_type=Path, topic="global_path", qos_profile=10
         )
 
-        # Path update timer
-        path_update_period = (
-            self.get_parameter("path_update_period").get_parameter_value().double_value
-        )
-        self.get_logger().info(f"Got parameter: {path_update_period=}")
+        # Path callback timer
+        pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
+        self.get_logger().info(f"Got parameter: {pub_period_sec=}")
 
         self.global_path_timer = self.create_timer(
-            timer_period_sec=path_update_period,
+            timer_period_sec=pub_period_sec,
             callback=self.global_path_callback,
         )
 
@@ -115,6 +91,7 @@ class MockGlobalPath(Node):
         self.gps = MOCK_GPS  # TODO Remove when NET publishes GPS
         self.global_path = None
         self.path_mod_tmstmp = None
+        self.file_path = None
 
     # Subscriber callbacks
     def gps_callback(self, msg: GPS):
@@ -129,62 +106,68 @@ class MockGlobalPath(Node):
         Global path can be changed by modifying mock_global_path.csv or setting the
         global_path_filepath parameter to a filepath to a new csv file.
         """
+        if self._all_subs_active():
 
-        file_path = self.get_parameter("global_path_filepath")._value
+            file_path = self.get_parameter("global_path_filepath")._value
 
-        # check when global path was changed last
-        path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
+            # check when global path was changed last
+            path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
-        if path_mod_tmstmp != self.path_mod_tmstmp:
-            # read in new path and publish
-            global_path = Path()
-            with open(file_path, "r") as file:
-                reader = csv.reader(file)
-                # skip header
-                reader.__next__()
-                for row in reader:
-                    global_path.waypoints.append(
-                        HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
-                    )
+            # Only publish if the path has changed
+            if (path_mod_tmstmp != self.path_mod_tmstmp) or (self.file_path != file_path):
+                global_path = Path()
+                with open(file_path, "r") as file:
+                    reader = csv.reader(file)
+                    # skip header
+                    reader.__next__()
+                    for row in reader:
+                        global_path.waypoints.append(
+                            HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
+                        )
 
-            self.path_mod_tmstmp = path_mod_tmstmp
+                self.path_mod_tmstmp = path_mod_tmstmp
+                self.file_path = file_path
 
-            if self.gps is not None:
                 # check if global path is just a destination point
                 if len(global_path.waypoints) < 2:
-                    self.generate_path(dest=global_path.waypoints[0])
-                else:
-                    for i in range(1, len(global_path.waypoints)):
-                        # check for duplicate waypoints
-                        if (
-                            global_path.waypoints[i].latitude
-                            == global_path.waypoints[i - 1].latitude
-                            and global_path.waypoints[i].longitude
-                            == global_path.waypoints[i - 1].longitude
-                        ):
-                            self.get_logger().warn(
-                                f"Found duplicate consecutive waypoint {global_path.waypoints[i]}"
-                            )
-                            # global_path.waypoints.pop(i)
+                    interval_spacing = self.get_parameter("interval_spacing")._value
+                    pos = self.gps.lat_lon
 
+                    self.global_path = MockGlobalPath.generate_path(
+                        dest=global_path.waypoints[0], interval_spacing=interval_spacing, pos=pos
+                    )
+                else:
                     self.global_path = global_path
 
+                # publish global path
                 msg = self.global_path
                 self.global_path_pub.publish(msg)
                 self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
 
-            else:
-                self.get_logger().warn("No GPS data")
+        else:
+            self._log_inactive_subs_warning()
 
-    def generate_path(self, dest: HelperLatLon):
-        """Generates and sets a path from the current GPS location to the destination point.
+    @staticmethod
+    def generate_path(
+        dest: HelperLatLon,
+        interval_spacing: float,
+        pos: HelperLatLon,
+    ) -> Path:
+        """Returns a path from the current GPS location to the destination point.
         Waypoints are evenly spaced along the path according to the interval_spacing parameter.
+        Path does not include pos, but does include dest as the final element.
+
+        Args:
+            dest (HelperLatLon): The destination point
+            interval_spacing (float): The desired distance between waypoints on the path
+            pos (HelperLatLon): The current GPS location
+
+        Returns:
+            Path: The generated path
         """
 
-        interval_spacing = self.get_parameter("interval_spacing")._value
         global_path = Path()
 
-        pos = self.gps.lat_lon
         lat1 = pos.latitude
         lon1 = pos.longitude
         lat2 = dest.latitude
@@ -218,7 +201,7 @@ class MockGlobalPath(Node):
             )
         )
 
-        self.global_path = global_path
+        return global_path
 
     def _all_subs_active(self) -> bool:
         return self.gps is not None
