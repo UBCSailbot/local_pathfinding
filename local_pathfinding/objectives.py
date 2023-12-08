@@ -1,5 +1,6 @@
 """Our custom OMPL optimization objectives."""
 
+import itertools
 import math
 from enum import Enum, auto
 
@@ -43,37 +44,49 @@ class Objective(ob.StateCostIntegralObjective):
     Attributes:
         space_information (StateSpacePtr): Contains all the information about
             the space planning is done in.
+        max_motion_cost (float): The maximum motion cost between any two states in the state space.
     """
 
     def __init__(self, space_information, num_samples: int):
         super().__init__(si=space_information, enableMotionCostInterpolation=True)
         self.space_information = space_information
 
-        self.sampled_states = self.sample_states(si=space_information, num_samples=num_samples)
-        self.max_motionCost = 1.0
-        self.max_motionCost = self.find_maximum_motion_cost()
+        states = self.sample_states(num_samples)
+        self.max_motion_cost = 1.0
+        self.max_motion_cost = self.find_maximum_motion_cost(states)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         raise NotImplementedError
 
-    def find_maximum_motion_cost(self):
-        max_cost = 0
-        n = len(self.sampled_states)
+    def find_maximum_motion_cost(self, states: list[ob.SE2StateSpace]) -> float:
+        """Finds the maximum motion cost between any two states in `states`.
 
-        for i in range(n):
-            for j in range(i + 1, n):
-                cost = self.motionCost(self.sampled_states[i], self.sampled_states[j])
-                max_cost = max(max_cost, cost.value())
+        Args:
+            states (list[ob.SE2StateSpace]): OMPL states.
 
-        return max_cost
+        Returns:
+            float: Maximum motion cost.
+        """
+        return max(
+            self.motionCost(s1, s2).value()
+            for s1, s2 in itertools.combinations(iterable=states, r=2)
+        )
 
-    def sample_states(self, si: ob.SpaceInformation, num_samples: int):
-        sampler = si.getStateSpace().allocDefaultStateSampler()
+    def sample_states(self, num_samples: int) -> list[ob.SE2StateSpace]:
+        """Samples `num_samples` states from the state space.
+
+        Args:
+            num_samples (int): Number of states to sample.
+
+        Returns:
+            list[ob.SE2StateSpace]: OMPL states.
+        """
+        sampler = self.space_information.getStateSpace().allocDefaultStateSampler()
 
         sampled_states = []
 
         for _ in range(num_samples):
-            state = si.getStateSpace().allocState()
+            state = self.space_information.getStateSpace().allocState()
             sampler.sampleUniform(state)
             sampled_states.append(state)
 
@@ -132,7 +145,7 @@ class DistanceObjective(Objective):
         else:
             raise ValueError(f"Method {self.method} not supported")
 
-        normalized_distance = distance / self.max_motionCost
+        normalized_distance = distance / self.max_motion_cost
         return ob.Cost(normalized_distance)
 
     @staticmethod
@@ -222,7 +235,7 @@ class MinimumTurningObjective(Objective):
         else:
             raise ValueError(f"Method {self.method} not supported")
 
-        normalized_angle = angle / self.max_motionCost
+        normalized_angle = angle / self.max_motion_cost
         return ob.Cost(normalized_angle)
 
     @staticmethod
@@ -336,7 +349,7 @@ class WindObjective(Objective):
         s2_xy = cs.XY(s2.getX(), s2.getY())
 
         wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
-        normalized_wind_cost = wind_cost / self.max_motionCost
+        normalized_wind_cost = wind_cost / self.max_motion_cost
         return ob.Cost(normalized_wind_cost)
 
     @staticmethod
