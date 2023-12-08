@@ -1,6 +1,9 @@
+# import itertools
 import math
 
 import pytest
+
+# from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.coord_systems as coord_systems
@@ -20,19 +23,43 @@ PATH = ompl_path.OMPLPath(
 
 
 @pytest.mark.parametrize(
-    "method",
+    "method,max_motion_cost",
     [
-        objectives.DistanceMethod.EUCLIDEAN,
-        objectives.DistanceMethod.LATLON,
-        objectives.DistanceMethod.OMPL_PATH_LENGTH,
+        (objectives.DistanceMethod.EUCLIDEAN, 2.5),
+        (objectives.DistanceMethod.LATLON, 2700),
+        (objectives.DistanceMethod.OMPL_PATH_LENGTH, 4.0),
     ],
 )
-def test_distance_objective(method: objectives.DistanceMethod):
+def test_distance_objective(method: objectives.DistanceMethod, max_motion_cost: float):
     distance_objective = objectives.DistanceObjective(
         PATH._simple_setup.getSpaceInformation(),
         method,
     )
-    assert distance_objective is not None
+
+    # test sample_states()
+    num_samples = 3
+    sampled_states = distance_objective.sample_states(num_samples)
+    assert len(sampled_states) == num_samples
+    # for state in sampled_states:
+    #     assert ompl_path.is_state_valid(state)
+
+    # test find_maximum_motion_cost()
+    # implicitly
+    assert distance_objective.max_motion_cost == pytest.approx(max_motion_cost, rel=1e0)
+    # explicitly for the easiest method to set up
+    # don't need to test for all methods since they each have their own tests
+    # if method == objectives.DistanceMethod.OMPL_PATH_LENGTH:
+    #     states = []
+    #     for xy in [(-0.5, 0.4), (0.1, 0.2), (0.3, -0.6)]:
+    #         state = ob.State(distance_objective.space_information)
+    #         state().setXY(*xy)
+    #         states.append(state)
+    #     assert type(states[0]) is type(sampled_states[0]), "states are not the correct type"
+    #     costs = [
+    #         distance_objective.ompl_path_objective.motionCost(s1(), s2()).value()
+    #         for s1, s2 in itertools.combinations(iterable=states, r=2)
+    #     ]
+    #     assert distance_objective.find_maximum_motion_cost(states) == pytest.approx(max(costs))
 
 
 @pytest.mark.parametrize(
