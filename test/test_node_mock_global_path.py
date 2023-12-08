@@ -13,17 +13,17 @@ ELLIPSOID = Geod(ellps="WGS84")
         (
             HelperLatLon(latitude=48.95, longitude=123.56),
             HelperLatLon(latitude=38.95, longitude=133.36),
-            30.0
+            30.0,
         ),
         (
             HelperLatLon(latitude=-48.95, longitude=123.56),
             HelperLatLon(latitude=38.95, longitude=-133.36),
-            20.0
+            20.0,
         ),
         (
             HelperLatLon(latitude=48.95, longitude=123.56),
             HelperLatLon(latitude=48.95, longitude=123.55),
-            5.0
+            5.0,
         ),
     ],
 )
@@ -35,11 +35,8 @@ def test_generate_path(dest: HelperLatLon, pos: HelperLatLon, interval_spacing: 
         pos (HelperLatLon): The position of the robot.
         mgp_node (MockGlobalPath): The MockGlobalPath node.
     """
-
     global_path = MockGlobalPath.generate_path(
-        dest=dest,
-        pos=pos,
-        interval_spacing=interval_spacing
+        dest=dest, pos=pos, interval_spacing=interval_spacing
     )
 
     assert isinstance(global_path, Path)
@@ -61,3 +58,22 @@ def test_generate_path(dest: HelperLatLon, pos: HelperLatLon, interval_spacing: 
         )[2]
         dist *= 0.001  # convert to km
         assert dist <= interval_spacing, "Interval spacing is not correct"
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        (
+            Path(
+                waypoints=[
+                    HelperLatLon(latitude=48.123446, longitude=123.123446),
+                    HelperLatLon(latitude=38.123456, longitude=133.123456),
+                ]
+            ),
+            {0: "(48.1234, 123.1234)", 1: "(38.1235, 133.1235)"},
+        ),
+    ],
+)
+def test_path_to_dict(path: Path, expected: dict[int, str]):
+    path_dict = MockGlobalPath.path_to_dict(path)
+    assert path_dict == expected, "Did not correctly convert path to dictionary"

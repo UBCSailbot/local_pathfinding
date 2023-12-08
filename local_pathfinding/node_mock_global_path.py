@@ -138,7 +138,9 @@ class MockGlobalPath(Node):
 
             # publish global path
             self.global_path_pub.publish(msg)
-            self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {msg}")
+            self.get_logger().info(
+                f"Publishing to {self.global_path_pub.topic}: {MockGlobalPath.path_to_dict(msg)}"
+            )
 
     @staticmethod
     def generate_path(
@@ -158,7 +160,6 @@ class MockGlobalPath(Node):
         Returns:
             Path: The generated path
         """
-
         global_path = Path()
 
         lat1 = pos.latitude
@@ -195,6 +196,22 @@ class MockGlobalPath(Node):
         )
 
         return global_path
+
+    @staticmethod
+    def path_to_dict(global_path: Path, num_decimals: int = 4) -> dict[int, str]:
+        """Converts a Path msg to a dictionary suitable for printing.
+
+        Args:
+            global_path (Path): The Path msg to be converted.
+            num_decimals (int, optional): The number of decimal places to round to, default 4.
+
+        Returns:
+            dict[int, str]: Keys are the indices of the formatted latlon waypoints.
+        """
+        return {
+            i: f"({waypoint.latitude:.{num_decimals}f}, {waypoint.longitude:.{num_decimals}f})"
+            for i, waypoint in enumerate(global_path.waypoints)
+        }
 
     def _all_subs_active(self) -> bool:
         return self.gps is not None
