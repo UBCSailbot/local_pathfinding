@@ -4,6 +4,7 @@
 import csv
 import os
 import time
+from datetime import datetime
 
 import numpy as np
 import rclpy
@@ -62,6 +63,7 @@ class MockGlobalPath(Node):
                 ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
                 ("global_path_filepath", rclpy.Parameter.Type.STRING),
                 ("interval_spacing", rclpy.Parameter.Type.DOUBLE),
+                ("write", rclpy.Parameter.Type.BOOL),
             ],
         )
 
@@ -99,6 +101,9 @@ class MockGlobalPath(Node):
         """Check if the global path csv file has changed, on a regular time interval.
         If it has changed, the new path is published.
 
+        Depending on the boolean value of the write parameter, each generated path may be written
+        to a new csv file in the same directory as the source csv file.
+
         Global path can be changed by modifying mock_global_path.csv or setting the
         global_path_filepath parameter to a filepath to a new csv file.
         """
@@ -112,6 +117,10 @@ class MockGlobalPath(Node):
 
         # Only publish if the path has changed
         if (self.file_path != file_path) or (path_mod_tmstmp != self.path_mod_tmstmp):
+            self.get_logger().info(
+                f"Global path file changed to: {os.path.basename(file_path)}\n reading new path"
+            )
+
             global_path = Path()
             with open(file_path, "r") as file:
                 reader = csv.reader(file)
@@ -129,12 +138,21 @@ class MockGlobalPath(Node):
             if len(global_path.waypoints) < 2:
                 interval_spacing = self.get_parameter("interval_spacing")._value
                 pos = self.gps.lat_lon
+                write = self.get_parameter("write")._value
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                self.get_logger().info(
+                    f"Generating new path from {pos.latitude +','+ pos.longitude} to "
+                    f"{global_path.waypoints[0].latitude +','+ global_path.waypoints[0].longitude}"
+                )
 
                 msg = MockGlobalPath.generate_path(
                     dest=global_path.waypoints[0],
                     interval_spacing=interval_spacing,
                     pos=pos,
-                    dst_file_path=file_path,
+                    write=write,
+                    file_path=file_path,
+                    timestamp=timestamp,
                 )
             else:
                 msg = global_path
@@ -150,16 +168,24 @@ class MockGlobalPath(Node):
         dest: HelperLatLon,
         interval_spacing: float,
         pos: HelperLatLon,
-        dst_file_path: str,
+        write: bool = False,
+        file_path: str = "",
+        timestamp: str = "",
     ) -> Path:
         """Returns a path from the current GPS location to the destination point.
         Waypoints are evenly spaced along the path according to the interval_spacing parameter.
         Path does not include pos, but does include dest as the final element.
 
+        If write is True, the path is written to a new csv file in the same directory as file_path,
+        with the name of the original file, appended with a timestamp.
+
         Args:
             dest (HelperLatLon): The destination point
             interval_spacing (float): The desired distance between waypoints on the path
             pos (HelperLatLon): The current GPS location
+            write (bool, optional): Whether to write the path to a new csv file, default False
+            file_path (str, optional): The filepath to the csv file containing the global path,
+            timestamp (str, optional): The timestamp to append to the new csv file name
 
         Returns:
             Path: The generated path
@@ -183,8 +209,11 @@ class MockGlobalPath(Node):
         # append the destination
         global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
 
-        if dst_file_path is not None:
-            # write to a new file
+        if write:
+            if timestamp == "" or file_path == "":
+                raise ValueError("Timestamp and file_path must be specified when write is True")
+            # write to a new timestamped csv file
+            dst_file_path = file_path.removesuffix(".csv") + f"_{timestamp}.csv"
             with open(dst_file_path, "w") as file:
                 writer = csv.writer(file)
                 writer.writerow(["latitude", "longitude"])
