@@ -5,6 +5,7 @@ import csv
 import os
 import time
 from datetime import datetime
+from typing import Union
 
 import numpy as np
 import rclpy
@@ -12,10 +13,6 @@ from custom_interfaces.msg import GPS, HelperLatLon, Path
 from rclpy.node import Node
 
 from local_pathfinding.coord_systems import GEODESIC, meters_to_km
-
-# TODO if csv already contains a path, but first waypoint is greater than interval_spacing away,
-#  interpolate a path between GPS and the first waypoint and append it to the beginning of the path
-#  Do this by running generate_path between GPS and waypoint[0]
 
 # Mock gps data to get things running until we have a running gps node
 # TODO Remove when NET publishes GPS
@@ -68,6 +65,7 @@ class MockGlobalPath(Node):
                 ("global_path_filepath", rclpy.Parameter.Type.STRING),
                 ("interval_spacing", rclpy.Parameter.Type.DOUBLE),
                 ("write", rclpy.Parameter.Type.BOOL),
+                ("gps_threshold", rclpy.Parameter.Type.DOUBLE),
             ],
         )
 
@@ -98,18 +96,43 @@ class MockGlobalPath(Node):
     # Subscriber callbacks
     def gps_callback(self, msg: GPS):
         self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
+
+        gps_threshold = self.get_parameter("gps_threshold")._value
+
+        if (
+            meters_to_km(
+                GEODESIC.inv(
+                    lats1=self.gps.lat_lon.latitude,
+                    lons1=self.gps.lat_lon.longitude,
+                    lats2=msg.lat_lon.latitude,
+                    lons2=msg.lat_lon.longitude,
+                )[2]
+            )
+            > gps_threshold
+        ):
+            self.get_logger().info(
+                f"GPS data changed by more than {gps_threshold} km. Running global path callback"
+            )
+            self.global_path_callback(gps_call=True)
+
         self.gps = msg
 
     # Timer callbacks
-    def global_path_callback(self):
+    def global_path_callback(self, gps_call=False):
         """Check if the global path csv file has changed, on a regular time interval.
         If it has changed, the new path is published.
+
+        This function is also called by the gps callback if the gps data has changed by more than
+        gps_threshold.
 
         Depending on the boolean value of the write parameter, each generated path may be written
         to a new csv file in the same directory as the source csv file.
 
         Global path can be changed by modifying mock_global_path.csv or setting the
         global_path_filepath parameter to a filepath to a new csv file.
+
+        Args:
+            gps_call (bool, optional): Whether the callback was called by the gps callback.
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
@@ -119,16 +142,14 @@ class MockGlobalPath(Node):
         # check when global path was changed last
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
-        # TODO also check if GPS has changed more than some threshold amount
-        # We want a new global path in this case too
-
-        # Only publish if the path
-        if (self.file_path != file_path) or (path_mod_tmstmp != self.path_mod_tmstmp):
+        # Only publish if the path has changed or gps has changed by more than gps_threshold
+        if gps_call or (self.file_path != file_path) or (path_mod_tmstmp != self.path_mod_tmstmp):
             self.get_logger().info(
                 f"Global path file changed to: {os.path.basename(file_path)}\n reading new path"
             )
 
             global_path = Path()
+
             with open(file_path, "r") as file:
                 reader = csv.reader(file)
                 # skip header
@@ -140,16 +161,24 @@ class MockGlobalPath(Node):
 
             self.path_mod_tmstmp = path_mod_tmstmp
             self.file_path = file_path
+            pos = self.gps.lat_lon
+            dist_to_path = meters_to_km(
+                GEODESIC.inv(
+                    lats1=pos.latitude,
+                    lons1=pos.longitude,
+                    lats2=global_path.waypoints[0].latitude,
+                    lons2=global_path.waypoints[0].longitude,
+                )[2]
+            )
 
             # check if global path is just a destination point
             if len(global_path.waypoints) < 2:
                 interval_spacing = self.get_parameter("interval_spacing")._value
-                pos = self.gps.lat_lon
                 write = self.get_parameter("write")._value
 
                 self.get_logger().info(
-                    f"Generating new path from {pos.latitude +','+ pos.longitude} to "
-                    f"{global_path.waypoints[0].latitude +','+ global_path.waypoints[0].longitude}"
+                    f"Generating new path from {pos.latitude}, {pos.longitude} to "
+                    f"{global_path.waypoints[0].latitude}, {global_path.waypoints[0].longitude}"
                 )
 
                 if write:
@@ -162,6 +191,24 @@ class MockGlobalPath(Node):
                     write=write,
                     file_path=file_path,
                 )
+
+            elif dist_to_path > interval_spacing:
+                # generate a path from GPS pos to the first waypoint and append it to the beginning
+                self.get_logger().info(
+                    f"Generating path to from position: {pos.latitude:.{4}f}, {pos.longitude:.{4}}"
+                    f" to the start of the path: {MockGlobalPath.path_to_dict(global_path)}, "
+                )
+                interval_spacing = self.get_parameter("interval_spacing")._value
+                write = self.get_parameter("write")._value
+
+                msg = MockGlobalPath.generate_path(
+                    dest=global_path.waypoints,
+                    interval_spacing=interval_spacing,
+                    pos=pos,
+                    write=write,
+                    file_path=file_path,
+                )
+
             else:
                 msg = global_path
 
@@ -173,7 +220,7 @@ class MockGlobalPath(Node):
 
     @staticmethod
     def generate_path(
-        dest: HelperLatLon,
+        dest: Union[HelperLatLon, list[HelperLatLon]],
         interval_spacing: float,
         pos: HelperLatLon,
         write: bool = False,
@@ -187,7 +234,7 @@ class MockGlobalPath(Node):
         with the name of the original file, appended with a timestamp.
 
         Args:
-            dest (HelperLatLon): The destination point
+            dest (Union[HelperLatLon, list[HelperLatLon]]): The destination point or partial path
             interval_spacing (float): The desired distance between waypoints on the path
             pos (HelperLatLon): The current GPS location
             write (bool, optional): Whether to write the path to a new csv file, default False
@@ -200,8 +247,13 @@ class MockGlobalPath(Node):
 
         lat1 = pos.latitude
         lon1 = pos.longitude
-        lat2 = dest.latitude
-        lon2 = dest.longitude
+
+        if isinstance(dest, list):
+            lat2 = dest[0].latitude
+            lon2 = dest[0].longitude
+        else:
+            lat2 = dest.latitude
+            lon2 = dest.longitude
 
         distance = meters_to_km(GEODESIC.inv(lats1=lat1, lons1=lon1, lats2=lat2, lons2=lon2)[2])
         n = np.ceil(distance / interval_spacing)
@@ -214,6 +266,9 @@ class MockGlobalPath(Node):
 
         # append the destination
         global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
+
+        if isinstance(dest, list):
+            global_path.waypoints.extend(dest[1:])
 
         if write:
             if file_path == "":
