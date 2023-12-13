@@ -118,7 +118,7 @@ class MockGlobalPath(Node):
         self.gps = msg
 
     # Timer callbacks
-    def global_path_callback(self, gps_call=False):
+    def global_path_callback(self, gps_call=False, force_update=False):
         """Check if the global path csv file has changed, on a regular time interval.
         If it has changed, the new path is published.
 
@@ -128,11 +128,12 @@ class MockGlobalPath(Node):
         Depending on the boolean value of the write parameter, each generated path may be written
         to a new csv file in the same directory as the source csv file.
 
-        Global path can be changed by modifying mock_global_path.csv or setting the
-        global_path_filepath parameter to a filepath to a new csv file.
+        Global path can be changed by modifying mock_global_path.csv or modifying the
+        global_path_filepath parameter.
 
         Args:
             gps_call (bool, optional): Whether the callback was called by the gps callback.
+            force_update (bool, optional): Whether to force the callback to run, without any checks
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
@@ -162,20 +163,13 @@ class MockGlobalPath(Node):
             self.path_mod_tmstmp = path_mod_tmstmp
             self.file_path = file_path
             pos = self.gps.lat_lon
-            dist_to_path = meters_to_km(
-                GEODESIC.inv(
-                    lats1=pos.latitude,
-                    lons1=pos.longitude,
-                    lats2=global_path.waypoints[0].latitude,
-                    lons2=global_path.waypoints[0].longitude,
-                )[2]
-            )
+
+            path_spacing = MockGlobalPath.interval_spacing(pos, global_path.waypoints)
+            interval_spacing = self.get_parameter("interval_spacing")._value
+            write = self.get_parameter("write")._value
 
             # check if global path is just a destination point
             if len(global_path.waypoints) < 2:
-                interval_spacing = self.get_parameter("interval_spacing")._value
-                write = self.get_parameter("write")._value
-
                 self.get_logger().info(
                     f"Generating new path from {pos.latitude}, {pos.longitude} to "
                     f"{global_path.waypoints[0].latitude}, {global_path.waypoints[0].longitude}"
@@ -191,20 +185,20 @@ class MockGlobalPath(Node):
                     write=write,
                     file_path=file_path,
                 )
-
-            elif dist_to_path > interval_spacing:
-                # generate a path from GPS pos to the first waypoint and append it to the beginning
+            # Check if any waypoints are too far apart
+            elif max(path_spacing) > interval_spacing:
                 self.get_logger().info(
-                    f"Generating path to from position: {pos.latitude:.{4}f}, {pos.longitude:.{4}}"
-                    f" to the start of the path: {MockGlobalPath.path_to_dict(global_path)}, "
+                    f"Some waypoints in the global path exceed the maximum interval spacing of"
+                    f" {interval_spacing} km. Interpolating between waypoints and generating path"
                 )
-                interval_spacing = self.get_parameter("interval_spacing")._value
-                write = self.get_parameter("write")._value
+                if write:
+                    self.get_logger().info("Writing generated path to new file")
 
-                msg = MockGlobalPath.generate_path(
-                    dest=global_path.waypoints,
+                msg = MockGlobalPath.interpolate_path(
+                    global_path=global_path,
                     interval_spacing=interval_spacing,
                     pos=pos,
+                    path_spacing=path_spacing,
                     write=write,
                     file_path=file_path,
                 )
@@ -271,20 +265,115 @@ class MockGlobalPath(Node):
             global_path.waypoints.extend(dest[1:])
 
         if write:
-            if file_path == "":
-                raise ValueError("file_path must be specified when write is True")
-
-            # write to a new timestamped csv file
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-            dst_file_path = file_path.removesuffix(".csv") + f"_{timestamp}.csv"
-            with open(dst_file_path, "w") as file:
-                writer = csv.writer(file)
-                writer.writerow(["latitude", "longitude"])
-                for waypoint in global_path.waypoints:
-                    writer.writerow([waypoint.latitude, waypoint.longitude])
+            MockGlobalPath.write_to_file(file_path=file_path, global_path=global_path)
 
         return global_path
+
+    @staticmethod
+    def interpolate_path(
+        global_path: Path,
+        interval_spacing: float,
+        pos: HelperLatLon,
+        path_spacing: list[float],
+        write: bool = False,
+        file_path: str = "",
+    ) -> Path:
+        """Interpolates and inserts subpaths between any waypoints which are spaced too far apart.
+
+        Args:
+            global_path (Path): The path to interpolate between
+            interval_spacing (float): The desired spacing between waypoints
+            pos (HelperLatLon): The current GPS location
+            path_spacing (list[float]): The distances between pairs of points in global_path
+            write (bool, optional): Whether to write the path to a new csv file, default False
+            file_path (str, optional): The filepath to the csv file containing the global path,
+
+        Returns:
+            Path: The interpolated path
+        """
+        # interpolate a simple path between any waypoints that are too far apart
+
+        global_path.waypoints = [pos] + global_path.waypoints
+
+        if len(global_path.waypoints) % 2 != 0:
+            # the condition is true, interval_spacing() will have added a duplicate pos
+            # to the start of its local version of the waypoint list, for inv() to work
+            # so the first distance will be 0 and should be ignored
+            path_spacing.pop(0)
+
+        i, j = 0, 0
+        while i < len(path_spacing):
+            if path_spacing[i] > interval_spacing:
+                # interpolate a new sub path between the two waypoints
+                pos = global_path.waypoints[j]
+                dest = global_path.waypoints[j + 1]
+
+                sub_path = MockGlobalPath.generate_path(
+                    dest=dest,
+                    interval_spacing=interval_spacing,
+                    pos=pos,
+                )
+                # insert sub path into path
+                global_path.waypoints[j + 1 : j + 1] = sub_path.waypoints[:-1]
+                # shift indices to account for path insertion
+                j += len(sub_path.waypoints)
+
+            i += 1
+
+        if write:
+            MockGlobalPath.write_to_file(file_path=file_path, global_path=global_path)
+
+        return global_path
+
+    @staticmethod
+    def interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]) -> list[float]:
+        """Returns the distances between pairs of points in a list of latitudes and longitudes,
+        including pos as the first point.
+
+        Args:
+            pos (HelperLatLon): The position of the boat
+            waypoints (list[HelperLatLon]): The list of waypoints
+
+        Returns:
+            list[float]: The distances between pairs of points in waypoints [km]
+        """
+        all_coords = [(pos.latitude, pos.longitude)] + [
+            (waypoint.latitude, waypoint.longitude) for waypoint in waypoints
+        ]
+        if len(all_coords) % 2 != 0:
+            all_coords = [all_coords[0]] + all_coords
+
+        coords_array = np.array(all_coords)
+
+        lats1, lons1 = coords_array[:-1].T
+        lats2, lons2 = coords_array[1:].T
+
+        distances = GEODESIC.inv(lats1=lats1, lons1=lons1, lats2=lats2, lons2=lons2)[2]
+
+        distances = [meters_to_km(distance) for distance in distances]
+
+        return distances
+
+    @staticmethod
+    def write_to_file(file_path: str, global_path: Path):
+        """Writes the global path to a new, timestamped csv file.
+
+        Args:
+            file_path (str): The filepath to the csv file containing the global path,
+            global_path (Path): The global path to write to file
+        """
+        if file_path == "":
+            raise ValueError("file_path must be specified when write is True")
+
+        # write to a new timestamped csv file
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        dst_file_path = file_path.removesuffix(".csv") + f"_{timestamp}.csv"
+        with open(dst_file_path, "w") as file:
+            writer = csv.writer(file)
+            writer.writerow(["latitude", "longitude"])
+            for waypoint in global_path.waypoints:
+                writer.writerow([waypoint.latitude, waypoint.longitude])
 
     @staticmethod
     def path_to_dict(path: Path, num_decimals: int = 4) -> dict[int, str]:

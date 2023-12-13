@@ -1,10 +1,52 @@
+from typing import Union
+
 import pytest
 from custom_interfaces.msg import HelperLatLon, Path
-from pyproj import Geod
 
+from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 from local_pathfinding.node_mock_global_path import MockGlobalPath
 
-ELLIPSOID = Geod(ellps="WGS84")
+
+@pytest.mark.parametrize(
+    "pos,waypoints",
+    [
+        (
+            HelperLatLon(latitude=48.95, longitude=123.56),
+            [
+                HelperLatLon(latitude=48.95, longitude=123.55),
+                HelperLatLon(latitude=85.95, longitude=13.56),
+            ],
+        ),
+        (
+            HelperLatLon(latitude=48.95, longitude=123.56),
+            [
+                HelperLatLon(latitude=48.95, longitude=123.55),
+                HelperLatLon(latitude=85.95, longitude=13.56),
+                HelperLatLon(latitude=85.00, longitude=13.00),
+            ],
+        ),
+    ],
+)
+def test_interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]):
+    """Test the greatest_interval method of MockGlobalPath.
+
+    Args:
+        pos (HelperLatLon): The start position.
+        waypoints (list[HelperLatLon]): The waypoints of the global path.
+    """
+    greatest_interval = max(MockGlobalPath.interval_spacing(pos, waypoints))
+    expected_interval = meters_to_km(
+        GEODESIC.inv(
+            lats1=waypoints[0].latitude,
+            lons1=waypoints[0].longitude,
+            lats2=waypoints[1].latitude,
+            lons2=waypoints[1].longitude,
+        )[2]
+    )
+
+    assert greatest_interval == pytest.approx(
+        expected_interval
+    ), "Greatest interval is not correct"
 
 
 @pytest.mark.parametrize(
@@ -25,11 +67,19 @@ ELLIPSOID = Geod(ellps="WGS84")
             HelperLatLon(latitude=48.95, longitude=123.55),
             5.0,
         ),
+        (
+            HelperLatLon(latitude=48.95, longitude=123.56),
+            [
+                HelperLatLon(latitude=48.95, longitude=123.55),
+                HelperLatLon(latitude=48.95, longitude=123.54),
+            ],
+            10.0,
+        ),
     ],
 )
 def test_generate_path(
-    dest: HelperLatLon,
     pos: HelperLatLon,
+    dest: Union[HelperLatLon, list[HelperLatLon]],
     interval_spacing: float,
 ):
     """Test the generate_path method of MockGlobalPath.
@@ -40,21 +90,31 @@ def test_generate_path(
         interval_spacing (float): The desired spacing between waypoints.
     """
     global_path = MockGlobalPath.generate_path(
-        dest=dest, pos=pos, interval_spacing=interval_spacing, dst_file_path=str(None)
+        dest=dest,
+        interval_spacing=interval_spacing,
+        pos=pos,
     )
 
     assert isinstance(global_path, Path)
 
-    assert global_path.waypoints[-1].latitude == pytest.approx(
-        expected=dest.latitude
-    ), "final waypoint latitude is not correct"
-    assert global_path.waypoints[-1].longitude == pytest.approx(
-        expected=dest.longitude
-    ), "final waypoint longitude is not correct"
+    if isinstance(dest, list):
+        assert global_path.waypoints[-1].latitude == pytest.approx(
+            dest[-1].latitude
+        ), "final waypoint latitude is not correct"
+        assert global_path.waypoints[-1].longitude == pytest.approx(
+            dest[-1].longitude
+        ), "final waypoint longitude is not correct"
+    else:
+        assert global_path.waypoints[-1].latitude == pytest.approx(
+            expected=dest.latitude
+        ), "final waypoint latitude is not correct"
+        assert global_path.waypoints[-1].longitude == pytest.approx(
+            expected=dest.longitude
+        ), "final waypoint longitude is not correct"
 
     # Ensure proper spacing between waypoints
     for i in range(1, len(global_path.waypoints)):
-        dist = ELLIPSOID.inv(
+        dist = GEODESIC.inv(
             global_path.waypoints[i - 1].longitude,
             global_path.waypoints[i - 1].latitude,
             global_path.waypoints[i].longitude,
