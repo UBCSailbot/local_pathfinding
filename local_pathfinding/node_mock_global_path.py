@@ -184,6 +184,9 @@ class MockGlobalPath(Node):
             # obtain the actual distances between every waypoint in the global path
             path_spacing = MockGlobalPath.interval_spacing(pos, global_path.waypoints)
 
+            # obtain desired interval spacing
+            interval_spacing = self.get_parameter("interval_spacing")._value
+
             # check if global path is just a destination point
             if len(global_path.waypoints) < 2:
                 self.get_logger().info(
@@ -191,9 +194,6 @@ class MockGlobalPath(Node):
                     f"{global_path.waypoints[0].latitude:.4f}, "
                     f"{global_path.waypoints[0].longitude:.4f}"
                 )
-
-                # obtain desired interval spacing
-                interval_spacing = self.get_parameter("interval_spacing")._value
 
                 write = self.get_parameter("write")._value
                 if write:
@@ -212,9 +212,6 @@ class MockGlobalPath(Node):
                     f"Some waypoints in the global path exceed the maximum interval spacing of"
                     f" {interval_spacing} km. Interpolating between waypoints and generating path"
                 )
-
-                # obtain desired interval spacing
-                interval_spacing = self.get_parameter("interval_spacing")._value
 
                 write = self.get_parameter("write")._value
                 if write:

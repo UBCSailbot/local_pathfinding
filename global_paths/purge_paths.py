@@ -1,5 +1,5 @@
 """This is a script to delete all generated path csv files in the global_paths directory.
-It will devour any file that ends with a timestamp.
+It will devour any csv file that ends with a timestamp.
 """
 import os
 import re
@@ -23,7 +23,7 @@ def delete_timestamped_files():
             file_path = os.path.join(dir_path, file_name)
             try:
                 os.remove(file_path)
-                print(f"Deleted: {file_path}")
+                print(f"Deleted: {os.path.basename(file_path)} from /global_paths")
             except OSError as e:
                 print(f"Error deleting {file_path}: {e}")
 
