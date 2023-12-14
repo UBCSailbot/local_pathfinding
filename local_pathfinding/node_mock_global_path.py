@@ -75,6 +75,7 @@ class MockGlobalPath(Node):
                 ("interval_spacing", rclpy.Parameter.Type.DOUBLE),
                 ("write", rclpy.Parameter.Type.BOOL),
                 ("gps_threshold", rclpy.Parameter.Type.DOUBLE),
+                ("force", rclpy.Parameter.Type.BOOL),
             ],
         )
 
@@ -104,9 +105,11 @@ class MockGlobalPath(Node):
 
     # Subscriber callbacks
     def gps_callback(self, msg: GPS):
+        """Store the gps data and check if the global path needs to be updated."""
         self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
 
         gps_threshold = self.get_parameter("gps_threshold")._value
+        interval_spacing = self.get_parameter("interval_spacing")._value
 
         if (
             meters_to_km(
@@ -117,7 +120,7 @@ class MockGlobalPath(Node):
                     lons2=msg.lat_lon.longitude,
                 )[2]
             )
-            > gps_threshold
+            > gps_threshold * interval_spacing
         ):
             self.get_logger().info(
                 f"GPS data changed by more than {gps_threshold} km. Running global path callback"
@@ -144,7 +147,7 @@ class MockGlobalPath(Node):
             gps_call (bool, optional):
                 Whether the callback was called by the gps callback.
             force (bool, optional):
-                Whether to force the callback to run, without any checks TODO imp this
+                Whether to force the callback to run, without any checks
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
@@ -154,14 +157,18 @@ class MockGlobalPath(Node):
         # check when global path was changed last
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
+        # check if the global path has been forced to update by parameter change in CLI
+        force = self.get_parameter("force")._value
+
         # Only publish path if the path has changed or gps has changed by more than gps_threshold
-        # TODO add force
         if (
             force
             or gps_call
             or (self.file_path != file_path)
             or (path_mod_tmstmp != self.path_mod_tmstmp)
         ):
+            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
+
             self.get_logger().info(
                 f"Global path file is: {os.path.basename(file_path)}\n Reading path"
             )
