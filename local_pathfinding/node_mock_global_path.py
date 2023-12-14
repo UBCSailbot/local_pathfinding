@@ -33,26 +33,35 @@ class MockGlobalPath(Node):
     """Stores and publishes the mock global path to the global_path topic.
 
     Subscribers:
-        gps_sub (Subscription): Subscribe to a `GPS` msg
+        gps_sub (Subscription):
+            Subscribe to a `GPS` msg
 
     Publishers and their timers:
-        global_path_pub (): Publishes a `Path` msg containing the global path
-        global_path_timer (Timer): The timer object used to periodically run the global path
-        callback and check if the global path has been updated.
+        global_path_pub ():
+            Publishes a `Path` msg containing the global path
+        global_path_timer (Timer):
+            The timer object used to periodically run the global path callback.
 
     Attributes from subscribers:
         gps (GPS): Data from the GPS sensor.
 
     Attributes:
-        path_mod_tmstmp (Str): The modification timestamp of the csv file containing
-        the global path
-        file_path (Str): The filepath to the csv file containing the global path
+        path_mod_tmstmp (Str):
+            The modification timestamp of the csv file containingthe global path
+        file_path (Str):
+            The filepath to the csv file containing the global path
 
     Parameters:
-        pub_period_sec (Double): This parameter is used to set the period of the global path
-        callback function
-        global_path_filepath (Str): The filepath to the csv file containing the global path
-        interval_spacing (Double): The distance between waypoints on the global path
+        pub_period_sec (Double):
+            This parameter is used to set the period of the global path callback function
+        global_path_filepath (Str):
+            The filepath to the csv file containing the global path
+        interval_spacing (Double):
+            The distance between waypoints on the global path
+        write (Bool):
+            Whether to write the generated path to a new csv file
+        gps_threshold (Double):
+            The amount of change in the gps location required to trigger the global path callback
     """
 
     def __init__(self):
@@ -118,7 +127,7 @@ class MockGlobalPath(Node):
         self.gps = msg
 
     # Timer callbacks
-    def global_path_callback(self, gps_call=False, force_update=False):
+    def global_path_callback(self, gps_call=False, force=False):
         """Check if the global path csv file has changed, on a regular time interval.
         If it has changed, the new path is published.
 
@@ -132,8 +141,10 @@ class MockGlobalPath(Node):
         global_path_filepath parameter.
 
         Args:
-            gps_call (bool, optional): Whether the callback was called by the gps callback.
-            force_update (bool, optional): Whether to force the callback to run, without any checks
+            gps_call (bool, optional):
+                Whether the callback was called by the gps callback.
+            force (bool, optional):
+                Whether to force the callback to run, without any checks TODO imp this
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
@@ -143,10 +154,16 @@ class MockGlobalPath(Node):
         # check when global path was changed last
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
-        # Only publish if the path has changed or gps has changed by more than gps_threshold
-        if gps_call or (self.file_path != file_path) or (path_mod_tmstmp != self.path_mod_tmstmp):
+        # Only publish path if the path has changed or gps has changed by more than gps_threshold
+        # TODO add force
+        if (
+            force
+            or gps_call
+            or (self.file_path != file_path)
+            or (path_mod_tmstmp != self.path_mod_tmstmp)
+        ):
             self.get_logger().info(
-                f"Global path file changed to: {os.path.basename(file_path)}\n reading new path"
+                f"Global path file is: {os.path.basename(file_path)}\n Reading path"
             )
 
             global_path = Path()
@@ -164,17 +181,21 @@ class MockGlobalPath(Node):
             self.file_path = file_path
             pos = self.gps.lat_lon
 
+            # obtain the actual distances between every waypoint in the global path
             path_spacing = MockGlobalPath.interval_spacing(pos, global_path.waypoints)
-            interval_spacing = self.get_parameter("interval_spacing")._value
-            write = self.get_parameter("write")._value
 
             # check if global path is just a destination point
             if len(global_path.waypoints) < 2:
                 self.get_logger().info(
-                    f"Generating new path from {pos.latitude}, {pos.longitude} to "
-                    f"{global_path.waypoints[0].latitude}, {global_path.waypoints[0].longitude}"
+                    f"Generating new path from {pos.latitude:.4f}, {pos.longitude:.4f} to "
+                    f"{global_path.waypoints[0].latitude:.4f}, "
+                    f"{global_path.waypoints[0].longitude:.4f}"
                 )
 
+                # obtain desired interval spacing
+                interval_spacing = self.get_parameter("interval_spacing")._value
+
+                write = self.get_parameter("write")._value
                 if write:
                     self.get_logger().info("Writing generated path to new file")
 
@@ -191,6 +212,11 @@ class MockGlobalPath(Node):
                     f"Some waypoints in the global path exceed the maximum interval spacing of"
                     f" {interval_spacing} km. Interpolating between waypoints and generating path"
                 )
+
+                # obtain desired interval spacing
+                interval_spacing = self.get_parameter("interval_spacing")._value
+
+                write = self.get_parameter("write")._value
                 if write:
                     self.get_logger().info("Writing generated path to new file")
 
@@ -228,11 +254,16 @@ class MockGlobalPath(Node):
         with the name of the original file, appended with a timestamp.
 
         Args:
-            dest (Union[HelperLatLon, list[HelperLatLon]]): The destination point or partial path
-            interval_spacing (float): The desired distance between waypoints on the path
-            pos (HelperLatLon): The current GPS location
-            write (bool, optional): Whether to write the path to a new csv file, default False
-            file_path (str, optional): The filepath to the csv file containing the global path,
+            dest (Union[HelperLatLon, list[HelperLatLon]]):
+                The destination point or partial path
+            interval_spacing (float):
+                The desired distance between waypoints on the path
+            pos (HelperLatLon):
+                The current GPS location
+            write (bool, optional):
+                Whether to write the path to a new csv file, default False
+            file_path (str, optional):
+                The filepath to the csv file containing the global path,
 
         Returns:
             Path: The generated path
@@ -281,32 +312,31 @@ class MockGlobalPath(Node):
         """Interpolates and inserts subpaths between any waypoints which are spaced too far apart.
 
         Args:
-            global_path (Path): The path to interpolate between
-            interval_spacing (float): The desired spacing between waypoints
-            pos (HelperLatLon): The current GPS location
-            path_spacing (list[float]): The distances between pairs of points in global_path
-            write (bool, optional): Whether to write the path to a new csv file, default False
-            file_path (str, optional): The filepath to the csv file containing the global path,
+            global_path (Path):
+                The path to interpolate between
+            interval_spacing (float):
+                The desired spacing between waypoints
+            pos (HelperLatLon):
+                The current GPS location
+            path_spacing (list[float]):
+                The distances between pairs of points in global_path
+            write (bool, optional):
+                Whether to write the path to a new csv file, default False
+            file_path (str, optional):
+                The filepath to the csv file containing the global path,
 
         Returns:
             Path: The interpolated path
         """
-        # interpolate a simple path between any waypoints that are too far apart
 
-        global_path.waypoints = [pos] + global_path.waypoints
-
-        if len(global_path.waypoints) % 2 != 0:
-            # the condition is true, interval_spacing() will have added a duplicate pos
-            # to the start of its local version of the waypoint list, for inv() to work
-            # so the first distance will be 0 and should be ignored
-            path_spacing.pop(0)
+        waypoints = [pos] + global_path.waypoints
 
         i, j = 0, 0
         while i < len(path_spacing):
             if path_spacing[i] > interval_spacing:
                 # interpolate a new sub path between the two waypoints
-                pos = global_path.waypoints[j]
-                dest = global_path.waypoints[j + 1]
+                pos = waypoints[j]
+                dest = waypoints[j + 1]
 
                 sub_path = MockGlobalPath.generate_path(
                     dest=dest,
@@ -314,11 +344,16 @@ class MockGlobalPath(Node):
                     pos=pos,
                 )
                 # insert sub path into path
-                global_path.waypoints[j + 1 : j + 1] = sub_path.waypoints[:-1]
+                waypoints[j + 1 : j + 1] = sub_path.waypoints[:-1]
                 # shift indices to account for path insertion
-                j += len(sub_path.waypoints)
+                j += len(sub_path.waypoints) - 1
 
             i += 1
+            j += 1
+        # remove pos from waypoints again
+        waypoints.pop(0)
+
+        global_path.waypoints = waypoints
 
         if write:
             MockGlobalPath.write_to_file(file_path=file_path, global_path=global_path)
@@ -331,8 +366,10 @@ class MockGlobalPath(Node):
         including pos as the first point.
 
         Args:
-            pos (HelperLatLon): The position of the boat
-            waypoints (list[HelperLatLon]): The list of waypoints
+            pos (HelperLatLon):
+                The gps position of the boat
+            waypoints (list[HelperLatLon]):
+                The list of waypoints
 
         Returns:
             list[float]: The distances between pairs of points in waypoints [km]
@@ -340,8 +377,6 @@ class MockGlobalPath(Node):
         all_coords = [(pos.latitude, pos.longitude)] + [
             (waypoint.latitude, waypoint.longitude) for waypoint in waypoints
         ]
-        if len(all_coords) % 2 != 0:
-            all_coords = [all_coords[0]] + all_coords
 
         coords_array = np.array(all_coords)
 
@@ -359,11 +394,17 @@ class MockGlobalPath(Node):
         """Writes the global path to a new, timestamped csv file.
 
         Args:
-            file_path (str): The filepath to the csv file containing the global path,
-            global_path (Path): The global path to write to file
+            file_path (str):
+                The filepath to the csv file containing the global path,
+            global_path (Path):
+                The global path to write to file
         """
         if file_path == "":
             raise ValueError("file_path must be specified when write is True")
+
+        # check if file_path is a valid file path
+        if "global_paths" not in file_path or not os.path.isdir(os.path.dirname(file_path)):
+            raise ValueError(f"Invalid file path: {file_path}")
 
         # write to a new timestamped csv file
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

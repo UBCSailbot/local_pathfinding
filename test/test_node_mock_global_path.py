@@ -7,9 +7,79 @@ from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 from local_pathfinding.node_mock_global_path import MockGlobalPath
 
 
+# ------------------------- TEST WRITE_TO_FILE ------------------------------
+@pytest.mark.parametrize(
+    "file_path",
+    [
+        ("/workspaces/sailbot_workspace/src/local_pathfinding/anywhere_else/path_1.csv"),
+        (""),
+        ("/workspaces/sailbot_workspace/src/local_pathfinding/ global_paths/path_1.csv"),
+    ],
+)
+def test_write_to_file(file_path: str):
+    with pytest.raises(ValueError):
+        MockGlobalPath.write_to_file(file_path=file_path, global_path=None)
+
+
+# ------------------------- TEST INTERPOLATE_PATH -------------------------
+@pytest.mark.parametrize(
+    "pos,global_path,interval_spacing",
+    [
+        (
+            HelperLatLon(latitude=47.00, longitude=122.00),
+            Path(
+                waypoints=[
+                    HelperLatLon(latitude=48.00, longitude=123.00),
+                    HelperLatLon(latitude=49.00, longitude=124.00),
+                    HelperLatLon(latitude=50.00, longitude=125.00),
+                ]
+            ),
+            30.0,
+        )
+    ],
+)
+def test_interpolate_path(
+    pos: HelperLatLon,
+    global_path: Path,
+    interval_spacing: float,
+):
+    """Test the interpolate_path method of MockGlobalPath.
+
+    Args:
+        global_path (HelperLatLon): The global path.
+        interval_spacing (float): The desired spacing between waypoints.
+        pos (HelperLatLon): The position of Sailbot.
+    """
+
+    path_spacing = MockGlobalPath.interval_spacing(pos, global_path.waypoints)
+
+    interpolated_path = MockGlobalPath.interpolate_path(
+        global_path=global_path,
+        interval_spacing=interval_spacing,
+        pos=pos,
+        path_spacing=path_spacing,
+        write=True,
+        file_path="/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_2.csv",
+    )
+
+    assert isinstance(interpolated_path, Path)
+
+    # Ensure proper spacing between waypoints
+    dists = MockGlobalPath.interval_spacing(pos, interpolated_path.waypoints)
+
+    assert max(dists) <= interval_spacing, "Interval spacing is not correct"
+
+
+# ------------------------- TEST INTERVAL_SPACING -------------------------
 @pytest.mark.parametrize(
     "pos,waypoints",
     [
+        (
+            HelperLatLon(latitude=48.95, longitude=123.56),
+            [
+                HelperLatLon(latitude=48.95, longitude=123.55),
+            ],
+        ),
         (
             HelperLatLon(latitude=48.95, longitude=123.56),
             [
@@ -35,20 +105,32 @@ def test_interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]):
         waypoints (list[HelperLatLon]): The waypoints of the global path.
     """
     greatest_interval = max(MockGlobalPath.interval_spacing(pos, waypoints))
-    expected_interval = meters_to_km(
-        GEODESIC.inv(
-            lats1=waypoints[0].latitude,
-            lons1=waypoints[0].longitude,
-            lats2=waypoints[1].latitude,
-            lons2=waypoints[1].longitude,
-        )[2]
-    )
+
+    if len(waypoints) > 1:
+        expected_interval = meters_to_km(
+            GEODESIC.inv(
+                lats1=waypoints[0].latitude,
+                lons1=waypoints[0].longitude,
+                lats2=waypoints[1].latitude,
+                lons2=waypoints[1].longitude,
+            )[2]
+        )
+    else:
+        expected_interval = meters_to_km(
+            GEODESIC.inv(
+                lats1=pos.latitude,
+                lons1=pos.longitude,
+                lats2=waypoints[0].latitude,
+                lons2=waypoints[0].longitude,
+            )[2]
+        )
 
     assert greatest_interval == pytest.approx(
         expected_interval
     ), "Greatest interval is not correct"
 
 
+# ------------------------- TEST GENERATE_PATH -------------------------
 @pytest.mark.parametrize(
     "pos,dest,interval_spacing",
     [
@@ -124,6 +206,7 @@ def test_generate_path(
         assert dist <= interval_spacing, "Interval spacing is not correct"
 
 
+# ------------------------- TEST PATH_TO_DICT -------------------------
 @pytest.mark.parametrize(
     "path,expected",
     [
