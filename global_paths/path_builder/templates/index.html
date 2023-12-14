@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Path Builder</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <h1>Global Path Builder</h1>
+
+    <!-- Map container -->
+    <div id="map" style="height: 400px;"></div>
+
+    <!-- Buttons -->
+    <div>
+        <button id="export_btn" onclick="promptAndExport()">Export</button>
+        <button id="clear_btn">Clear</button>
+        <button id="plot_btn">3D Plot</button>
+    </div>
+
+    <!-- Waypoints list -->
+    <div>
+        <h2>Waypoints</h2>
+        <ul id="waypointsList"></ul>
+    </div>
+
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([49.1536, -125.9067], 4);
+
+        // Load a tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var waypoints = [];
+
+        function promptAndExport(showconfirm = true, plot=false) {
+            if (waypoints.length < 2) {
+                alert('Please add at least two waypoints to export.');
+                return;
+            }
+            // Prompt user for filename
+            var filename = window.prompt("Enter the desired filename for the CSV file:", "");
+
+            if (filename === null) {
+                // User clicked Cancel, do nothing
+                return;
+            }
+
+            // TODO add check for valid filename
+
+            handleExport(filename, waypoints, showconfirm);
+
+            if(plot){
+                handle_plot(filename);
+            }
+        }
+
+        function handleExport(filename, waypoints, showconfirm) {
+            fetch('/export_waypoints', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename, waypoints: waypoints }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success'){
+                    alert('Waypoints exported successfully.');
+                } else {
+                    alert('Error exporting waypoints. Please check the server logs for details.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Event listener for clicking on the map
+        map.on('click', function(e) {
+            // Get coordinates of the clicked point
+            var lat = e.latlng.lat.toFixed(6);
+            var lon = e.latlng.lng.toFixed(6);
+
+            // Add coordinates to the waypoints array
+            waypoints.push({lat,lon});
+
+            // Add a marker at the clicked point
+            L.marker([lat, lon]).addTo(map).bindPopup(`Waypoint: ${lat}, ${lon}`);
+
+            // Draw a polyline if there are at least two waypoints
+            if (waypoints.length > 1) {
+                var prevLatLon = waypoints[waypoints.length - 2];
+                polyline = L.polyline([[prevLatLon.lat, prevLatLon.lon], [lat, lon]]).addTo(map);
+            }
+
+            updateWaypointsList();
+        });
+
+        document.getElementById('clear_btn').addEventListener('click', function() {
+
+            var confirmation = confirm("Are you sure you want to clear all waypoints?");
+
+            if (confirmation) {
+
+                waypoints = [];
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        layer.remove();
+                    }
+                });
+                updateWaypointsList();
+            }
+        });
+
+        document.getElementById('plot_btn').addEventListener('click', function() {
+            if (waypoints.length < 2) {
+                alert('Please add at least two waypoints to plot a path.');
+                return;
+            }
+            else{
+                promptAndExport(showconfirm = false,plot=true);
+            }
+        });
+
+        function handle_plot(filename) {
+
+            fetch('/plot_path', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error'){
+                    alert('Error plotting waypoints. Please check the server logs for details.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Function to update the waypoints list
+        function updateWaypointsList() {
+            var waypointsList = document.getElementById('waypointsList');
+            waypointsList.innerHTML = '';
+
+            waypoints.forEach(function(waypoint, index) {
+                var listItem = document.createElement('li');
+                listItem.textContent = `Waypoint ${index + 1}: ${waypoint.lat}, ${waypoint.lon}`;
+                waypointsList.appendChild(listItem);
+            });
+        }
+    </script>
+</body>
+</html>

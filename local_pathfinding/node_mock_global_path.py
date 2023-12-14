@@ -394,7 +394,7 @@ class MockGlobalPath(Node):
         return distances
 
     @staticmethod
-    def write_to_file(file_path: str, global_path: Path):
+    def write_to_file(file_path: str, global_path: Path, tmstmp=True) -> Path:
         """Writes the global path to a new, timestamped csv file.
 
         Args:
@@ -410,15 +410,18 @@ class MockGlobalPath(Node):
         if "global_paths" not in file_path or not os.path.isdir(os.path.dirname(file_path)):
             raise ValueError(f"Invalid file path: {file_path}")
 
-        # write to a new timestamped csv file
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if tmstmp:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            dst_file_path = file_path.removesuffix(".csv") + f"_{timestamp}.csv"
+        else:
+            dst_file_path = file_path
 
-        dst_file_path = file_path.removesuffix(".csv") + f"_{timestamp}.csv"
-        with open(dst_file_path, "w") as file:
-            writer = csv.writer(file)
-            writer.writerow(["latitude", "longitude"])
-            for waypoint in global_path.waypoints:
-                writer.writerow([waypoint.latitude, waypoint.longitude])
+        if isinstance(global_path, Path):
+            with open(dst_file_path, "w") as file:
+                writer = csv.writer(file)
+                writer.writerow(["latitude", "longitude"])
+                for waypoint in global_path.waypoints:
+                    writer.writerow([waypoint.latitude, waypoint.longitude])
 
     @staticmethod
     def path_to_dict(path: Path, num_decimals: int = 4) -> dict[int, str]:
