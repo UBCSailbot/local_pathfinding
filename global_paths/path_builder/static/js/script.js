@@ -8,6 +8,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 var waypoints = [];
+var undone_waypoints = [];
 
 // Event listener for clicking on the map
 map.on('click', function(e) {
@@ -17,36 +18,53 @@ map.on('click', function(e) {
 
     // Add coordinates to the waypoints array
     waypoints.push({lat,lon});
+    undone_waypoints = [];
 
-    // Add a marker at the clicked point
-    L.marker([lat, lon]).addTo(map).bindPopup(`Waypoint: ${lat}, ${lon}`);
-
-    // Draw a polyline if there are at least two waypoints
-    if (waypoints.length > 1) {
-        var prevLatLon = waypoints[waypoints.length - 2];
-        polyline = L.polyline([[prevLatLon.lat, prevLatLon.lon], [lat, lon]]).addTo(map);
-    }
-
-    updateWaypointsTable();
+    refresh_map();
 });
 
-// Button event handlers
-function clear(){
+function draw_marker(item){
+    L.marker([item.lat, item.lon]).addTo(map).bindPopup(`Waypoint: ${item.lat}, ${item.lon}`);
+}
 
-    var confirmation = confirm("Are you sure you want to clear all waypoints?");
-
-    if (confirmation) {
-
-        waypoints = [];
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-                layer.remove();
-            }
-        });
-        updateWaypointsTable();
+function draw_polyline(item, index){
+    if (index > 0){
+        var prevLatLon = waypoints[index - 1];
+        L.polyline([[prevLatLon.lat, prevLatLon.lon], [item.lat, item.lon]]).addTo(map);
     }
 }
 
+function refresh_map(){
+
+    // clear map and redraw markers and polylines
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+            layer.remove();
+        }
+    });
+
+    waypoints.forEach(draw_marker);
+
+    if (waypoints.length > 1) {
+        waypoints.forEach(draw_polyline);
+    }
+
+    update_waypoints_table();
+}
+// Button event handlers
+function clear_path(){
+
+    var confirmation = confirm("Are you sure you want to clear all waypoints? You cannot undo this action.");
+
+    if (confirmation) {
+        waypoints = [];
+        refresh_map();
+    }
+}
+function import_file(){
+}
+function interpolate(){
+}
 function delete_paths(){
 
     var key = window.prompt("Enter the keyword in the filenames you want to delete:", "test");
@@ -82,6 +100,28 @@ function delete_paths(){
     }
 }
 
+function undo(){
+    if (waypoints.length > 0) {
+        // Remove the last waypoint from the waypoints array
+        undone_waypoints.push(waypoints.pop());
+
+        refresh_map();
+
+        updateWaypointsTable();
+    }
+}
+
+function redo(){
+    if (undone_waypoints.length > 0) {
+        // Remove the last waypoint from the waypoints array
+        waypoints.push(undone_waypoints.pop());
+
+        refresh_map();
+
+        updateWaypointsTable();
+    }
+}
+
 function plot(){
     if (waypoints.length < 2) {
         alert('Please add at least two waypoints to plot a path.');
@@ -108,7 +148,7 @@ function plot(){
 }
 
 
-function promptAndExport() {
+function prompt_and_export() {
     if (waypoints.length < 2) {
         alert('Please add at least two waypoints to export.');
         return;
@@ -146,20 +186,31 @@ function promptAndExport() {
     });
 }
 
-function updateWaypointsTable() {
+function delete_waypoint(index) {
+    // Remove the waypoint from the waypoints array
+    waypoints.splice(index, 1);
+
+    refresh_map();
+
+    update_waypoints_table();
+}
+
+function update_waypoints_table() {
     var tableBody = document.getElementById("waypointsTable").getElementsByTagName('tbody')[0];
 
     // Clear existing rows
     tableBody.innerHTML = '';
 
     // Add waypoints to the table
-    waypoints.forEach(function(waypoint) {
+    waypoints.forEach(function (waypoint, index) {
         var newRow = tableBody.insertRow(tableBody.rows.length);
 
         var cell1 = newRow.insertCell(0);
         var cell2 = newRow.insertCell(1);
+        var cell3 = newRow.insertCell(2);
 
         cell1.innerHTML = waypoint.lat;
         cell2.innerHTML = waypoint.lon;
+        cell3.innerHTML = `<button type="button" onclick="delete_waypoint(${index})">Delete</button>`;
     });
 }

@@ -23,8 +23,6 @@ from custom_interfaces.msg import HelperLatLon
 
 from local_pathfinding.node_mock_global_path import MOCK_GPS, MockGlobalPath
 
-# TODO look into GUI for creating a global path
-
 
 def main():
     parser = argparse.ArgumentParser()

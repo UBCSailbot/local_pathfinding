@@ -14,7 +14,6 @@ from flask import Flask, jsonify, render_template, request
 from local_pathfinding.node_mock_global_path import MockGlobalPath
 
 app = Flask(__name__)
-# app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 DEFAULT_DIR = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/"
 
@@ -22,6 +21,13 @@ DEFAULT_DIR = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/export_waypoints", methods=["POST"])
+def export_waypoints():
+    data = request.json
+    result = handle_export(data)
+    return jsonify(result)
 
 
 @app.route("/plot_path", methods=["POST"])
@@ -36,6 +42,31 @@ def delete_paths():
     data = request.json
     result = handle_delete(data)
     return jsonify(result)
+
+
+def handle_export(data):
+    filename = data.get("filename", "")
+    waypoints = data.get("waypoints", [])
+
+    file_path = os.path.join(DEFAULT_DIR, filename)
+
+    if not str(filename).endswith(".csv"):
+        file_path = file_path + ".csv"
+
+    # convert from json to list of HelperLatLon
+    waypoints = [
+        (HelperLatLon(latitude=float(item["lat"]), longitude=float(item["lon"])))
+        for item in waypoints
+    ]
+
+    # convert to Path, to pass to file writer
+    path = Path(waypoints=waypoints)
+
+    try:
+        MockGlobalPath.write_to_file(file_path=file_path, global_path=path, tmstmp=False)
+        return {"status": "success", "message": "Waypoints exported successfully"}
+    except Exception as e:
+        return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
 
 
 def handle_plot(data):
@@ -115,39 +146,6 @@ def plot_global_path(lats, lons):
 
 
 # TODO REMOVE THIS ONCE IMPORT WORKS ---------------------------------------------------------
-
-
-@app.route("/export_waypoints", methods=["POST"])
-def export_waypoints():
-    data = request.json
-    result = handle_export(data)
-    return jsonify(result)
-
-
-def handle_export(data):
-    filename = data.get("filename", "")
-    waypoints = data.get("waypoints", [])
-
-    file_path = os.path.join(DEFAULT_DIR, filename)
-
-    if not str(filename).endswith(".csv"):
-        file_path = file_path + ".csv"
-
-    # convert from json to list of HelperLatLon
-    waypoints = [
-        (HelperLatLon(latitude=float(item["lat"]), longitude=float(item["lon"])))
-        for item in waypoints
-    ]
-
-    # convert to Path, to pass to file writer
-    path = Path(waypoints=waypoints)
-    # tests
-    try:
-        MockGlobalPath.write_to_file(file_path=file_path, global_path=path, tmstmp=False)
-        return {"status": "success", "message": "Waypoints exported successfully"}
-    except Exception as e:
-        return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
-
 
 if __name__ == "__main__":
     extra_dirs = [
