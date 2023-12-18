@@ -416,12 +416,11 @@ class MockGlobalPath(Node):
         else:
             dst_file_path = file_path
 
-        if isinstance(global_path, Path):
-            with open(dst_file_path, "w") as file:
-                writer = csv.writer(file)
-                writer.writerow(["latitude", "longitude"])
-                for waypoint in global_path.waypoints:
-                    writer.writerow([waypoint.latitude, waypoint.longitude])
+        with open(dst_file_path, "w") as file:
+            writer = csv.writer(file)
+            writer.writerow(["latitude", "longitude"])
+            for waypoint in global_path.waypoints:
+                writer.writerow([waypoint.latitude, waypoint.longitude])
 
     @staticmethod
     def path_to_dict(path: Path, num_decimals: int = 4) -> dict[int, str]:
