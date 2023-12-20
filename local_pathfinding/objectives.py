@@ -16,6 +16,17 @@ HIGHEST_UPWIND_ANGLE_RADIANS = math.radians(40.0)
 LOWEST_DOWNWIND_ANGLE_RADIANS = math.radians(20.0)
 
 
+BOAT_SPEED_TABLE = [
+    [0, 9.3, 18.5, 27.8, 37.0],
+    [0, 20, 30, 45, 90, 135, 180],
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0.4, 1.1, 3.2, 3.7, 2.8],
+    [0, 0.3, 1.9, 3.7, 9.3, 13.0, 9.2],
+    [0, 0.9, 3.7, 7.4, 14.8, 18.5, 13.0],
+    [0, 1.3, 5.6, 9.3, 18.5, 24.1, 18.5],
+]
+
+
 class DistanceMethod(Enum):
     """Enumeration for distance objective methods"""
 
@@ -395,13 +406,23 @@ class SpeedObjective(Objective):
         wind_speed (float): The speed of the wind in m/s
     """
 
-    def __init__(self, space_information, wind_direction_degrees: float, wind_speed: float, method: SpeedObjectiveMethod):
+    def __init__(
+        self,
+        space_information,
+        heading_degrees: float,
+        wind_direction_degrees: float,
+        wind_speed: float,
+        method: SpeedObjectiveMethod,
+    ):
         super().__init__(space_information)
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
+
+        assert -180 < heading_degrees <= 180
+        self.heading = math.radians(heading_degrees)
+
         self.wind_speed = wind_speed
         self.method = method
-
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the speed of the boat.
@@ -417,7 +438,7 @@ class SpeedObjective(Objective):
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
 
-        sailbot_speed = self.get_sailbot_speed(self.wind_direction, self.wind_speed)
+        sailbot_speed = self.get_sailbot_speed(self.heading, self.wind_direction, self.wind_speed)
 
         if self.method == SpeedObjectiveMethod.SAILBOT_SPEED:
             cost = ob.Cost(sailbot_speed)
@@ -430,7 +451,8 @@ class SpeedObjective(Objective):
         return cost
 
     @staticmethod
-    def get_sailbot_speed(wind_direction: float, wind_speed: float) -> float:
+    def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
+        # TODO: implement this function
         return 0.0
 
 
@@ -458,6 +480,7 @@ def get_sailing_objective(
     objective.addObjective(
         objective=SpeedObjective(
             space_information,
+            heading_degrees,
             wind_direction_degrees,
             wind_speed,
             SpeedObjectiveMethod.SAILBOT_SPEED,
