@@ -1,3 +1,4 @@
+import csv
 import os
 import re
 import webbrowser
@@ -30,6 +31,13 @@ def export_waypoints():
     return jsonify(result)
 
 
+@app.route("/import_waypoints", methods=["POST"])
+def import_waypoints():
+    data = request.json
+    result = handle_import(data)
+    return jsonify(result)
+
+
 @app.route("/plot_path", methods=["POST"])
 def plot_path():
     data = request.json
@@ -41,6 +49,13 @@ def plot_path():
 def delete_paths():
     data = request.json
     result = handle_delete(data)
+    return jsonify(result)
+
+
+@app.route("/interpolate_path", methods=["POST"])
+def interpolate_path():
+    data = request.json
+    result = handle_interpolate(data)
     return jsonify(result)
 
 
@@ -69,6 +84,29 @@ def handle_export(data):
         return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
 
 
+def handle_import(data):
+    filename = data.get("filename", "")
+    file_path = os.path.join(DEFAULT_DIR, filename)
+
+    if not str(filename).endswith(".csv"):
+        file_path = file_path + ".csv"
+
+    try:
+        with open(file_path, "r") as f:
+            reader = csv.reader(f)
+            # skip header
+            reader.__next__()
+            waypoints = list(reader)
+            waypoints = [{"lat": float(item[0]), "lon": float(item[1])} for item in waypoints]
+        return {
+            "status": "success",
+            "message": "Waypoints imported successfully",
+            "waypoints": waypoints,
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error importing waypoints: {str(e)}"}
+
+
 def handle_plot(data):
     waypoints = data.get("waypoints", [])
 
@@ -90,6 +128,45 @@ def handle_delete(data):
         return {"status": "success", "message": "Paths deleted successfully"}
     except Exception as e:
         return {"status": "error", "message": f"Error deleting paths: {str(e)}"}
+
+
+def handle_interpolate(data):
+    waypoints = data.get("waypoints", [])
+    interval_spacing = float(data.get("interval_spacing", 30.0))
+
+    # convert from json to list of HelperLatLon
+    waypoints = [
+        (HelperLatLon(latitude=float(item["lat"]), longitude=float(item["lon"])))
+        for item in waypoints
+    ]
+
+    # convert to Path, to pass to interpolator
+    path = Path(waypoints=waypoints)
+
+    # pop out the first waypoint as point1, since the interpolator will add it to the start of path
+    point1 = path.waypoints.pop(0)
+
+    try:
+        path_spacing = MockGlobalPath.interval_spacing(pos=point1, waypoints=path.waypoints)
+        path = MockGlobalPath.interpolate_path(
+            global_path=path,
+            interval_spacing=interval_spacing,
+            pos=point1,
+            path_spacing=path_spacing,
+        )
+        # add first waypoint back to the start of path
+        path.waypoints = [point1] + path.waypoints
+        # convert waypoints to serializable format
+        waypoints = [
+            {"lat": float(item.latitude), "lon": float(item.longitude)} for item in path.waypoints
+        ]
+        return {
+            "status": "success",
+            "message": "Waypoints exported successfully",
+            "waypoints": waypoints,
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
 
 
 # TODO REMOVE THIS ONCE IMPORT WORKS --------------------------------------------------------------

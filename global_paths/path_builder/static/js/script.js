@@ -8,7 +8,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 var waypoints = [];
-var undone_waypoints = [];
 
 // Event listener for clicking on the map
 map.on('click', function(e) {
@@ -18,9 +17,7 @@ map.on('click', function(e) {
 
     // Add coordinates to the waypoints array
     waypoints.push({lat,lon});
-    undone_waypoints = [];
-
-    refresh_map();
+    refresh();
 });
 
 function draw_marker(item){
@@ -34,7 +31,7 @@ function draw_polyline(item, index){
     }
 }
 
-function refresh_map(){
+function refresh(){
 
     // clear map and redraw markers and polylines
     map.eachLayer(function(layer) {
@@ -58,12 +55,79 @@ function clear_path(){
 
     if (confirmation) {
         waypoints = [];
-        refresh_map();
+        refresh();
     }
 }
 function import_file(){
+
+    confirmation = true;
+
+    if (waypoints.length > 0) {
+
+        var confirmation = confirm("Be sure you have exported your current path before importing a new one. Are you sure you want to continue?");
+    }
+
+    if (confirmation) {
+        waypoints = [];
+        refresh();
+
+        var filename = window.prompt("Enter the filename of the CSV file to import:", "");
+
+        if (filename === null) {
+            // User clicked Cancel, do nothing
+            return;
+        }
+
+        else if (filename === "") {
+            alert("You must enter a filename.");
+            return;
+        }
+
+        fetch('/import_waypoints', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: filename }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success'){
+                waypoints = data.waypoints;
+                refresh();
+            } else {
+                alert('Error importing waypoints. Please check the server logs for details.');
+            }
+        })
+    }
+
+
 }
 function interpolate(){
+        var confirmation = confirm("Are you sure you want to interpolate the path? You cannot undo this action.");
+
+        if (confirmation) {
+            var interval_spacing = window.prompt("Enter the desired interval spacing in km:", "30");
+            fetch('/interpolate_path', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ waypoints: waypoints, interval_spacing: interval_spacing }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success'){
+                    waypoints = data.waypoints;
+                    refresh();
+                } else {
+                    alert('Error interpolating waypoints. Please check the server logs for details.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
 }
 function delete_paths(){
 
@@ -97,28 +161,6 @@ function delete_paths(){
         .catch(error => {
             console.error('Error:', error);
         });
-    }
-}
-
-function undo(){
-    if (waypoints.length > 0) {
-        // Remove the last waypoint from the waypoints array
-        undone_waypoints.push(waypoints.pop());
-
-        refresh_map();
-
-        updateWaypointsTable();
-    }
-}
-
-function redo(){
-    if (undone_waypoints.length > 0) {
-        // Remove the last waypoint from the waypoints array
-        waypoints.push(undone_waypoints.pop());
-
-        refresh_map();
-
-        updateWaypointsTable();
     }
 }
 
@@ -190,9 +232,27 @@ function delete_waypoint(index) {
     // Remove the waypoint from the waypoints array
     waypoints.splice(index, 1);
 
-    refresh_map();
+    refresh();
+}
 
-    update_waypoints_table();
+function edit_waypoint(index) {
+    var lat = window.prompt("Enter the new latitude:", waypoints[index].lat);
+    var lon = window.prompt("Enter the new longitude:", waypoints[index].lon);
+
+    if (lat === null || lon === null) {
+        // User clicked Cancel, do nothing
+        return;
+    }
+
+    if (lat === "" || lon === "") {
+        alert("You must enter a latitude and longitude.");
+        return;
+    }
+
+    waypoints[index].lat = lat;
+    waypoints[index].lon = lon;
+
+    refresh();
 }
 
 function update_waypoints_table() {
@@ -211,6 +271,8 @@ function update_waypoints_table() {
 
         cell1.innerHTML = waypoint.lat;
         cell2.innerHTML = waypoint.lon;
-        cell3.innerHTML = `<button type="button" onclick="delete_waypoint(${index})">Delete</button>`;
+        cell3.innerHTML = `<button type="button" class="btn" onclick="delete_waypoint(${index})"><i class="fa fa-trash"></i></button>`;
+        cell3.innerHTML += `<button type="button" class="btn" onclick="edit_waypoint(${index})"><i class="fa fa-pencil"></i></button>`;
+        cell3.style.display = "flex";
     });
 }
