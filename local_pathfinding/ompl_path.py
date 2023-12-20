@@ -28,6 +28,7 @@ class OMPLPathState:
         # TODO: derive OMPLPathState attributes from local_path_state
         self.heading_direction = 45.0
         self.wind_direction = 10.0
+        self.wind_speed = 1.0
 
         self.state_domain = (-1, 1)
         self.state_range = (-1, 1)
@@ -152,6 +153,7 @@ class OMPLPath:
             simple_setup,
             self.state.heading_direction,
             self.state.wind_direction,
+            self.state.wind_speed,
         )
         simple_setup.setOptimizationObjective(objective)
 

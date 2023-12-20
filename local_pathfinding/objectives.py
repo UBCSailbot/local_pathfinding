@@ -32,6 +32,13 @@ class MinimumTurningMethod(Enum):
     HEADING_PATH = auto()
 
 
+class SpeedObjectiveMethod(Enum):
+    """Enumeration for speed objective methods"""
+
+    SAILBOT_SPEED = auto()
+    SAILBOT_TIME = auto()
+
+
 class Objective(ob.StateCostIntegralObjective):
     """All of our optimization objectives inherit from this class.
 
@@ -380,8 +387,59 @@ class WindObjective(Objective):
             return WindObjective.is_angle_between(second_angle, middle_angle, first_angle)
 
 
+class SpeedObjective(Objective):
+    """Generates a speed objective function
+
+    Attributes:
+        wind_direction (float): The direction of the wind in radians (-pi, pi]
+        wind_speed (float): The speed of the wind in m/s
+    """
+
+    def __init__(self, space_information, wind_direction_degrees: float, wind_speed: float, method: SpeedObjectiveMethod):
+        super().__init__(space_information)
+        assert -180 < wind_direction_degrees <= 180
+        self.wind_direction = math.radians(wind_direction_degrees)
+        self.wind_speed = wind_speed
+        self.method = method
+
+
+    def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            s1 (SE2StateInternal): The starting point of the local start state
+            s2 (SE2StateInternal): The ending point of the local goal state
+
+        Returns:
+            ob.Cost: The cost of going upwind or downwind
+        """
+
+        s1_xy = cs.XY(s1.getX(), s1.getY())
+        s2_xy = cs.XY(s2.getX(), s2.getY())
+
+        sailbot_speed = self.get_sailbot_speed(self.wind_direction, self.wind_speed)
+
+        if self.method == SpeedObjectiveMethod.SAILBOT_SPEED:
+            cost = ob.Cost(sailbot_speed)
+        elif self.method == SpeedObjectiveMethod.SAILBOT_TIME:
+            distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
+            time = distance / sailbot_speed
+            cost = ob.Cost(time)
+        else:
+            ValueError(f"Method {self.method} not supported")
+        return cost
+
+    @staticmethod
+    def get_sailbot_speed(wind_direction: float, wind_speed: float) -> float:
+        return 0.0
+
+
 def get_sailing_objective(
-    space_information, simple_setup, heading_degrees: float, wind_direction_degrees: float
+    space_information,
+    simple_setup,
+    heading_degrees: float,
+    wind_direction_degrees: float,
+    wind_speed: float,
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective.addObjective(
@@ -396,6 +454,15 @@ def get_sailing_objective(
     )
     objective.addObjective(
         objective=WindObjective(space_information, wind_direction_degrees), weight=1.0
+    )
+    objective.addObjective(
+        objective=SpeedObjective(
+            space_information,
+            wind_direction_degrees,
+            wind_speed,
+            SpeedObjectiveMethod.SAILBOT_SPEED,
+        ),
+        weight=1.0,
     )
 
     return objective
