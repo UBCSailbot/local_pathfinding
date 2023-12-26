@@ -228,8 +228,8 @@ def test_angle_between(afir: float, amid: float, asec: float, expected: float):
 @pytest.mark.parametrize(
     "method",
     [
-        objectives.SpeedObjectiveMethod.SAILBOT_SPEED
-        objectives.MinimumTurningMethod.SAILBOT_TIME,
+        objectives.SpeedObjectiveMethod.SAILBOT_SPEED,
+        objectives.SpeedObjectiveMethod.SAILBOT_TIME,
     ],
 )
 def test_speed_objective(method: objectives.SpeedObjectiveMethod):
