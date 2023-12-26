@@ -262,4 +262,6 @@ def test_piecewise_cost(speed: float, expected: int):
     ],
 )
 def test_continuous_cost(speed: float, expected: int):
-    assert objectives.SpeedObjective.get_continuous_cost(speed) == pytest.approx(expected, abs=1e-3)
+    assert objectives.SpeedObjective.get_continuous_cost(speed) == pytest.approx(
+        expected, abs=1e-3
+    )
