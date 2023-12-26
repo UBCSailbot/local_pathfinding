@@ -228,8 +228,9 @@ def test_angle_between(afir: float, amid: float, asec: float, expected: float):
 @pytest.mark.parametrize(
     "method",
     [
-        objectives.SpeedObjectiveMethod.SAILBOT_SPEED,
         objectives.SpeedObjectiveMethod.SAILBOT_TIME,
+        objectives.SpeedObjectiveMethod.SAILBOT_PIECEWISE,
+        objectives.SpeedObjectiveMethod.SAILBOT_CONTINUOUS,
     ],
 )
 def test_speed_objective(method: objectives.SpeedObjectiveMethod):
@@ -241,3 +242,24 @@ def test_speed_objective(method: objectives.SpeedObjectiveMethod):
         method,
     )
     assert speed_objective is not None
+
+
+@pytest.mark.parametrize(
+    "speed,expected",
+    [
+        (0.0, 5),
+    ],
+)
+def test_piecewise_cost(speed: float, expected: int):
+    assert objectives.SpeedObjective.get_piecewise_cost(speed) == expected
+
+
+@pytest.mark.parametrize(
+    "speed,expected",
+    [
+        (0.0, 10000),
+        (25.0, 10000),
+    ],
+)
+def test_continuous_cost(speed: float, expected: int):
+    assert objectives.SpeedObjective.get_continuous_cost(speed) == pytest.approx(expected, abs=1e-3)

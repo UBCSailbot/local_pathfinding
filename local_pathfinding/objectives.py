@@ -46,7 +46,8 @@ class MinimumTurningMethod(Enum):
 class SpeedObjectiveMethod(Enum):
     """Enumeration for speed objective methods"""
 
-    SAILBOT_SPEED = auto()
+    SAILBOT_PIECEWISE = auto()
+    SAILBOT_CONTINUOUS = auto()
     SAILBOT_TIME = auto()
 
 
@@ -442,12 +443,19 @@ class SpeedObjective(Objective):
             self.heading_direction, self.wind_direction, self.wind_speed
         )
 
-        if self.method == SpeedObjectiveMethod.SAILBOT_SPEED:
-            cost = ob.Cost(sailbot_speed)
-        elif self.method == SpeedObjectiveMethod.SAILBOT_TIME:
+        if sailbot_speed == 0:
+            return ob.Cost(10000)
+
+        if self.method == SpeedObjectiveMethod.SAILBOT_TIME:
             distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
             time = distance / sailbot_speed
+
             cost = ob.Cost(time)
+
+        elif self.method == SpeedObjectiveMethod.SAILBOT_PIECEWISE:
+            cost = ob.Cost(self.get_piecewise_cost(sailbot_speed))
+        elif self.method == SpeedObjectiveMethod.SAILBOT_CONTINUOUS:
+            cost = ob.Cost(self.get_continuous_cost(sailbot_speed))
         else:
             ValueError(f"Method {self.method} not supported")
         return cost
@@ -456,6 +464,38 @@ class SpeedObjective(Objective):
     def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
         # TODO: implement this function
         return 0.0
+
+    @staticmethod
+    def get_piecewise_cost(speed: float) -> float:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            speed (float): The speed of the boat in m/s
+        """
+
+        if speed < 5:
+            return 5
+        elif 5 < speed < 10:
+            return 10
+        elif 10 < speed < 15:
+            return 20
+        elif 15 < speed < 20:
+            return 5000
+        else:
+            return 10000
+
+    @staticmethod
+    def get_continuous_cost(speed: float) -> float:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            speed (float): The speed of the boat in m/s
+        """
+        try:
+            cost = 1 / math.sin(math.pi * speed / 25) - 0.5
+            return 10000 if cost > 10000 else cost
+        except ZeroDivisionError:
+            return 10000
 
 
 def get_sailing_objective(
@@ -485,7 +525,7 @@ def get_sailing_objective(
             heading_degrees,
             wind_direction_degrees,
             wind_speed,
-            SpeedObjectiveMethod.SAILBOT_SPEED,
+            SpeedObjectiveMethod.SAILBOT_TIME,
         ),
         weight=1.0,
     )
