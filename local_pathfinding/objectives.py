@@ -409,17 +409,17 @@ class SpeedObjective(Objective):
     def __init__(
         self,
         space_information,
-        heading_degrees: float,
-        wind_direction_degrees: float,
+        heading_direction: float,
+        wind_direction: float,
         wind_speed: float,
         method: SpeedObjectiveMethod,
     ):
         super().__init__(space_information)
-        assert -180 < wind_direction_degrees <= 180
-        self.wind_direction = math.radians(wind_direction_degrees)
+        assert -180 < wind_direction <= 180
+        self.wind_direction = math.radians(wind_direction)
 
-        assert -180 < heading_degrees <= 180
-        self.heading = math.radians(heading_degrees)
+        assert -180 < heading_direction <= 180
+        self.heading_direction = math.radians(heading_direction)
 
         self.wind_speed = wind_speed
         self.method = method
@@ -438,7 +438,7 @@ class SpeedObjective(Objective):
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
 
-        sailbot_speed = self.get_sailbot_speed(self.heading, self.wind_direction, self.wind_speed)
+        sailbot_speed = self.get_sailbot_speed(self.heading_direction, self.wind_direction, self.wind_speed)
 
         if self.method == SpeedObjectiveMethod.SAILBOT_SPEED:
             cost = ob.Cost(sailbot_speed)

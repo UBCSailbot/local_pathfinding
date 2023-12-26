@@ -223,3 +223,21 @@ def test_angle_between(afir: float, amid: float, asec: float, expected: float):
         )
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        objectives.SpeedObjectiveMethod.SAILBOT_SPEED
+        objectives.MinimumTurningMethod.SAILBOT_TIME,
+    ],
+)
+def test_speed_objective(method: objectives.SpeedObjectiveMethod):
+    speed_objective = objectives.SpeedObjective(
+        PATH._simple_setup.getSpaceInformation(),
+        PATH.state.heading_direction,
+        PATH.state.wind_direction,
+        PATH.state.wind_speed,
+        method,
+    )
+    assert speed_objective is not None
