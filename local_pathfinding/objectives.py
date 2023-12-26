@@ -438,7 +438,9 @@ class SpeedObjective(Objective):
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
 
-        sailbot_speed = self.get_sailbot_speed(self.heading_direction, self.wind_direction, self.wind_speed)
+        sailbot_speed = self.get_sailbot_speed(
+            self.heading_direction, self.wind_direction, self.wind_speed
+        )
 
         if self.method == SpeedObjectiveMethod.SAILBOT_SPEED:
             cost = ob.Cost(sailbot_speed)
