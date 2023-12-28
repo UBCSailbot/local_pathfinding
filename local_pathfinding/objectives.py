@@ -493,7 +493,7 @@ class SpeedObjective(Objective):
         """
         try:
             cost = 1 / math.sin(math.pi * speed / 25) - 0.5
-            return 10000 if cost > 10000 else cost
+            return min(10000, cost)
         except ZeroDivisionError:
             return 10000
 
