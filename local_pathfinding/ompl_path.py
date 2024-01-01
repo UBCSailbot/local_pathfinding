@@ -26,8 +26,8 @@ ou.setLogLevel(ou.LOG_WARN)
 class OMPLPathState:
     def __init__(self, local_path_state: LocalPathState):
         # TODO: derive OMPLPathState attributes from local_path_state
-        self.headingDirection = 45
-        self.windDirection = 10
+        self.heading_direction = 45.0
+        self.wind_direction = 10.0
 
         self.state_domain = (-1, 1)
         self.state_range = (-1, 1)
@@ -148,7 +148,10 @@ class OMPLPath:
         # TODO: implement and add optimization objective here
 
         objective = get_sailing_objective(
-            space_information, simple_setup, self.state.headingDirection, self.state.windDirection
+            space_information,
+            simple_setup,
+            self.state.heading_direction,
+            self.state.wind_direction,
         )
         simple_setup.setOptimizationObjective(objective)
 
