@@ -29,7 +29,7 @@ from local_pathfinding.obstacles import COLLISION_ZONE_SAFETY_BUFFER, Boat, Obst
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
@@ -62,7 +62,7 @@ def test_calculate_projected_distance(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
@@ -97,7 +97,7 @@ def test_create_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
@@ -134,7 +134,7 @@ def test_position_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             HelperAISShip(
                 id=2,
@@ -143,7 +143,7 @@ def test_position_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
@@ -175,7 +175,7 @@ def test_create_collision_zone_id_mismatch(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
             latlon_to_xy(
@@ -252,7 +252,7 @@ def test_is_valid_no_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
         )
     ],
@@ -287,7 +287,7 @@ def test_update_sailbot_data(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         ),
@@ -302,7 +302,7 @@ def test_update_sailbot_data(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         ),
@@ -379,7 +379,7 @@ if __name__ == "__main__":
         sog=HelperSpeed(speed=18.52),
         width=HelperDimension(dimension=20.0),
         length=HelperDimension(dimension=100.0),
-        rot=HelperROT(rot=0.0),
+        rot=HelperROT(rot=0),
     )
 
     # Create a boat object
