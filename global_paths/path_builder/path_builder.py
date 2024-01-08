@@ -17,7 +17,11 @@ import plotly.graph_objects as go
 from custom_interfaces.msg import HelperLatLon, Path
 from flask import Flask, jsonify, render_template, request
 
-from local_pathfinding.node_mock_global_path import MockGlobalPath
+from local_pathfinding.node_mock_global_path import (
+    calculate_interval_spacing,
+    interpolate_path,
+    write_to_file,
+)
 
 app = Flask(__name__)
 
@@ -54,46 +58,46 @@ def main():
 
 
 @app.route("/")
-def index():
+def _index():
     return render_template("index.html")
 
 
 @app.route("/export_waypoints", methods=["POST"])
-def export_waypoints():
+def _export_waypoints():
     data = request.json
-    result = handle_export(data)
+    result = _handle_export(data)
     return jsonify(result)
 
 
 @app.route("/import_waypoints", methods=["POST"])
-def import_waypoints():
+def _import_waypoints():
     data = request.json
-    result = handle_import(data)
+    result = _handle_import(data)
     return jsonify(result)
 
 
 @app.route("/plot_path", methods=["POST"])
-def plot_path():
+def _plot_path():
     data = request.json
-    result = handle_plot(data)
+    result = _handle_plot(data)
     return jsonify(result)
 
 
 @app.route("/delete_paths", methods=["POST"])
-def delete_paths():
+def _delete_paths():
     data = request.json
-    result = handle_delete(data)
+    result = _handle_delete(data)
     return jsonify(result)
 
 
 @app.route("/interpolate_path", methods=["POST"])
-def interpolate_path():
+def _interpolate_path():
     data = request.json
-    result = handle_interpolate(data)
+    result = _handle_interpolate(data)
     return jsonify(result)
 
 
-def handle_export(data):
+def _handle_export(data):
     filename = data.get("filename", "")
     waypoints = data.get("waypoints", [])
 
@@ -112,13 +116,13 @@ def handle_export(data):
     path = Path(waypoints=waypoints)
 
     try:
-        MockGlobalPath.write_to_file(file_path=file_path, global_path=path, tmstmp=False)
+        write_to_file(file_path=file_path, global_path=path, tmstmp=False)
         return {"status": "success", "message": "Waypoints exported successfully"}
     except Exception as e:
         return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
 
 
-def handle_import(data):
+def _handle_import(data):
     filename = data.get("filename", "")
     file_path = os.path.join(DEFAULT_DIR, filename)
 
@@ -141,7 +145,7 @@ def handle_import(data):
         return {"status": "error", "message": f"Error importing waypoints: {str(e)}"}
 
 
-def handle_plot(data):
+def _handle_plot(data):
     waypoints = data.get("waypoints", [])
 
     # convert from json to list of HelperLatLon
@@ -155,7 +159,7 @@ def handle_plot(data):
         return {"status": "error", "message": f"Error plotting path: {str(e)}"}
 
 
-def handle_delete(data):
+def _handle_delete(data):
     key = data.get("key", None)
     try:
         delete_files(key=key)
@@ -164,7 +168,7 @@ def handle_delete(data):
         return {"status": "error", "message": f"Error deleting paths: {str(e)}"}
 
 
-def handle_interpolate(data):
+def _handle_interpolate(data):
     waypoints = data.get("waypoints", [])
     interval_spacing = float(data.get("interval_spacing", 30.0))
 
@@ -181,8 +185,8 @@ def handle_interpolate(data):
     point1 = path.waypoints.pop(0)
 
     try:
-        path_spacing = MockGlobalPath.interval_spacing(pos=point1, waypoints=path.waypoints)
-        path = MockGlobalPath.interpolate_path(
+        path_spacing = calculate_interval_spacing(pos=point1, waypoints=path.waypoints)
+        path = interpolate_path(
             global_path=path,
             interval_spacing=interval_spacing,
             pos=point1,
