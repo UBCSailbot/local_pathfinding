@@ -4,7 +4,6 @@ import csv
 import os
 import time
 from datetime import datetime
-from typing import Union
 
 import numpy as np
 import rclpy
@@ -90,7 +89,11 @@ class MockGlobalPath(Node):
 
     # Subscriber callbacks
     def gps_callback(self, msg: GPS):
-        """Store the gps data and check if the global path needs to be updated."""
+        """Store the gps data and check if the global path needs to be updated.
+
+        If the position has changed by more than gps_threshold * interval_spacing since last step,
+        the global_path_callback is run with the force parameter set to true, bypassing any checks.
+        """
         self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
 
         position_delta = meters_to_km(
@@ -107,7 +110,8 @@ class MockGlobalPath(Node):
             self.get_logger().info(
                 f"GPS data changed by more than {gps_threshold} km. Running global path callback"
             )
-            self.global_path_callback(gps_call=True)
+            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, True)])
+            self.global_path_callback()
 
         self.gps = msg
 
@@ -140,14 +144,7 @@ class MockGlobalPath(Node):
         force = self.get_parameter("force")._value
 
         # Only publish path if the path has changed or gps has changed by more than gps_threshold
-        if (
-            force
-            or gps_call
-            or (self.file_path != file_path)
-            or (path_mod_tmstmp != self.path_mod_tmstmp)
-        ):
-            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
-
+        if (path_mod_tmstmp != self.path_mod_tmstmp or self.file_path != file_path) or force:
             self.get_logger().info(
                 f"Global path file is: {os.path.basename(file_path)}\n Reading path"
             )
@@ -163,8 +160,6 @@ class MockGlobalPath(Node):
                         HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
                     )
 
-            self.path_mod_tmstmp = path_mod_tmstmp
-            self.file_path = file_path
             pos = self.gps.lat_lon
 
             # obtain the actual distances between every waypoint in the global path
@@ -221,9 +216,14 @@ class MockGlobalPath(Node):
                 f"Publishing to {self.global_path_pub.topic}: {MockGlobalPath.path_to_dict(msg)}"
             )
 
+            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
+            self.path_mod_tmstmp = path_mod_tmstmp
+            self.file_path = file_path
+
+    # TODO make global
     @staticmethod
     def generate_path(
-        dest: Union[HelperLatLon, list[HelperLatLon]],
+        dest: HelperLatLon,
         interval_spacing: float,
         pos: HelperLatLon,
         write: bool = False,
@@ -251,33 +251,31 @@ class MockGlobalPath(Node):
         lat1 = pos.latitude
         lon1 = pos.longitude
 
-        if isinstance(dest, list):
-            lat2 = dest[0].latitude
-            lon2 = dest[0].longitude
-        else:
-            lat2 = dest.latitude
-            lon2 = dest.longitude
+        lat2 = dest.latitude
+        lon2 = dest.longitude
 
         distance = meters_to_km(GEODESIC.inv(lats1=lat1, lons1=lon1, lats2=lat2, lons2=lon2)[2])
-        n = np.ceil(distance / interval_spacing)
 
+        # minimum number of waypoints to not exceed interval_spacing
+        n = np.floor(distance / interval_spacing)
+        n = max(1, n)
+
+        # npts returns a path with neither pos nor dest included
         global_path_tuples = GEODESIC.npts(lon1=lon1, lat1=lat1, lon2=lon2, lat2=lat2, npts=n)
 
         # npts returns (lon,lat) tuples, its backwards for some reason
         for lon, lat in global_path_tuples:
             global_path.waypoints.append(HelperLatLon(latitude=lat, longitude=lon))
 
-        # append the destination
+        # append the destination point
         global_path.waypoints.append(HelperLatLon(latitude=lat2, longitude=lon2))
-
-        if isinstance(dest, list):
-            global_path.waypoints.extend(dest[1:])
 
         if write:
             MockGlobalPath.write_to_file(file_path=file_path, global_path=global_path)
 
         return global_path
 
+    # TODO make global
     @staticmethod
     def interpolate_path(
         global_path: Path,
@@ -332,6 +330,7 @@ class MockGlobalPath(Node):
 
         return global_path
 
+    # TODO make global
     @staticmethod
     def interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]) -> list[float]:
         """Returns the distances between pairs of points in a list of latitudes and longitudes,
@@ -359,6 +358,7 @@ class MockGlobalPath(Node):
 
         return distances
 
+    # TODO make global
     @staticmethod
     def write_to_file(file_path: str, global_path: Path, tmstmp: bool = True) -> Path:
         """Writes the global path to a new, timestamped csv file.
@@ -371,11 +371,11 @@ class MockGlobalPath(Node):
         Raises:
             ValueError: If file_path is not to an existing `global_paths` directory
         """
-        if file_path == "":
-            raise ValueError("file_path must be specified when write is True")
 
         # check if file_path is a valid file path
-        if "global_paths" not in file_path or not os.path.isdir(os.path.dirname(file_path)):
+        if not os.path.isdir(os.path.dirname(file_path)) or not str(
+            os.path.dirname(file_path)
+        ).endswith("global_paths"):
             raise ValueError(f"Invalid file path: {file_path}")
 
         if tmstmp:

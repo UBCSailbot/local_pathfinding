@@ -138,7 +138,8 @@ function delete_paths(){
         return;
     }
 
-    var confirmation = confirm(`Are you sure you want to delete all paths containing the keyword: ${key}?`);
+    var confirmation = confirm(`Are you sure you want to delete all paths containing the keyword \"${key}\"?
+    All timestamped paths will also be deleted.`);
 
     if (confirmation) {
 
@@ -155,7 +156,7 @@ function delete_paths(){
                 alert('Error deleting paths. Please check the server logs for details.');
             }
             else{
-                alert('Test Paths deleted successfully.');
+                alert(`\"${key}\" Paths deleted successfully.`);
             }
         })
         .catch(error => {

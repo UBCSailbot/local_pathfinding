@@ -1,5 +1,3 @@
-from typing import Union
-
 import pytest
 from custom_interfaces.msg import HelperLatLon, Path
 
@@ -149,19 +147,11 @@ def test_interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]):
             HelperLatLon(latitude=48.95, longitude=123.55),
             5.0,
         ),
-        (
-            HelperLatLon(latitude=48.95, longitude=123.56),
-            [
-                HelperLatLon(latitude=48.95, longitude=123.55),
-                HelperLatLon(latitude=48.95, longitude=123.54),
-            ],
-            10.0,
-        ),
     ],
 )
 def test_generate_path(
     pos: HelperLatLon,
-    dest: Union[HelperLatLon, list[HelperLatLon]],
+    dest: HelperLatLon,
     interval_spacing: float,
 ):
     """Test the generate_path method of MockGlobalPath.
