@@ -1,22 +1,56 @@
+""""Path Builder Module
+
+This module can be used the following ways:
+        - To plot a global path directly from a csv file (if a filepath is specified in the CLI)
+        - To launch and serve as the backend to the path builder GUI (if no filepath is entered)
+"""
+import argparse
 import csv
 import os
 import re
 import webbrowser
 from os import walk
+from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
 from custom_interfaces.msg import HelperLatLon, Path
 from flask import Flask, jsonify, render_template, request
 
-# TODO uncomment when I can get the import to work
-# from global_paths.plot_global_path import get_lats_and_lons, plot_global_path
-# from global_paths.purge_paths import delete_files
 from local_pathfinding.node_mock_global_path import MockGlobalPath
 
 app = Flask(__name__)
 
 DEFAULT_DIR = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/"
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file_path", help="The relative path to the global path file.")
+
+    args = parser.parse_args()
+
+    # Manually plot path from file if a filepath is given
+    if args.file_path is not None:
+        lats, lons = get_lats_and_lons(file_path=args.file_path)
+        plot_global_path(lats, lons)
+        print("global path:", lats_and_lons_to_dict(lats, lons), sep="\n")
+    # Open the GUI if no filepath is specified
+    else:
+        extra_dirs = [
+            "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_builder",
+        ]
+        extra_files = extra_dirs[:]
+        for extra_dir in extra_dirs:
+            for dirname, dirs, files in walk(extra_dir):
+                for filename in files:
+                    filename = os.path.join(dirname, filename)
+                    if os.path.isfile(filename):
+                        extra_files.append(filename)
+
+        webbrowser.open("http://127.0.0.1:5000")
+        # opens two tabs on startup when debug=True
+        app.run(host="0.0.0.0", port=5000, debug=True, extra_files=extra_files)
 
 
 @app.route("/")
@@ -169,8 +203,10 @@ def handle_interpolate(data):
         return {"status": "error", "message": f"Error exporting waypoints: {str(e)}"}
 
 
-# TODO REMOVE THIS ONCE IMPORT WORKS --------------------------------------------------------------
 def delete_files(key=None):
+    """ "Deletes all files in /global_paths that match the given key (if any) or that contain a
+    timestamp."""
+
     dir_path = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths"
     files = os.listdir(dir_path)
 
@@ -192,7 +228,24 @@ def delete_files(key=None):
                 print(f"Error deleting {file_path}: {e}")
 
 
+def get_lats_and_lons(file_path: str) -> Tuple[List[float], List[float]]:
+    """Reads a csv file and returns the lats and lons as lists"""
+    lats = []
+    lons = []
+
+    with open(file_path, "r") as file:
+        reader = csv.reader(file)
+        # skip header
+        reader.__next__()
+        for row in reader:
+            lats.append(float(row[0]))
+            lons.append(float(row[1]))
+
+    return lats, lons
+
+
 def plot_global_path(lats, lons):
+    """3D plotter with plotly"""
     fig = go.Figure(
         data=go.Scattergeo(
             lat=lats,
@@ -222,20 +275,13 @@ def plot_global_path(lats, lons):
     fig.show()
 
 
-# TODO REMOVE THIS ONCE IMPORT WORKS ---------------------------------------------------------
+def lats_and_lons_to_dict(
+    lats: List[float], lons: List[float], num_decimals: int = 4
+) -> Dict[int, str]:
+    return {
+        i: f"({lats[i]:.{num_decimals}f}, {lons[i]:.{num_decimals}f})" for i in range(len(lats))
+    }
+
 
 if __name__ == "__main__":
-    extra_dirs = [
-        "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_builder",
-    ]
-    extra_files = extra_dirs[:]
-    for extra_dir in extra_dirs:
-        for dirname, dirs, files in walk(extra_dir):
-            for filename in files:
-                filename = os.path.join(dirname, filename)
-                if os.path.isfile(filename):
-                    extra_files.append(filename)
-
-    webbrowser.open("http://127.0.0.1:5000")
-    # opens two tabs on startup when debug=True
-    app.run(host="0.0.0.0", port=5000, debug=True, extra_files=extra_files)
+    main()
