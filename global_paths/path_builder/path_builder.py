@@ -83,6 +83,7 @@ def main():
 
     # Open the GUI if no filepath is specified
     else:
+        # extra_dirs is used to reload the server when a file is changed for debugging
         extra_dirs = [
             "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_builder",
         ]
@@ -96,7 +97,7 @@ def main():
 
         webbrowser.open("http://127.0.0.1:5000")
         # opens two tabs on startup when debug=True
-        app.run(host="0.0.0.0", port=5000, debug=True, extra_files=extra_files)
+        app.run(host="0.0.0.0", port=5000, debug=False, extra_files=extra_files)
 
 
 @app.route("/")
