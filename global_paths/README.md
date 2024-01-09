@@ -13,7 +13,7 @@ GUI: The module serves a basic flask application which allows
 
 `python3 global_paths/path_builder/path_builder.py`
 
-CLI: The module can also be run from the command line for faster or more performant operations
+CLI: The module can also be run from the command line for faster and more performant operations.
 To use, run the following command(s) from the root of the local_pathfinding repository:
 
 `python3 global_paths/path_builder/path_builder.py --file_path <path_to_csv_file>` (to plot)
@@ -22,7 +22,7 @@ To use, run the following command(s) from the root of the local_pathfinding repo
 
 `python3 global_paths/path_builder/path_builder.py --delete` (to delete all generated paths with timestamps)
 
-Using any CLA will keep the GUI from launching.
+Using any of the command line arguments will keep the GUI from launching.
 
 ### GUI Usage
 

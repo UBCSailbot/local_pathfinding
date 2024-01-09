@@ -213,7 +213,8 @@ class MockGlobalPath(Node):
     """Stores and publishes the mock global path to the global_path topic.
 
     Subscribers:
-        gps_sub (Subscription): Subscribe to a `GPS` msg
+        gps_sub (Subscription): Subscribe to a `GPS` msg which contains the current GPS location of
+        sailbot.
 
     Publishers and their timers:
         global_path_pub (Publisher): Publishes a `Path` msg containing the global path
@@ -292,13 +293,14 @@ class MockGlobalPath(Node):
             self.get_logger().info(
                 f"GPS data changed by more than {gps_threshold} km. Running global path callback"
             )
+            # setting the force parameter to true bypasses any checks in the global path callback
             self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, True)])
             self.global_path_callback()
 
         self.gps = msg
 
     # Timer callbacks
-    def global_path_callback(self, gps_call=False, force=False):
+    def global_path_callback(self):
         """Check if the global path csv file has changed. If it has, the new path is published.
 
         This function is also called by the gps callback if the gps data has changed by more than
@@ -310,9 +312,6 @@ class MockGlobalPath(Node):
         Global path can be changed by modifying mock_global_path.csv or modifying the
         global_path_filepath parameter.
 
-        Args:
-            gps_call (bool, optional): Whether the callback was called by the gps callback
-            force (bool, optional): Whether to force the callback to run, without any checks
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
@@ -322,11 +321,14 @@ class MockGlobalPath(Node):
         # check when global path was changed last
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
 
-        # check if the global path has been forced to update by parameter change in CLI
+        # check if the global path has been forced to update by a parameter change
         force = self.get_parameter("force")._value
 
         # Only publish path if the path has changed or gps has changed by more than gps_threshold
-        if (path_mod_tmstmp != self.path_mod_tmstmp or self.file_path != file_path) or force:
+        if path_mod_tmstmp == self.path_mod_tmstmp and self.file_path == file_path and not force:
+            return
+
+        else:
             self.get_logger().info(
                 f"Global path file is: {os.path.basename(file_path)}\n Reading path"
             )
