@@ -1,8 +1,14 @@
 """"Path Builder Module
 
-This module can be used the following ways:
-        - To plot a global path directly from a csv file (if a filepath is specified in the CLI)
-        - To launch and serve as the backend to the path builder GUI (if no filepath is entered)
+Depending on the arguments passed, this module can be used the following ways:
+        - To run certain path functions from the command line
+        - To launch and serve as the backend to the path builder GUI
+
+
+CLI Args:
+    --file_path: The relative path to the global path file.
+    --interpolate: The interval spacing for interpolation.
+    --delete: Whether to delete generated global path files.
 """
 import argparse
 import csv
@@ -32,10 +38,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", help="The relative path to the global path file.")
     parser.add_argument(
-        "--interpolate", help="Whether to interpolate the path.", action="store_true"
-    )
-    parser.add_argument(
-        "--int_spacing", help="The interval spacing for interpolation.", type=float
+        "--interpolate", help="The interval spacing for interpolation.", type=float
     )
     parser.add_argument(
         "--delete", help="Whether to delete generated global path files.", action="store_true"
@@ -50,12 +53,7 @@ def main():
     if args.file_path is not None:
         lats, lons = get_lats_and_lons(file_path=args.file_path)
 
-        if args.interpolate:
-            if args.int_spacing is None:
-                raise ValueError(
-                    "Please enter an interval spacing for interpolation with --int_spacing."
-                )
-
+        if args.interpolate is not None:
             # interpolate and write interpolated path to new file
             # waypoints will be a complete path including start position in this context
             waypoints = [
@@ -69,7 +67,7 @@ def main():
             path = Path(waypoints=waypoints)
             path = interpolate_path(
                 global_path=path,
-                interval_spacing=args.int_spacing,
+                interval_spacing=args.interpolate,
                 pos=pos,
                 path_spacing=path_spacing,
                 write=True,

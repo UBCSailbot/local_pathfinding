@@ -29,4 +29,4 @@ The Path Builder supports the following operations:
 * Purge generated path files
 * 3D visualization of path
 
-Note: Selecting a small value for the interpolation interval spacing or having a large number of waypoints may cause performance issues as the javascript is not super well optimmized. If this is an issue, try increasing the spacing or running the interpolation from the CLI instead.
+Note: Selecting a small value for the interpolation interval spacing or having a large number of waypoints may cause performance issues in the GUI as the javascript is not optimmized. If this is an issue, try increasing the spacing or running the interpolation from the CLI instead.
