@@ -291,9 +291,10 @@ class MockGlobalPath(Node):
         interval_spacing = self.get_parameter("interval_spacing")._value
         if position_delta > gps_threshold * interval_spacing:
             self.get_logger().info(
-                f"GPS data changed by more than {gps_threshold} km. Running global path callback"
+                f"GPS data changed by more than {gps_threshold*interval_spacing} km. Running ",
+                "global path callback",
             )
-            # setting the force parameter to true bypasses any checks in the global path callback
+
             self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, True)])
             self.global_path_callback()
 
