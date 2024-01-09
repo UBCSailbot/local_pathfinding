@@ -58,10 +58,7 @@ class Sailbot(Node):
             msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
         )
         self.global_path_sub = self.create_subscription(
-            msg_type=Path,
-            topic="global_path",
-            callback=self.global_path_callback,
-            qos_profile=10,
+            msg_type=Path, topic="global_path", callback=self.global_path_callback, qos_profile=10
         )
         self.filtered_wind_sensor_sub = self.create_subscription(
             msg_type=WindSensor,
@@ -75,7 +72,7 @@ class Sailbot(Node):
             msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
         )
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
-        self.get_logger().info(f"Got parameter: {pub_period_sec=}")
+        self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
         self.desired_heading_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
@@ -92,19 +89,19 @@ class Sailbot(Node):
     # subscriber callbacks
 
     def ais_ships_callback(self, msg: AISShips):
-        self.get_logger().info(f"Received data from {self.ais_ships_sub.topic}: {msg}")
+        self.get_logger().debug(f"Received data from {self.ais_ships_sub.topic}: {msg}")
         self.ais_ships = msg
 
     def gps_callback(self, msg: GPS):
-        self.get_logger().info(f"Received data from {self.gps_sub.topic}: {msg}")
+        self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
         self.gps = msg
 
     def global_path_callback(self, msg: Path):
-        self.get_logger().info(f"Received data from {self.global_path_sub.topic}: {msg}")
+        self.get_logger().debug(f"Received data from {self.global_path_sub.topic}: {msg}")
         self.global_path = msg
 
     def filtered_wind_sensor_callback(self, msg: WindSensor):
-        self.get_logger().info(f"Received data from {self.filtered_wind_sensor_sub.topic}: {msg}")
+        self.get_logger().debug(f"Received data from {self.filtered_wind_sensor_sub.topic}: {msg}")
         self.filtered_wind_sensor = msg
 
     # publisher callbacks
@@ -122,7 +119,7 @@ class Sailbot(Node):
         msg.heading.heading = desired_heading
 
         self.desired_heading_pub.publish(msg)
-        self.get_logger().info(f"Publishing to {self.desired_heading_pub.topic}: {msg}")
+        self.get_logger().debug(f"Publishing to {self.desired_heading_pub.topic}: {msg}")
 
     # get_desired_heading and its helper functions
 
