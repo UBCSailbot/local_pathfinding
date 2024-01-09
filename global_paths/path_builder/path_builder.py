@@ -31,14 +31,58 @@ DEFAULT_DIR = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", help="The relative path to the global path file.")
-
+    parser.add_argument(
+        "--interpolate", help="Whether to interpolate the path.", action="store_true"
+    )
+    parser.add_argument(
+        "--int_spacing", help="The interval spacing for interpolation.", type=float
+    )
+    parser.add_argument(
+        "--delete", help="Whether to delete generated global path files.", action="store_true"
+    )
     args = parser.parse_args()
 
-    # Manually plot path from file if a filepath is given
+    if args.delete:
+        delete_files()
+        return
+
+    # Manually plot or interpolate path from file if a filepath is given
     if args.file_path is not None:
         lats, lons = get_lats_and_lons(file_path=args.file_path)
-        plot_global_path(lats, lons)
+
+        if args.interpolate:
+            if args.int_spacing is None:
+                raise ValueError(
+                    "Please enter an interval spacing for interpolation with --int_spacing."
+                )
+
+            # interpolate and write interpolated path to new file
+            # waypoints will be a complete path including start position in this context
+            waypoints = [
+                (HelperLatLon(latitude=lats[i], longitude=lons[i])) for i in range(len(lats))
+            ]
+            # get the start position from the first waypoint
+            pos = waypoints[0]
+            # Calculate actual interval spacing in the current path
+            path_spacing = calculate_interval_spacing(pos=pos, waypoints=waypoints)
+
+            path = Path(waypoints=waypoints)
+            path = interpolate_path(
+                global_path=path,
+                interval_spacing=args.int_spacing,
+                pos=pos,
+                path_spacing=path_spacing,
+                write=True,
+                file_path=args.file_path,
+            )
+
+            # obtain the newly interpolated waypoints for printing
+            lats, lons = zip(*[(item.latitude, item.longitude) for item in path.waypoints])
+        else:
+            plot_global_path(lats, lons)
+
         print("global path:", lats_and_lons_to_dict(lats, lons), sep="\n")
+
     # Open the GUI if no filepath is specified
     else:
         extra_dirs = [

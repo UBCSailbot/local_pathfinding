@@ -2,7 +2,13 @@ import pytest
 from custom_interfaces.msg import HelperLatLon, Path
 
 from local_pathfinding.coord_systems import GEODESIC, meters_to_km
-from local_pathfinding.node_mock_global_path import MockGlobalPath
+from local_pathfinding.node_mock_global_path import (
+    calculate_interval_spacing,
+    generate_path,
+    interpolate_path,
+    path_to_dict,
+    write_to_file,
+)
 
 
 # ------------------------- TEST WRITE_TO_FILE ------------------------------
@@ -16,7 +22,7 @@ from local_pathfinding.node_mock_global_path import MockGlobalPath
 )
 def test_write_to_file(file_path: str):
     with pytest.raises(ValueError):
-        MockGlobalPath.write_to_file(file_path=file_path, global_path=None)
+        write_to_file(file_path=file_path, global_path=None)
 
 
 # ------------------------- TEST INTERPOLATE_PATH -------------------------
@@ -49,9 +55,9 @@ def test_interpolate_path(
         pos (HelperLatLon): The position of Sailbot.
     """
 
-    path_spacing = MockGlobalPath.interval_spacing(pos, global_path.waypoints)
+    path_spacing = calculate_interval_spacing(pos, global_path.waypoints)
 
-    interpolated_path = MockGlobalPath.interpolate_path(
+    interpolated_path = interpolate_path(
         global_path=global_path,
         interval_spacing=interval_spacing,
         pos=pos,
@@ -63,7 +69,7 @@ def test_interpolate_path(
     assert isinstance(interpolated_path, Path)
 
     # Ensure proper spacing between waypoints
-    dists = MockGlobalPath.interval_spacing(pos, interpolated_path.waypoints)
+    dists = calculate_interval_spacing(pos, interpolated_path.waypoints)
 
     assert max(dists) <= interval_spacing, "Interval spacing is not correct"
 
@@ -102,7 +108,7 @@ def test_interval_spacing(pos: HelperLatLon, waypoints: list[HelperLatLon]):
         pos (HelperLatLon): The start position.
         waypoints (list[HelperLatLon]): The waypoints of the global path.
     """
-    greatest_interval = max(MockGlobalPath.interval_spacing(pos, waypoints))
+    greatest_interval = max(calculate_interval_spacing(pos, waypoints))
 
     if len(waypoints) > 1:
         expected_interval = meters_to_km(
@@ -161,7 +167,7 @@ def test_generate_path(
         pos (HelperLatLon): The position of Sailbot.
         interval_spacing (float): The desired spacing between waypoints.
     """
-    global_path = MockGlobalPath.generate_path(
+    global_path = generate_path(
         dest=dest,
         interval_spacing=interval_spacing,
         pos=pos,
@@ -212,5 +218,5 @@ def test_generate_path(
     ],
 )
 def test_path_to_dict(path: Path, expected: dict[int, str]):
-    path_dict = MockGlobalPath.path_to_dict(path)
+    path_dict = path_to_dict(path)
     assert path_dict == expected, "Did not correctly convert path to dictionary"
