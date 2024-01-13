@@ -248,6 +248,10 @@ def test_speed_objective(method: objectives.SpeedObjectiveMethod):
     "speed,expected",
     [
         (0.0, 5),
+        (8, 10),
+        (12.5, 20),
+        (17.0, 50),
+        (35, 10000),
     ],
 )
 def test_piecewise_cost(speed: float, expected: int):
@@ -259,6 +263,9 @@ def test_piecewise_cost(speed: float, expected: int):
     [
         (0.0, 10000),
         (25.0, 10000),
+        (30, 2.2013016167),
+        (40, 1.55146222424),
+        (10, 0.551462224238),
     ],
 )
 def test_continuous_cost(speed: float, expected: int):

@@ -480,7 +480,7 @@ class SpeedObjective(Objective):
         elif 10 < speed < 15:
             return 20
         elif 15 < speed < 20:
-            return 5000
+            return 50
         else:
             return 10000
 
@@ -492,7 +492,7 @@ class SpeedObjective(Objective):
             speed (float): The speed of the boat in m/s
         """
         try:
-            cost = 1 / math.sin(math.pi * speed / 25) - 0.5
+            cost = abs(1 / math.sin(math.pi * speed / 25) - 0.5)
             return min(10000, cost)
         except ZeroDivisionError:
             return 10000
