@@ -192,9 +192,6 @@ def test_is_downwind(wind_direction_deg: float, heading_deg: float, expected: fl
     assert objectives.WindObjective.is_downwind(wind_direction, heading) == expected
 
 
-""" Tests for is_angle_between() """
-
-
 @pytest.mark.parametrize(
     "afir,amid,asec,expected",
     [
@@ -212,10 +209,6 @@ def test_is_downwind(wind_direction_deg: float, heading_deg: float, expected: fl
     ],
 )
 def test_angle_between(afir: float, amid: float, asec: float, expected: float):
-    """Checks different situations such as boundary conditions.
-    For example, what happens when par1 == par2 == par3?
-    In addition, what happens if we change the order of the parameters
-    """
 
     assert (
         objectives.WindObjective.is_angle_between(
