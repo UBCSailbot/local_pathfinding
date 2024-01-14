@@ -5,6 +5,7 @@ import argparse
 import csv
 import json
 import os
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -42,9 +43,8 @@ def main():
     # Continuosly check if the global path should be updated
     while True:
         # check when global path was changed last
-        timestamp = os.path.getmtime(args.file_path)
+        timestamp = time.ctime(os.path.getmtime(args.file_path))
 
-        # TODO verify pos is in correct format as HelperLatLon
         position = None
         try:
             position = json.loads(urlopen("http://localhost:3005/api/gps").read())
@@ -76,8 +76,6 @@ def main():
             (args.interval is None) or position_delta <= args.interval
         ):
             continue
-
-        path = get_path(args.file_path)
 
         if args.interval is not None:
             path = format_path(
@@ -130,8 +128,6 @@ def post_path(path: Path):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-    print(json_data)
-
 
 def format_path(
     path: Path, pos: HelperLatLon, interval_spacing: float, file_path: str, write: bool
@@ -170,8 +166,7 @@ def format_path(
             file_path=file_path,
         )
 
-    else:
-        return path
+    return path
 
 
 if __name__ == "__main__":
