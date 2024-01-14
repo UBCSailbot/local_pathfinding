@@ -42,7 +42,7 @@ def generate_path(
     with the name of the original file, appended with a timestamp.
 
     Args:
-        dest (Union[HelperLatLon, list[HelperLatLon]]): The destination point or partial path
+        dest (list[HelperLatLon]): The destination point or partial path
         interval_spacing (float): The desired distance between waypoints on the path
         pos (HelperLatLon): The current GPS location
         write (bool, optional): Whether to write the path to a new csv file, default False
@@ -329,81 +329,78 @@ class MockGlobalPath(Node):
         if path_mod_tmstmp == self.path_mod_tmstmp and self.file_path == file_path and not force:
             return
 
+        self.get_logger().info(
+            f"Global path file is: {os.path.basename(file_path)}\n Reading path"
+        )
+
+        global_path = Path()
+
+        with open(file_path, "r") as file:
+            reader = csv.reader(file)
+            # skip header
+            reader.__next__()
+            for row in reader:
+                global_path.waypoints.append(
+                    HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
+                )
+
+        pos = self.gps.lat_lon
+
+        # obtain the actual distances between every waypoint in the global path
+        path_spacing = calculate_interval_spacing(pos, global_path.waypoints)
+
+        # obtain desired interval spacing
+        interval_spacing = self.get_parameter("interval_spacing")._value
+
+        # check if global path is just a destination point
+        if len(global_path.waypoints) < 2:
+            self.get_logger().info(
+                f"Generating new path from {pos.latitude:.4f}, {pos.longitude:.4f} to "
+                f"{global_path.waypoints[0].latitude:.4f}, "
+                f"{global_path.waypoints[0].longitude:.4f}"
+            )
+
+            write = self.get_parameter("write")._value
+            if write:
+                self.get_logger().info("Writing generated path to new file")
+
+            msg = generate_path(
+                dest=global_path.waypoints[0],
+                interval_spacing=interval_spacing,
+                pos=pos,
+                write=write,
+                file_path=file_path,
+            )
+        # Check if any waypoints are too far apart
+        elif max(path_spacing) > interval_spacing:
+            self.get_logger().info(
+                f"Some waypoints in the global path exceed the maximum interval spacing of"
+                f" {interval_spacing} km. Interpolating between waypoints and generating path"
+            )
+
+            write = self.get_parameter("write")._value
+            if write:
+                self.get_logger().info("Writing generated path to new file")
+
+            msg = interpolate_path(
+                global_path=global_path,
+                interval_spacing=interval_spacing,
+                pos=pos,
+                path_spacing=path_spacing,
+                write=write,
+                file_path=file_path,
+            )
+
         else:
-            self.get_logger().info(
-                f"Global path file is: {os.path.basename(file_path)}\n Reading path"
-            )
+            msg = global_path
 
-            global_path = Path()
+        # publish global path
+        self.global_path_pub.publish(msg)
+        self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {path_to_dict(msg)}")
 
-            with open(file_path, "r") as file:
-                reader = csv.reader(file)
-                # skip header
-                reader.__next__()
-                for row in reader:
-                    global_path.waypoints.append(
-                        HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
-                    )
-
-            pos = self.gps.lat_lon
-
-            # obtain the actual distances between every waypoint in the global path
-            path_spacing = calculate_interval_spacing(pos, global_path.waypoints)
-
-            # obtain desired interval spacing
-            interval_spacing = self.get_parameter("interval_spacing")._value
-
-            # check if global path is just a destination point
-            if len(global_path.waypoints) < 2:
-                self.get_logger().info(
-                    f"Generating new path from {pos.latitude:.4f}, {pos.longitude:.4f} to "
-                    f"{global_path.waypoints[0].latitude:.4f}, "
-                    f"{global_path.waypoints[0].longitude:.4f}"
-                )
-
-                write = self.get_parameter("write")._value
-                if write:
-                    self.get_logger().info("Writing generated path to new file")
-
-                msg = generate_path(
-                    dest=global_path.waypoints[0],
-                    interval_spacing=interval_spacing,
-                    pos=pos,
-                    write=write,
-                    file_path=file_path,
-                )
-            # Check if any waypoints are too far apart
-            elif max(path_spacing) > interval_spacing:
-                self.get_logger().info(
-                    f"Some waypoints in the global path exceed the maximum interval spacing of"
-                    f" {interval_spacing} km. Interpolating between waypoints and generating path"
-                )
-
-                write = self.get_parameter("write")._value
-                if write:
-                    self.get_logger().info("Writing generated path to new file")
-
-                msg = interpolate_path(
-                    global_path=global_path,
-                    interval_spacing=interval_spacing,
-                    pos=pos,
-                    path_spacing=path_spacing,
-                    write=write,
-                    file_path=file_path,
-                )
-
-            else:
-                msg = global_path
-
-            # publish global path
-            self.global_path_pub.publish(msg)
-            self.get_logger().info(
-                f"Publishing to {self.global_path_pub.topic}: {path_to_dict(msg)}"
-            )
-
-            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
-            self.path_mod_tmstmp = path_mod_tmstmp
-            self.file_path = file_path
+        self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
+        self.path_mod_tmstmp = path_mod_tmstmp
+        self.file_path = file_path
 
     def _all_subs_active(self) -> bool:
         return self.gps is not None

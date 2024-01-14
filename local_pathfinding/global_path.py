@@ -5,11 +5,12 @@ import argparse
 import csv
 import json
 import os
-import time
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 from custom_interfaces.msg import HelperLatLon, Path
 
+from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 from local_pathfinding.node_mock_global_path import (
     calculate_interval_spacing,
     generate_path,
@@ -17,13 +18,18 @@ from local_pathfinding.node_mock_global_path import (
     path_to_dict,
 )
 
+GPS_URL = "http://localhost:3005/api/gps"
+PATH_URL = "http://localhost:8081/global-path"
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("file_path", help="The path to the global path csv file.")
     parser.add_argument("--interval", help="Desired path interval length.", type=float)
     parser.add_argument(
-        "--write", help="Whether to overwrite the path with the formatted path", type=bool
+        "--write",
+        help="Whether to overwrite the path with the formatted path",
+        action="store_true",
     )
     args = parser.parse_args()
     path_mod_tmstmp = None
@@ -33,29 +39,66 @@ def main():
         print("File not found. Please enter a valid file path.")
         exit(1)
 
+    # Continuosly check if the global path should be updated
     while True:
         # check when global path was changed last
-        timestamp = time.ctime(os.path.getmtime(args.file_path))
+        timestamp = os.path.getmtime(args.file_path)
 
-        # update global path if it has been changed
-        if not (timestamp == path_mod_tmstmp):
-            path = get_path(args.file_path)
+        # TODO verify pos is in correct format as HelperLatLon
+        position = None
+        try:
+            position = json.loads(urlopen("http://localhost:3005/api/gps").read())
+        except HTTPError as http_error:
+            print(f"HTTP Error: {http_error.code}")
+        except URLError as url_error:
+            print(f"URL Error: {url_error.reason}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
-            if args.interval is not None:
-                path = format_path(
-                    path=path,
-                    interval_spacing=args.interval,
-                    file_path=args.file_path,
-                    write=args.write,
-                )
+        if position is None:
+            raise Exception(f"Failed to retrieve position from {GPS_URL}")
 
-            post_path(path)
+        lat_lon = position["lat_lon"]
+        pos = HelperLatLon(latitude=lat_lon["latitude"], longitude=lat_lon["longitude"])
+        path = get_path(args.file_path)
 
-            path_mod_tmstmp = timestamp
+        position_delta = meters_to_km(
+            GEODESIC.inv(
+                lats1=pos.latitude,
+                lons1=pos.longitude,
+                lats2=path.waypoints[0].latitude,
+                lons2=path.waypoints[0].longitude,
+            )[2]
+        )
+
+        # update global path if it has been changed or position is too far from start of path
+        if (timestamp == path_mod_tmstmp) and (
+            (args.interval is None) or position_delta <= args.interval
+        ):
+            continue
+
+        path = get_path(args.file_path)
+
+        if args.interval is not None:
+            path = format_path(
+                path=path,
+                pos=pos,
+                interval_spacing=args.interval,
+                file_path=args.file_path,
+                write=args.write,
+            )
+
+        post_path(path)
+
+        path_mod_tmstmp = timestamp
 
 
 def get_path(file_path: str) -> Path:
-    """Returns the global path from the specified file path."""
+    """Returns the global path from the specified file path.
+
+    Args:
+        file_path (str): The path to the global path csv file.
+    """
     path = Path()
 
     with open(file_path, "r") as file:
@@ -68,23 +111,41 @@ def get_path(file_path: str) -> Path:
 
 
 def post_path(path: Path):
-    """Sends the global path to NET via POST request."""
+    """Sends the global path to NET via POST request.
+
+    Args:
+        path (Path): The global path.
+    """
     waypoints = [
         {"lat": float(item.latitude), "lon": float(item.longitude)} for item in path.waypoints
     ]
     data = {"waypoints": waypoints}
     json_data = json.dumps(data).encode("utf-8")
-    urlopen("http://localhost:8081/global-path", json_data)
+    try:
+        urlopen("http://localhost:8081/global-path", json_data)
+    except HTTPError as http_error:
+        print(f"HTTP Error: {http_error.code}")
+    except URLError as url_error:
+        print(f"URL Error: {url_error.reason}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
     print(json_data)
 
 
-def format_path(path: Path, interval_spacing: float, file_path: str, write: bool) -> Path:
+def format_path(
+    path: Path, pos: HelperLatLon, interval_spacing: float, file_path: str, write: bool
+) -> Path:
     """Interpolates path to ensure the interval lengths are less than or equal to the specified
-    interval spacing."""
+    interval spacing.
 
-    # TODO will need to deserialize this data from JSON into HelperLatLon
-    pos = urlopen("http://localhost:3005/api/gps").read()
-    pos = json.loads(pos)
+    Args:
+        path (Path): The global path.
+        pos (HelperLatLon): The current position of the vehicle.
+        interval_spacing (float): The desired interval spacing.
+        file_path (str): The path to the global path csv file.
+        write (bool): Whether to overwrite the path with the formatted path.
+    """
 
     # obtain the actual distances between every waypoint in the path
     path_spacing = calculate_interval_spacing(pos, path.waypoints)
