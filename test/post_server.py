@@ -1,4 +1,11 @@
+"""
+This is a basic http server to handle POST requests from the global path module until the NET
+endpoint is implemented.
+
+It receives a JSON payload with a list of waypoints and prints them to the console.
+"""
 import json
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -25,11 +32,23 @@ class CustomRequestHandler(BaseHTTPRequestHandler):
         )
 
 
-def run_server(port=8081):
+def run_server(port=8081) -> HTTPServer:
     server_address = ("localhost", port)
     httpd = HTTPServer(server_address, CustomRequestHandler)
-    print(f"Server running on http://localhost:{port}")
-    httpd.serve_forever()
+
+    def run():
+        print(f"Server running on http://localhost:{port}")
+        httpd.serve_forever()
+
+    # Start the server in a separate thread
+    server_thread = threading.Thread(target=run)
+    server_thread.start()
+
+    return httpd
+
+
+def shutdown_server(httpd: HTTPServer):
+    httpd.shutdown()
 
 
 if __name__ == "__main__":

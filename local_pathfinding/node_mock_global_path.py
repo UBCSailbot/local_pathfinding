@@ -81,7 +81,7 @@ def generate_path(
     return global_path
 
 
-def interpolate_path(
+def _interpolate_path(
     global_path: Path,
     interval_spacing: float,
     pos: HelperLatLon,
@@ -382,7 +382,7 @@ class MockGlobalPath(Node):
             if write:
                 self.get_logger().info("Writing generated path to new file")
 
-            msg = interpolate_path(
+            msg = _interpolate_path(
                 global_path=global_path,
                 interval_spacing=interval_spacing,
                 pos=pos,

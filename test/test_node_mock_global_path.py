@@ -3,9 +3,9 @@ from custom_interfaces.msg import HelperLatLon, Path
 
 from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 from local_pathfinding.node_mock_global_path import (
+    _interpolate_path,
     calculate_interval_spacing,
     generate_path,
-    interpolate_path,
     path_to_dict,
     write_to_file,
 )
@@ -42,12 +42,12 @@ def test_write_to_file(file_path: str):
         )
     ],
 )
-def test_interpolate_path(
+def test__interpolate_path(
     pos: HelperLatLon,
     global_path: Path,
     interval_spacing: float,
 ):
-    """Test the interpolate_path method of MockGlobalPath.
+    """Test the _interpolate_path method of MockGlobalPath.
 
     Args:
         global_path (HelperLatLon): The global path.
@@ -57,12 +57,12 @@ def test_interpolate_path(
 
     path_spacing = calculate_interval_spacing(pos, global_path.waypoints)
 
-    interpolated_path = interpolate_path(
+    interpolated_path = _interpolate_path(
         global_path=global_path,
         interval_spacing=interval_spacing,
         pos=pos,
         path_spacing=path_spacing,
-        write=True,
+        write=False,
         file_path="/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_2.csv",
     )
 
