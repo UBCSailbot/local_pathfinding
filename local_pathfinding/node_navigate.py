@@ -1,7 +1,14 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
 import rclpy
-from custom_interfaces.msg import GPS, AISShips, DesiredHeading, Path, WindSensor
+from custom_interfaces.msg import (
+    GPS,
+    AISShips,
+    DesiredHeading,
+    LPathData,
+    Path,
+    WindSensor,
+)
 from rclpy.node import Node
 
 from local_pathfinding.local_path import LocalPath
@@ -71,10 +78,16 @@ class Sailbot(Node):
         self.desired_heading_pub = self.create_publisher(
             msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
         )
+        self.LPath_pub = self.create_publisher(
+            msg_type=LPathData, topic="local_path", qos_profile=10
+        )
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
         self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
         self.desired_heading_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
+        )
+        self.LPath_timer = self.create_timer(
+            timer_period_sec=pub_period_sec, callback=self.LPath_callback
         )
 
         # attributes from subscribers
@@ -140,6 +153,35 @@ class Sailbot(Node):
 
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
+
+    def LPath_callback(self):
+        """Get and publish the local path."""
+
+        waypoints = self.get_LPath()
+
+        local_path = Path(waypoints=waypoints)
+
+        msg = LPathData(local_path=local_path)
+
+        self.LPath_pub.publish(msg)
+        self.get_logger().debug(f"Publishing to {self.LPath_pub.topic}: {msg}")
+
+    def get_LPath(self):
+        """Get the local path.
+
+        Returns:
+            List[Tuple[float, float]]: The local path if all subscribers are active, else an empty
+                list.
+        """
+        if not self._all_subs_active():
+            self._log_inactive_subs_warning()
+            return -1.0
+
+        self.local_path.update_if_needed(
+            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
+        )
+
+        return self.local_path.waypoints
 
     def _all_subs_active(self) -> bool:
         return True  # TODO: this line is a placeholder, delete when mocks can be run

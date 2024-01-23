@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple
 
+from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.coord_systems as cs
 from local_pathfinding.objectives import get_sailing_objective
 
 if TYPE_CHECKING:
@@ -75,7 +77,7 @@ class OMPLPath:
         """
         raise NotImplementedError
 
-    def get_waypoints(self) -> List[Tuple[float, float]]:
+    def get_waypoints(self) -> type(HelperLatLon):
         """Get a list of waypoints for the boat to follow.
 
         Returns:
@@ -87,7 +89,18 @@ class OMPLPath:
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
-        waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
+        referenceLatlon = cs.LatLon(*self.state.goal_state)
+        waypoints = []
+
+        for state in solution_path.getStates():
+            waypoint_XY = cs.XY(*(state.getX(), state.getY()))
+            waypoint_latlon = cs.xy_to_latlon(referenceLatlon, waypoint_XY)
+            waypoints.append(
+                HelperLatLon(
+                    latitude=waypoint_latlon.latitude, longitude=waypoint_latlon.longitude
+                )
+            )
+
         return waypoints
 
     def update_objectives(self):
