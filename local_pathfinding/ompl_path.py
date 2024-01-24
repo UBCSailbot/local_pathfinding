@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
