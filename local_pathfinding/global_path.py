@@ -40,9 +40,10 @@ def main():
     pos = None
 
     try:
-        print(f"retrieved path from {file_path}", path_to_dict(get_path(file_path)))
+        path = get_path(file_path)
+        print(f"retrieved path from {file_path}", path_to_dict(path))
     except FileNotFoundError:
-        print("File not found. Please enter a valid file path.")
+        print(f"{file_path} not found. Please enter a valid file path.")
         exit(1)
 
     # Main service loop
@@ -55,8 +56,6 @@ def main():
         if pos is None:
             print(f"Failed to retrieve position from {GPS_URL}")
             continue
-
-        path = get_path(file_path)
 
         position_delta = meters_to_km(
             GEODESIC.inv(
