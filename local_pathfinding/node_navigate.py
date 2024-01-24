@@ -8,6 +8,7 @@ from custom_interfaces.msg import (
     LPathData,
     Path,
     WindSensor,
+    HelperLatLon
 )
 from rclpy.node import Node
 
@@ -78,7 +79,7 @@ class Sailbot(Node):
         self.desired_heading_pub = self.create_publisher(
             msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
         )
-        self.LPath_pub = self.create_publisher(
+        self.local_path_data = self.create_publisher(
             msg_type=LPathData, topic="local_path", qos_profile=10
         )
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
@@ -86,7 +87,7 @@ class Sailbot(Node):
         self.desired_heading_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
-        self.LPath_timer = self.create_timer(
+        self.local_path_data_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.LPath_callback
         )
 
@@ -157,14 +158,14 @@ class Sailbot(Node):
     def LPath_callback(self):
         """Get and publish the local path."""
 
-        waypoints = self.get_LPath()
+        current_waypoints = self.get_LPath()
 
-        local_path = Path(waypoints=waypoints)
+        current_local_path = Path(waypoints=current_waypoints)
 
-        msg = LPathData(local_path=local_path)
+        msg = LPathData(local_path=current_local_path)
 
-        self.LPath_pub.publish(msg)
-        self.get_logger().debug(f"Publishing to {self.LPath_pub.topic}: {msg}")
+        self.local_path_data.publish(msg)
+        self.get_logger().debug(f"Publishing to {self.local_path_data.topic}: {msg}")
 
     def get_LPath(self):
         """Get the local path.
@@ -175,7 +176,7 @@ class Sailbot(Node):
         """
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
-            return -1.0
+            return [HelperLatLon(0.0, 0.0)]
 
         self.local_path.update_if_needed(
             self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
