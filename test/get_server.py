@@ -4,6 +4,7 @@ API is implemented.
 
 It serves a hardcoded JSON response for the /api/gps endpoint.
 """
+import json
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
@@ -11,13 +12,31 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 class CustomRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/gps":
-            # Respond with a simple JSON message
+            # Respond with the desired JSON message
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            response = '{"lat_lon": {"latitude": 40.7128, "longitude": -74.0060}}'
 
-            self.wfile.write(response.encode())
+            # Sample GPS data
+            gps_data = [
+                {
+                    "latitude": 49.376629216076275,
+                    "longitude": -123.27266500802254,
+                    "speed": 0,
+                    "heading": 0,
+                    "timestamp": "2024-01-19T20:42:50.509Z",
+                },
+                {
+                    "latitude": 49.37711663428484,
+                    "longitude": -123.27156381625609,
+                    "speed": 0,
+                    "heading": 0,
+                    "timestamp": "2024-01-19T20:42:50.510Z",
+                },
+            ]
+
+            response = {"success": True, "data": gps_data}
+            self.wfile.write(json.dumps(response).encode())
         else:
             # Serve other requests using the default handler
             super().do_GET()

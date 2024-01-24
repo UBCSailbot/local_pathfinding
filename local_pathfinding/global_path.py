@@ -190,8 +190,13 @@ def get_pos() -> HelperLatLon:
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-    lat_lon = position["lat_lon"]
-    pos = HelperLatLon(latitude=lat_lon["latitude"], longitude=lat_lon["longitude"])
+    if len(position["data"]) == 0:
+        print("No position data available.")
+        return None
+
+    latitude = position["data"][-1]["latitude"]
+    longitude = position["data"][-1]["longitude"]
+    pos = HelperLatLon(latitude=latitude, longitude=longitude)
 
     return pos
 
