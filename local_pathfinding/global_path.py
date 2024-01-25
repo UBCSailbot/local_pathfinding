@@ -27,8 +27,7 @@ from local_pathfinding.node_mock_global_path import (
 GPS_URL = "http://localhost:3005/api/gps"
 PATH_URL = "http://localhost:8081/global-path"
 GLOBAL_PATHS_FILE_PATH = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths"
-
-# TODO this still freezes if the GPS endpoint is reset
+PERIOD = 5  # seconds
 
 
 def main():
@@ -50,6 +49,7 @@ def main():
 
     # Main service loop
     while True:
+        time.sleep(PERIOD)
         timestamp = time.ctime(os.path.getmtime(file_path))
 
         # We should try to retrieve the position on every loop
@@ -94,13 +94,6 @@ def main():
             continue
 
         path_mod_tmstmp = timestamp
-
-        # An alternate option is to have the functions generate_path and interpolate_path return
-        # a tuple containing the new path and the file path of the new csv file
-        # but this would be a breaking change to multiple files, so this is a quick workaround
-
-        # we don't need to update multiple times per second
-        time.sleep(1)
 
 
 def get_most_recent_file(directory_path: str) -> str:
@@ -182,15 +175,20 @@ def get_pos() -> HelperLatLon:
     """Returns the current position of sailbot, retrieved from the an http GET request.
 
     Returns:
-        HelperLatLon: The current position of sailbot.
+        HelperLatLon: The current position of sailbot
+            OR
+        None: If the position could not be retrieved.
     """
     try:
-        position = json.loads(urlopen("http://localhost:3005/api/gps", timeout=5).read())
+        position = json.loads(urlopen(GPS_URL).read())
     except HTTPError as http_error:
         print(f"HTTP Error: {http_error.code}")
         return None
     except URLError as url_error:
         print(f"URL Error: {url_error.reason}")
+        return None
+    except ConnectionResetError as connect_error:
+        print(f"Connection Reset Error: {connect_error}")
         return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
