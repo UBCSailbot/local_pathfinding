@@ -5,10 +5,10 @@ from custom_interfaces.msg import (
     GPS,
     AISShips,
     DesiredHeading,
+    HelperLatLon,
     LPathData,
     Path,
     WindSensor,
-    HelperLatLon
 )
 from rclpy.node import Node
 
@@ -34,8 +34,10 @@ class Sailbot(Node):
         global_path_sub (Subscription): Subscribe to a `Path` msg.
         filtered_wind_sensor_sub (Subscription): Subscribe to a `WindSensor` msg.
 
-    Publishers and their timers:
+    Publishers:
         desired_heading_pub (Publisher): Publish the desired heading in a `DesiredHeading` msg.
+
+    Publisher timers:
         desired_heading_timer (Timer): Call the desired heading callback function.
 
     Attributes from subscribers:
@@ -75,20 +77,22 @@ class Sailbot(Node):
             qos_profile=10,
         )
 
-        # publishers and their timers
+        # publishers
         self.desired_heading_pub = self.create_publisher(
             msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
         )
-        self.local_path_data = self.create_publisher(
+        self.lpath_data_pub = self.create_publisher(
             msg_type=LPathData, topic="local_path", qos_profile=10
         )
+
+        # publisher timers
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
         self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
         self.desired_heading_timer = self.create_timer(
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
-        self.local_path_data_timer = self.create_timer(
-            timer_period_sec=pub_period_sec, callback=self.LPath_callback
+        self.lpath_data_timer = self.create_timer(
+            timer_period_sec=pub_period_sec, callback=self.lpath_data_callback
         )
 
         # attributes from subscribers
@@ -135,7 +139,19 @@ class Sailbot(Node):
         self.desired_heading_pub.publish(msg)
         self.get_logger().debug(f"Publishing to {self.desired_heading_pub.topic}: {msg}")
 
-    # get_desired_heading and its helper functions
+    def lpath_data_callback(self):
+        """Get and publish the local path."""
+
+        current_waypoints = self.get_lpath()
+
+        current_local_path = Path(waypoints=current_waypoints)
+
+        msg = LPathData(local_path=current_local_path)
+
+        self.lpath_data_pub.publish(msg)
+        self.get_logger().debug(f"Publishing to {self.lpath_data_pub.topic}: {msg}")
+
+    # helper functions
 
     def get_desired_heading(self) -> float:
         """Get the desired heading.
@@ -155,19 +171,7 @@ class Sailbot(Node):
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
-    def LPath_callback(self):
-        """Get and publish the local path."""
-
-        current_waypoints = self.get_LPath()
-
-        current_local_path = Path(waypoints=current_waypoints)
-
-        msg = LPathData(local_path=current_local_path)
-
-        self.local_path_data.publish(msg)
-        self.get_logger().debug(f"Publishing to {self.local_path_data.topic}: {msg}")
-
-    def get_LPath(self):
+    def get_lpath(self):
         """Get the local path.
 
         Returns:

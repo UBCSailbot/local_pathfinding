@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
@@ -77,7 +77,7 @@ class OMPLPath:
         """
         raise NotImplementedError
 
-    def get_waypoints(self) -> type(HelperLatLon):
+    def get_waypoints(self) -> List[HelperLatLon]:
         """Get a list of waypoints for the boat to follow.
 
         Returns:
@@ -89,12 +89,12 @@ class OMPLPath:
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
-        referenceLatlon = cs.LatLon(*self.state.goal_state)
+        reference_latlon = cs.LatLon(*self.state.goal_state)
         waypoints = []
 
         for state in solution_path.getStates():
-            waypoint_XY = cs.XY(*(state.getX(), state.getY()))
-            waypoint_latlon = cs.xy_to_latlon(referenceLatlon, waypoint_XY)
+            waypoint_XY = cs.XY(state.getX(), state.getY())
+            waypoint_latlon = cs.xy_to_latlon(reference_latlon, waypoint_XY)
             waypoints.append(
                 HelperLatLon(
                     latitude=waypoint_latlon.latitude, longitude=waypoint_latlon.longitude
