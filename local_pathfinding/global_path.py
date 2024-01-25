@@ -28,6 +28,8 @@ GPS_URL = "http://localhost:3005/api/gps"
 PATH_URL = "http://localhost:8081/global-path"
 GLOBAL_PATHS_FILE_PATH = "/workspaces/sailbot_workspace/src/local_pathfinding/global_paths"
 
+# TODO this still freezes if the GPS endpoint is reset
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -85,6 +87,7 @@ def main():
             print("Global path successfully updated.")
             print(f"position was {pos}")
             file_path = get_most_recent_file(GLOBAL_PATHS_FILE_PATH)
+            timestamp = time.ctime(os.path.getmtime(file_path))
         else:
             # if the post was unsuccessful, we should try again
             # so don't update the timestamp
@@ -185,10 +188,13 @@ def get_pos() -> HelperLatLon:
         position = json.loads(urlopen("http://localhost:3005/api/gps").read())
     except HTTPError as http_error:
         print(f"HTTP Error: {http_error.code}")
+        return None
     except URLError as url_error:
         print(f"URL Error: {url_error.reason}")
+        return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        return None
 
     if len(position["data"]) == 0:
         print("No position data available.")

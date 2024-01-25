@@ -58,7 +58,9 @@ def test_post_path(global_path: Path):
 
 
 # ------------------------- TEST GET_POS -------------------------
-@pytest.mark.parametrize("pos", [HelperLatLon(latitude=40.7128, longitude=-74.0060)])
+@pytest.mark.parametrize(
+    "pos", [HelperLatLon(latitude=49.34175775635472, longitude=-123.35453636335373)]
+)
 def test_get_pos(pos: HelperLatLon):
     """
     Args:
