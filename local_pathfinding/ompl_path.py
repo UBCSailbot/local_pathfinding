@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
@@ -77,7 +77,7 @@ class OMPLPath:
         """
         raise NotImplementedError
 
-    def get_waypoints(self) -> type(HelperLatLon):
+    def get_waypoints(self) -> List[HelperLatLon]:
         """Get a list of waypoints for the boat to follow.
 
         Returns:
