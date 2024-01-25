@@ -5,7 +5,6 @@ from custom_interfaces.msg import (
     GPS,
     AISShips,
     DesiredHeading,
-    HelperLatLon,
     LPathData,
     Path,
     WindSensor,
