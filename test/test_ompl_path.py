@@ -1,7 +1,9 @@
 import pytest
+from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.coord_systems as cs
 import local_pathfinding.ompl_path as ompl_path
 
 PATH = ompl_path.OMPLPath(
@@ -34,11 +36,18 @@ def test_OMPLPath_get_cost():
 
 def test_OMPLPath_get_waypoint():
     waypoints = PATH.get_waypoints()
-    assert waypoints[0] == pytest.approx(
-        PATH.state.start_state
+    referenceLatlon = cs.LatLon(*PATH.state.goal_state)
+    waypoint_XY = cs.XY(*(PATH.state.start_state[0], PATH.state.start_state[1]))
+    start_state_latlon = cs.xy_to_latlon(referenceLatlon, waypoint_XY)
+
+    test_start = waypoints[0]
+    test_goal = waypoints[-1]
+
+    assert (test_start.latitude, test_start.longitude) == pytest.approx(
+        (start_state_latlon.latitude, start_state_latlon.longitude)
     ), "first waypoint should be start state"
-    assert waypoints[-1] == pytest.approx(
-        PATH.state.goal_state
+    assert (test_goal.latitude, test_goal.longitude) == pytest.approx(
+        (referenceLatlon.latitude, referenceLatlon.longitude), rel=1e-1
     ), "last waypoint should be goal state"
 
 
