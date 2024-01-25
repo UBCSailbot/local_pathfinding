@@ -36,6 +36,12 @@ class OMPLPathState:
         self.start_state = (0.5, 0.4)
         self.goal_state = (0.5, -0.4)
 
+        self.reference_latlon = (
+            local_path_state.global_path[-1]
+            if local_path_state and len(local_path_state.global_path) > 0
+            else (0, 0)
+        )
+
 
 class OMPLPath:
     """Represents the general OMPL Path.
@@ -89,7 +95,7 @@ class OMPLPath:
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
-        reference_latlon = cs.LatLon(*self.state.goal_state)
+        reference_latlon = cs.LatLon(*self.state.reference_latlon)
         waypoints = []
 
         for state in solution_path.getStates():

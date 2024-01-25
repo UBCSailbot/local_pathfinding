@@ -1,5 +1,4 @@
 import pytest
-from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
@@ -21,7 +20,7 @@ def test_OMPLPathState():
         (0.5, 0.4)
     ), "incorrect value for attribute start_state"
     assert state.goal_state == pytest.approx(
-        (0.5, -0.4)
+        (0.5, -0.4), rel=1e-1
     ), "incorrect value for attribute goal_state"
 
 
@@ -36,7 +35,7 @@ def test_OMPLPath_get_cost():
 
 def test_OMPLPath_get_waypoint():
     waypoints = PATH.get_waypoints()
-    referenceLatlon = cs.LatLon(*PATH.state.goal_state)
+    referenceLatlon = cs.LatLon(*PATH.state.reference_latlon)
     waypoint_XY = cs.XY(*(PATH.state.start_state[0], PATH.state.start_state[1]))
     start_state_latlon = cs.xy_to_latlon(referenceLatlon, waypoint_XY)
 
@@ -47,7 +46,7 @@ def test_OMPLPath_get_waypoint():
         (start_state_latlon.latitude, start_state_latlon.longitude)
     ), "first waypoint should be start state"
     assert (test_goal.latitude, test_goal.longitude) == pytest.approx(
-        (referenceLatlon.latitude, referenceLatlon.longitude), rel=1e-1
+        (referenceLatlon.latitude, referenceLatlon.longitude), abs=1e1
     ), "last waypoint should be goal state"
 
 

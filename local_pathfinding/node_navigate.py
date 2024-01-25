@@ -92,7 +92,7 @@ class Sailbot(Node):
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
         self.lpath_data_timer = self.create_timer(
-            timer_period_sec=pub_period_sec, callback=self.lpath_data_callback
+            timer_period_sec=5, callback=self.lpath_data_callback
         )
 
         # attributes from subscribers
@@ -142,9 +142,7 @@ class Sailbot(Node):
     def lpath_data_callback(self):
         """Get and publish the local path."""
 
-        current_waypoints = self.get_lpath()
-
-        current_local_path = Path(waypoints=current_waypoints)
+        current_local_path = Path(waypoints=self.local_path.waypoints)
 
         msg = LPathData(local_path=current_local_path)
 
@@ -163,30 +161,13 @@ class Sailbot(Node):
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
             return -1.0
-
+        self.get_logger().debug("global_path: {}".format(self.global_path))
         self.local_path.update_if_needed(
             self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
         )
 
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
-
-    def get_lpath(self):
-        """Get the local path.
-
-        Returns:
-            List[Tuple[float, float]]: The local path if all subscribers are active, else an empty
-                list.
-        """
-        if not self._all_subs_active():
-            self._log_inactive_subs_warning()
-            return [HelperLatLon(0.0, 0.0)]
-
-        self.local_path.update_if_needed(
-            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor
-        )
-
-        return self.local_path.waypoints
 
     def _all_subs_active(self) -> bool:
         return True  # TODO: this line is a placeholder, delete when mocks can be run
