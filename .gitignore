@@ -2,3 +2,8 @@
 __pycache__/
 .mypy_cache/
 .pytest_cache/
+
+# global paths with exceptions
+/global_paths/*.csv
+!/global_paths/mock_global_path.csv
+!/global_paths/path.csv
