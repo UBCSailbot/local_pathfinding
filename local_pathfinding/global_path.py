@@ -185,7 +185,7 @@ def get_pos() -> HelperLatLon:
         HelperLatLon: The current position of sailbot.
     """
     try:
-        position = json.loads(urlopen("http://localhost:3005/api/gps").read())
+        position = json.loads(urlopen("http://localhost:3005/api/gps", timeout=5).read())
     except HTTPError as http_error:
         print(f"HTTP Error: {http_error.code}")
         return None

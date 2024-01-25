@@ -16,24 +16,20 @@ class CustomRequestHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            response = '{"lat_lon": {"latitude": 40.7128, "longitude": -74.0060}}'
 
-            self.wfile.write(response.encode())
             # Sample GPS data
             gps_data = [
                 {
-                    "latitude": 49.376629216076275,
-                    "longitude": -123.27266500802254,
+                    "latitude": 49.34175775635472,
+                    "longitude": -123.35453636335373,
                     "speed": 0,
                     "heading": 0,
-                    "timestamp": "2024-01-19T20:42:50.509Z",
                 },
                 {
-                    "latitude": 49.37711663428484,
-                    "longitude": -123.27156381625609,
+                    "latitude": 49.34175775635472,
+                    "longitude": -123.35453636335373,
                     "speed": 0,
                     "heading": 0,
-                    "timestamp": "2024-01-19T20:42:50.510Z",
                 },
             ]
 
