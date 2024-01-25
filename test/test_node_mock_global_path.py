@@ -62,8 +62,7 @@ def test_interpolate_path(
         interval_spacing=interval_spacing,
         pos=pos,
         path_spacing=path_spacing,
-        write=True,
-        file_path="/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_2.csv",
+        write=False,
     )
 
     assert isinstance(interpolated_path, Path)
