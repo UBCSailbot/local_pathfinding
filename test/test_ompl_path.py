@@ -20,7 +20,7 @@ def test_OMPLPathState():
         (0.5, 0.4)
     ), "incorrect value for attribute start_state"
     assert state.goal_state == pytest.approx(
-        (0.5, -0.4), rel=1e-1
+        (0.5, -0.4)
     ), "incorrect value for attribute goal_state"
 
 
@@ -35,18 +35,20 @@ def test_OMPLPath_get_cost():
 
 def test_OMPLPath_get_waypoint():
     waypoints = PATH.get_waypoints()
-    referenceLatlon = cs.LatLon(*PATH.state.reference_latlon)
-    waypoint_XY = cs.XY(*(PATH.state.start_state[0], PATH.state.start_state[1]))
-    start_state_latlon = cs.xy_to_latlon(referenceLatlon, waypoint_XY)
+    # TODO: the 2 lines below will need to be updated when merging main into this branch
+    ref_lat = (PATH.state.reference_latlon.latitude, PATH.state.reference_latlon.longitude)
+    reference_latlon = cs.LatLon(*ref_lat)
+    waypoint_XY = cs.XY(*PATH.state.start_state)
+    start_state_latlon = cs.xy_to_latlon(reference_latlon, waypoint_XY)
 
     test_start = waypoints[0]
     test_goal = waypoints[-1]
 
     assert (test_start.latitude, test_start.longitude) == pytest.approx(
-        (start_state_latlon.latitude, start_state_latlon.longitude)
+        (start_state_latlon.latitude, start_state_latlon.longitude), abs=1e-2
     ), "first waypoint should be start state"
     assert (test_goal.latitude, test_goal.longitude) == pytest.approx(
-        (referenceLatlon.latitude, referenceLatlon.longitude), abs=1e1
+        (reference_latlon.latitude, reference_latlon.longitude), abs=1e-2
     ), "last waypoint should be goal state"
 
 

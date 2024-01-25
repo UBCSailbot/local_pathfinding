@@ -95,7 +95,9 @@ class OMPLPath:
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
-        reference_latlon = cs.LatLon(*self.state.reference_latlon)
+        # TODO: the 2 lines below will need to be updated when merging main into this branch
+        ref_lat = (self.state.reference_latlon.latitude, self.state.reference_latlon.longitude)
+        reference_latlon = cs.LatLon(*ref_lat)
         waypoints = []
 
         for state in solution_path.getStates():
