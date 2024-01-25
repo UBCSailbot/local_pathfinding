@@ -83,6 +83,7 @@ def main():
 
         if post_path(path):
             print("Global path successfully updated.")
+            print(f"position was {pos}")
             file_path = get_most_recent_file(GLOBAL_PATHS_FILE_PATH)
         else:
             # if the post was unsuccessful, we should try again
