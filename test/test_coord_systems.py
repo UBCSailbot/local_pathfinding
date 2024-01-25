@@ -1,9 +1,9 @@
 import math
 
 import pytest
+from custom_interfaces.msg import HelperLatLon
 
 import local_pathfinding.coord_systems as coord_systems
-from local_pathfinding.coord_systems import XY, LatLon
 
 
 @pytest.mark.parametrize(
@@ -50,15 +50,15 @@ def test_km_to_meters(km: float, meters: float):
 )
 def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, dist_km: float):
     # create inputs
-    reference = LatLon(latitude=ref_lat, longitude=ref_lon)
+    reference = HelperLatLon(latitude=ref_lat, longitude=ref_lon)
     lon, lat, _ = coord_systems.GEODESIC.fwd(
         lons=ref_lon, lats=ref_lat, az=true_bearing_deg, dist=dist_km * 1000
     )
-    latlon = LatLon(latitude=lat, longitude=lon)
+    latlon = HelperLatLon(latitude=lat, longitude=lon)
 
     # create expected output
     true_bearing = math.radians(true_bearing_deg)
-    xy = XY(
+    xy = coord_systems.XY(
         x=dist_km * math.sin(true_bearing),
         y=dist_km * math.cos(true_bearing),
     )
@@ -83,18 +83,22 @@ def test_latlon_to_xy(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
 def test_xy_to_latlon(ref_lat: float, ref_lon: float, true_bearing_deg: float, dist_km: float):
     # create inputs
     true_bearing = math.radians(true_bearing_deg)
-    xy = XY(
+    xy = coord_systems.XY(
         x=dist_km * math.sin(true_bearing),
         y=dist_km * math.cos(true_bearing),
     )
 
     # create expected output
-    reference = LatLon(latitude=ref_lat, longitude=ref_lon)
+    reference = HelperLatLon(latitude=ref_lat, longitude=ref_lon)
     lon, lat, _ = coord_systems.GEODESIC.fwd(
         lons=ref_lon, lats=ref_lat, az=true_bearing_deg, dist=dist_km * 1000
     )
-    latlon = LatLon(latitude=lat, longitude=lon)
+    latlon = HelperLatLon(latitude=lat, longitude=lon)
 
-    assert coord_systems.xy_to_latlon(reference, xy) == pytest.approx(
-        latlon
-    ), "incorrect coordinate conversion"
+    converted_latlon = coord_systems.xy_to_latlon(reference, xy)
+    assert converted_latlon.latitude == pytest.approx(
+        latlon.latitude
+    ), "incorrect latitude conversion"
+    assert converted_latlon.longitude == pytest.approx(
+        latlon.longitude
+    ), "incorrect longitude conversion"
