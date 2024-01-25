@@ -95,10 +95,4 @@ def test_xy_to_latlon(ref_lat: float, ref_lon: float, true_bearing_deg: float, d
     )
     latlon = HelperLatLon(latitude=lat, longitude=lon)
 
-    converted_latlon = coord_systems.xy_to_latlon(reference, xy)
-    assert converted_latlon.latitude == pytest.approx(
-        latlon.latitude
-    ), "incorrect latitude conversion"
-    assert converted_latlon.longitude == pytest.approx(
-        latlon.longitude
-    ), "incorrect longitude conversion"
+    assert coord_systems.xy_to_latlon(reference, xy) == latlon, "incorrect coordinate conversion"
