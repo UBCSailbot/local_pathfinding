@@ -2,3 +2,10 @@
 __pycache__/
 .mypy_cache/
 .pytest_cache/
+
+# Ignore all CSV files
+*.csv
+
+# Except for these two files
+!mock_global_path.csv
+!path.csv
