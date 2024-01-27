@@ -3,21 +3,10 @@
 import math
 from typing import NamedTuple
 
+from custom_interfaces.msg import HelperLatLon
 from pyproj import Geod
 
 GEODESIC = Geod(ellps="WGS84")
-
-
-class LatLon(NamedTuple):
-    """Geographical coordinate representation.
-
-    Attributes:
-        latitude (float): Latitude in degrees.
-        longitude (float): Longitude in degrees.
-    """
-
-    latitude: float
-    longitude: float
 
 
 class XY(NamedTuple):
@@ -52,12 +41,12 @@ def km_to_meters(km: float) -> float:
     return km * 1000
 
 
-def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
+def latlon_to_xy(reference: HelperLatLon, latlon: HelperLatLon) -> XY:
     """Convert a geographical coordinate to a 2D Cartesian coordinate given a reference point.
 
     Args:
-        reference (LatLon): Coordinate that will be the origin of the Cartesian coordinate system.
-        latlon (LatLon): Coordinate to be converted to the Cartesian coordinate system.
+        reference (HelperLatLon): Origin of the Cartesian coordinate system.
+        latlon (HelperLatLon): Coordinate to be converted to the Cartesian coordinate system.
 
     Returns:
         XY: The x and y components in km.
@@ -74,15 +63,15 @@ def latlon_to_xy(reference: LatLon, latlon: LatLon) -> XY:
     )
 
 
-def xy_to_latlon(reference: LatLon, xy: XY) -> LatLon:
+def xy_to_latlon(reference: HelperLatLon, xy: XY) -> HelperLatLon:
     """Convert a 2D Cartesian coordinate to a geographical coordinate given a reference point.
 
     Args:
-        reference (LatLon): Coordinate that is the origin of the Cartesian coordinate system.
+        reference (HelperLatLon): Coordinate that is the origin of the Cartesian coordinate system.
         xy (XY): Coordinate to be converted to the geographical coordinate system.
 
     Returns:
-        LatLon: The latitude and longitude in degrees.
+        HelperLatLon: The latitude and longitude in degrees.
     """
     true_bearing = math.degrees(math.atan2(xy.x, xy.y))
     distance = km_to_meters(math.hypot(*xy))
@@ -90,4 +79,4 @@ def xy_to_latlon(reference: LatLon, xy: XY) -> LatLon:
         reference.longitude, reference.latitude, true_bearing, distance
     )
 
-    return LatLon(latitude=dest_lat, longitude=dest_lon)
+    return HelperLatLon(latitude=dest_lat, longitude=dest_lon)

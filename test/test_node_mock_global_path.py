@@ -15,9 +15,9 @@ from local_pathfinding.node_mock_global_path import (
 @pytest.mark.parametrize(
     "file_path",
     [
-        ("/workspaces/sailbot_workspace/src/local_pathfinding/anywhere_else/path_1.csv"),
+        ("/workspaces/sailbot_workspace/src/local_pathfinding/anywhere_else/mock_global_path.csv"),
         (""),
-        ("/workspaces/sailbot_workspace/src/local_pathfinding/ global_paths/path_1.csv"),
+        ("/workspaces/sailbot_workspace/src/local_pathfinding/ global_paths/mock_global_path.csv"),
     ],
 )
 def test_write_to_file(file_path: str):
@@ -62,8 +62,7 @@ def test_interpolate_path(
         interval_spacing=interval_spacing,
         pos=pos,
         path_spacing=path_spacing,
-        write=True,
-        file_path="/workspaces/sailbot_workspace/src/local_pathfinding/global_paths/path_2.csv",
+        write=False,
     )
 
     assert isinstance(interpolated_path, Path)
