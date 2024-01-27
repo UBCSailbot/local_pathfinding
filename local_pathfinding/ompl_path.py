@@ -49,7 +49,7 @@ class OMPLPath:
         parent_logger: RcutilsLogger,
         max_runtime: float,
         local_path_state: LocalPathState,
-        planner: str,
+        planner: str = "rrtstar",
     ):
         """Initialize the OMPLPath Class. Attempt to solve for a path.
 
@@ -57,6 +57,7 @@ class OMPLPath:
             parent_logger (RcutilsLogger): Logger of the parent class.
             max_runtime (float): Maximum amount of time in seconds to look for a solution path.
             local_path_state (LocalPathState): State of Sailbot.
+            planner (str): Name of the planner to use.
         """
         self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)

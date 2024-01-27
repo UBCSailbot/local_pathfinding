@@ -60,7 +60,13 @@ class LocalPath:
             to the next global waypoint.
     """
 
-    def __init__(self, parent_logger: RcutilsLogger, planner: str):
+    def __init__(self, parent_logger: RcutilsLogger, planner: str = "rrtstar"):
+        """Initializes the LocalPath class.
+
+        Args:
+            `parent_logger` (RcutilsLogger): ROS logger of the parent class.
+            `planner` (str): Name of the planner to use. Defaults to "rrtstar".
+        """
         self._logger = parent_logger.get_child(name="local_path")
         self._ompl_path: Optional[OMPLPath] = None
         self.waypoints: Optional[List[Tuple[float, float]]] = None
