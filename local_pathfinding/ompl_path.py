@@ -49,6 +49,7 @@ class OMPLPath:
         parent_logger: RcutilsLogger,
         max_runtime: float,
         local_path_state: LocalPathState,
+        planner: str,
     ):
         """Initialize the OMPLPath Class. Attempt to solve for a path.
 
@@ -59,6 +60,7 @@ class OMPLPath:
         """
         self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
+        self.planner = planner
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
@@ -96,6 +98,47 @@ class OMPLPath:
             NotImplementedError: Method or function hasn't been implemented yet.
         """
         raise NotImplementedError
+
+    def choose_planner(self, planner: str, si: ob.SpaceInformation) -> ob.Planner:
+        """Choose the planner to use for the OMPL query.
+
+        Args:
+            planner (str): Name of the planner to use.
+            si (ob.SpaceInformation): Encapsulates the planning problem to be solved.
+
+        Returns:
+            ob.Planner: Planner to use for the OMPL query.
+        """
+
+        match planner.lower():
+            case "bfmtstar":
+                return og.BFMT(si)
+            case "bitstar":
+                return og.BITstar(si)
+            case "fmtstar":
+                return og.FMT(si)
+            case "informedrrtstar":
+                return og.InformedRRTstar(si)
+            case "prmstar":
+                return og.PRMstar(si)
+            case "rrtstar":
+                return og.RRTstar(si)
+            case "sorrtstar":
+                return og.SORRTstar(si)
+            case "rrtxstatic":
+                return og.RRTXstatic(si)
+            case "rrtsharp":
+                return og.RRTsharp(si)
+            case "lazyprmstar":
+                return og.LazyPRMstar(si)
+            case "rrtconnect":
+                return og.RRTConnect(si)
+            case "lbtrrt":
+                return og.LBTRRT(si)
+            case "lazylbtrrt":
+                return og.LazyLBTRRT(si)
+            case _:
+                ou.OMPL_ERROR("Planner-type is not implemented in allocation function.")
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         """Initialize and configure the OMPL SimpleSetup object.
@@ -156,9 +199,8 @@ class OMPLPath:
         simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
-        # TODO: implement and add planner here
-        planner = og.RRTstar(space_information)
-        simple_setup.setPlanner(planner)
+        # TODO: implement and add planner
+        simple_setup.setPlanner(self.choose_planner(self.planner, space_information))
 
         return simple_setup
 

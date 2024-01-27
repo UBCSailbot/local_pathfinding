@@ -47,6 +47,7 @@ class Sailbot(Node):
             namespace="",
             parameters=[
                 ("pub_period_sec", rclpy.Parameter.Type.DOUBLE),
+                ("path_planner", rclpy.Parameter.Type.STRING),
             ],
         )
 
@@ -77,6 +78,9 @@ class Sailbot(Node):
             timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
 
+        planner = self.get_parameter("path_planner").get_parameter_value().string_value
+        self.get_logger().debug(f"Got parameter: {planner=}")
+
         # attributes from subscribers
         self.ais_ships = None
         self.gps = None
@@ -84,7 +88,7 @@ class Sailbot(Node):
         self.filtered_wind_sensor = None
 
         # attributes
-        self.local_path = LocalPath(parent_logger=self.get_logger())
+        self.local_path = LocalPath(parent_logger=self.get_logger(), planner=planner)
 
     # subscriber callbacks
 

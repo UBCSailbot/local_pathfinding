@@ -60,10 +60,11 @@ class LocalPath:
             to the next global waypoint.
     """
 
-    def __init__(self, parent_logger: RcutilsLogger):
+    def __init__(self, parent_logger: RcutilsLogger, planner: str):
         self._logger = parent_logger.get_child(name="local_path")
         self._ompl_path: Optional[OMPLPath] = None
         self.waypoints: Optional[List[Tuple[float, float]]] = None
+        self.planner = planner
 
     def update_if_needed(
         self,
@@ -81,7 +82,12 @@ class LocalPath:
             `filtered_wind_sensor` (WindSensor): Wind data.
         """
         state = LocalPathState(gps, ais_ships, global_path, filtered_wind_sensor)
-        ompl_path = OMPLPath(parent_logger=self._logger, max_runtime=1.0, local_path_state=state)
+        ompl_path = OMPLPath(
+            parent_logger=self._logger,
+            max_runtime=1.0,
+            local_path_state=state,
+            planner=self.planner,
+        )
         if ompl_path.solved:
             self._logger.info("Updating local path")
             self._update(ompl_path)
