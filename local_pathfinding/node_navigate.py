@@ -28,9 +28,11 @@ class Sailbot(Node):
 
     Publishers:
         desired_heading_pub (Publisher): Publish the desired heading in a `DesiredHeading` msg.
+        lpath_data_pub (Publisher): Publish the local path in a `LPathData` msg.
 
     Publisher timers:
         desired_heading_timer (Timer): Call the desired heading callback function.
+        lpath_data_timer (Timer): Call the local path callback function.
 
     Attributes from subscribers:
         ais_ships (ci.AISShips): Data from other boats.
