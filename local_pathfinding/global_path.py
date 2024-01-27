@@ -127,7 +127,7 @@ def get_path(file_path: str) -> Path:
         file_path (str): The path to the global path csv file.
 
     Returns:
-        Path: The global path retrieved from the csv file.
+        (Path): The global path retrieved from the csv file.
     """
     path = Path()
 

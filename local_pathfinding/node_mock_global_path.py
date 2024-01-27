@@ -1,19 +1,25 @@
-"""Node that publishes the mock global path, represented by the `MockGlobalPath` class."""
+"""Node loads in Sailbot's position via GET request, loads a global path from a csv file,
+and posts the mock global path via a POST request.
+The node is represented by the `MockGlobalPath` class."""
 
-import csv
 import os
 import time
 
 import rclpy
-from custom_interfaces.msg import GPS, HelperLatLon, Path
+from custom_interfaces.msg import GPS, HelperLatLon
 from rclpy.node import Node
 
 from local_pathfinding.coord_systems import GEODESIC, meters_to_km
 from local_pathfinding.global_path import (
+    GPS_URL,
+    PATH_URL,
     _interpolate_path,
     calculate_interval_spacing,
     generate_path,
+    get_path,
+    get_pos,
     path_to_dict,
+    post_path,
 )
 
 # Mock gps data to get things running until we have a running gps node
@@ -67,50 +73,45 @@ class MockGlobalPath(Node):
                 ("force", rclpy.Parameter.Type.BOOL),
             ],
         )
-
-        # Subscribers
-        self.gps_sub = self.create_subscription(
-            msg_type=GPS, topic="gps", callback=self.gps_callback, qos_profile=10
-        )
-
-        # Publishers
-        self.global_path_pub = self.create_publisher(
-            msg_type=Path, topic="global_path", qos_profile=10
-        )
-
-        # Path callback timer
+        # get the publishing period parameter to use for callbacks
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
         self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
 
+        # mock global path callback runs repeatedly on a timer
         self.global_path_timer = self.create_timer(
             timer_period_sec=pub_period_sec,
             callback=self.global_path_callback,
         )
-
         # Attributes
-        self.gps = MOCK_GPS  # TODO Remove when NET publishes GPS
+        self.pos = None
         self.path_mod_tmstmp = None
         self.file_path = None
+        self.period = pub_period_sec
 
-    # Subscriber callbacks
-    def gps_callback(self, msg: GPS):
-        """Store the gps data and check if the global path needs to be updated.
+    def check_pos(self):
+        """Get the gps data and check if the global path needs to be updated.
 
         If the position has changed by more than gps_threshold * interval_spacing since last step,
-        the global_path_callback is run with the force parameter set to true, bypassing any checks.
+        the force parameter set to true, bypassing any checks in the global_path_callback.
         """
-        self.get_logger().debug(f"Received data from {self.gps_sub.topic}: {msg}")
+        self.get_logger().info(f"Retreiving current position from {GPS_URL}")
+
+        pos = get_pos()
+        if pos is None:
+            self.log_no_pos()
+            return
 
         position_delta = meters_to_km(
             GEODESIC.inv(
-                lats1=self.gps.lat_lon.latitude,
-                lons1=self.gps.lat_lon.longitude,
-                lats2=msg.lat_lon.latitude,
-                lons2=msg.lat_lon.longitude,
+                lats1=self.pos.latitude,
+                lons1=self.pos.longitude,
+                lats2=pos.latitude,
+                lons2=pos.longitude,
             )[2]
         )
         gps_threshold = self.get_parameter("gps_threshold")._value
         interval_spacing = self.get_parameter("interval_spacing")._value
+
         if position_delta > gps_threshold * interval_spacing:
             self.get_logger().info(
                 f"GPS data changed by more than {gps_threshold*interval_spacing} km. Running ",
@@ -118,16 +119,16 @@ class MockGlobalPath(Node):
             )
 
             self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, True)])
-            self.global_path_callback()
 
-        self.gps = msg
+        self.pos = pos
 
     # Timer callbacks
     def global_path_callback(self):
         """Check if the global path csv file has changed. If it has, the new path is published.
 
-        This function is also called by the gps callback if the gps data has changed by more than
-        gps_threshold.
+        This function also checks if the gps data has changed by more than
+        gps_threshold. If it has, the force parameter is set to true, bypassing any checks and
+        updating the path.
 
         Depending on the boolean value of the write parameter, each generated path may be written
         to a new csv file in the same directory as the source csv file.
@@ -136,13 +137,17 @@ class MockGlobalPath(Node):
         global_path_filepath parameter.
 
         """
-        if not self._all_subs_active():
-            self._log_inactive_subs_warning()
 
         file_path = self.get_parameter("global_path_filepath")._value
 
         # check when global path was changed last
         path_mod_tmstmp = time.ctime(os.path.getmtime(file_path))
+
+        self.check_pos()
+
+        if self.pos is None:
+            self.log_no_pos()
+            return
 
         # check if the global path has been forced to update by a parameter change
         force = self.get_parameter("force")._value
@@ -154,19 +159,9 @@ class MockGlobalPath(Node):
         self.get_logger().info(
             f"Global path file is: {os.path.basename(file_path)}\n Reading path"
         )
+        global_path = get_path(file_path=file_path)
 
-        global_path = Path()
-
-        with open(file_path, "r") as file:
-            reader = csv.reader(file)
-            # skip header
-            reader.__next__()
-            for row in reader:
-                global_path.waypoints.append(
-                    HelperLatLon(latitude=float(row[0]), longitude=float(row[1]))
-                )
-
-        pos = self.gps.lat_lon
+        pos = self.pos
 
         # obtain the actual distances between every waypoint in the global path
         path_spacing = calculate_interval_spacing(pos, global_path.waypoints)
@@ -216,19 +211,22 @@ class MockGlobalPath(Node):
         else:
             msg = global_path
 
-        # publish global path
-        self.global_path_pub.publish(msg)
-        self.get_logger().info(f"Publishing to {self.global_path_pub.topic}: {path_to_dict(msg)}")
+        # post global path
+        if post_path(msg):
+            self.get_logger().info(f"Posting path to {PATH_URL}: {path_to_dict(msg)}")
+            self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
+            self.path_mod_tmstmp = path_mod_tmstmp
+            self.file_path = file_path
+        else:
+            self.log_failed_post()
 
-        self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, False)])
-        self.path_mod_tmstmp = path_mod_tmstmp
-        self.file_path = file_path
+    def log_no_pos(self):
+        self.get_logger().warn(
+            f"Failed to get position from {GPS_URL} will retry in {self.period} seconds."
+        )
 
-    def _all_subs_active(self) -> bool:
-        return self.gps is not None
-
-    def _log_inactive_subs_warning(self):
-        self.get_logger().warning("Waiting for GPS to be published")
+    def log_failed_post(self):
+        self.get_logger().warn(f"Failed to post path to {PATH_URL}")
 
 
 if __name__ == "__main__":
