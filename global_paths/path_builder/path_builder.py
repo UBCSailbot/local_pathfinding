@@ -23,7 +23,7 @@ import plotly.graph_objects as go
 from custom_interfaces.msg import HelperLatLon, Path
 from flask import Flask, jsonify, render_template, request
 
-from local_pathfinding.node_mock_global_path import (
+from local_pathfinding.global_path import (
     _interpolate_path,
     calculate_interval_spacing,
     write_to_file,
