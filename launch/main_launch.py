@@ -65,8 +65,11 @@ def setup_launch(context: LaunchContext) -> List[Node]:
     Returns:
         List[Node]: Nodes to launch.
     """
-    launch_description_entities = list()
+    mode = LaunchConfiguration("mode").perform(context)
+    launch_description_entities = []
     launch_description_entities.append(get_navigate_node_description(context))
+    if mode == "development":
+        launch_description_entities.append(get_mock_global_path_node_description(context))
     return launch_description_entities
 
 
@@ -89,6 +92,35 @@ def get_navigate_node_description(context: LaunchContext) -> Node:
     node = Node(
         package=PACKAGE_NAME,
         executable="navigate",
+        name=node_name,
+        output="screen",
+        emulate_tty=True,
+        parameters=ros_parameters,
+        ros_arguments=ros_arguments,
+    )
+
+    return node
+
+
+def get_mock_global_path_node_description(context: LaunchContext) -> Node:
+    """Gets the launch description for the mgp_main node.
+
+    Args:
+        context (LaunchContext): The current launch context.
+
+    Returns:
+        Node: The node object that launches the mgp_main node.
+    """
+    node_name = "mgp_main"
+    ros_parameters = [LaunchConfiguration("config").perform(context)]
+    ros_arguments: List[SomeSubstitutionsType] = [
+        "--log-level",
+        [f"{node_name}:=", LaunchConfiguration("log_level")],
+    ]
+
+    node = Node(
+        package=PACKAGE_NAME,
+        executable="mock_global_path",
         name=node_name,
         output="screen",
         emulate_tty=True,

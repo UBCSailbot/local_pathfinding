@@ -10,7 +10,7 @@ from custom_interfaces.msg import (
 )
 from shapely.geometry import Point, Polygon
 
-from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_km
+from local_pathfinding.coord_systems import XY, latlon_to_xy, meters_to_km
 from local_pathfinding.obstacles import COLLISION_ZONE_SAFETY_BUFFER, Boat, Obstacle
 
 
@@ -20,8 +20,8 @@ from local_pathfinding.obstacles import COLLISION_ZONE_SAFETY_BUFFER, Boat, Obst
     "reference_point,sailbot_position,ais_ship,sailbot_speed",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.957, -136.262),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.957, longitude=-136.262),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=51.957, longitude=-136.262),
@@ -29,15 +29,15 @@ from local_pathfinding.obstacles import COLLISION_ZONE_SAFETY_BUFFER, Boat, Obst
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
     ],
 )
 def test_calculate_projected_distance(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
 ):
@@ -53,8 +53,8 @@ def test_calculate_projected_distance(
     "reference_point,sailbot_position,ais_ship,sailbot_speed",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
@@ -62,15 +62,15 @@ def test_calculate_projected_distance(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
     ],
 )
 def test_create_collision_zone(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
 ):
@@ -88,8 +88,8 @@ def test_create_collision_zone(
     "reference_point,sailbot_position,ais_ship,sailbot_speed",
     [
         (
-            LatLon(52.0, -136.0),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.0, longitude=-136.0),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=52.0, longitude=-136.0),
@@ -97,15 +97,15 @@ def test_create_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
     ],
 )
 def test_position_collision_zone(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
 ):
@@ -125,8 +125,8 @@ def test_position_collision_zone(
     "reference_point,sailbot_position,ais_ship_1,ais_ship_2,sailbot_speed",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
@@ -134,7 +134,7 @@ def test_position_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             HelperAISShip(
                 id=2,
@@ -143,15 +143,15 @@ def test_position_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         )
     ],
 )
 def test_create_collision_zone_id_mismatch(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship_1: HelperAISShip,
     ais_ship_2: HelperAISShip,
     sailbot_speed: float,
@@ -167,31 +167,31 @@ def test_create_collision_zone_id_mismatch(
     "reference_point,sailbot_position,ais_ship,sailbot_speed,invalid_point,valid_point",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
                 cog=HelperHeading(heading=0.0),
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
             latlon_to_xy(
-                LatLon(52.268119490007756, -136.9133983613776),
-                LatLon(52.174842845359755, -137.10372451905042),
+                HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+                HelperLatLon(latitude=52.174842845359755, longitude=-137.10372451905042),
             ),
             latlon_to_xy(
-                LatLon(52.268119490007756, -136.9133983613776),
-                LatLon(49.30499213908291, -123.31330140816111),
+                HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+                HelperLatLon(latitude=49.30499213908291, longitude=-123.31330140816111),
             ),
         )
     ],
 )
 def test_is_valid(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
     invalid_point: XY,
@@ -207,23 +207,23 @@ def test_is_valid(
     "reference_point,sailbot_position,sailbot_speed,invalid_point,valid_point",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             15.0,
             latlon_to_xy(
-                LatLon(52.268119490007756, -136.9133983613776),
-                LatLon(52.174842845359755, -137.10372451905042),
+                HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+                HelperLatLon(latitude=52.174842845359755, longitude=-137.10372451905042),
             ),
             latlon_to_xy(
-                LatLon(52.268119490007756, -136.9133983613776),
-                LatLon(49.30499213908291, -123.31330140816111),
+                HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+                HelperLatLon(latitude=49.30499213908291, longitude=-123.31330140816111),
             ),
         )
     ],
 )
 def test_is_valid_no_collision_zone(
-    reference_point: LatLon,
-    sailbot_position: LatLon,
+    reference_point: HelperLatLon,
+    sailbot_position: HelperLatLon,
     sailbot_speed: float,
     invalid_point: XY,
     valid_point: XY,
@@ -240,10 +240,10 @@ def test_is_valid_no_collision_zone(
     "ref_point,sailbot_position_1,sailbot_speed_1,sailbot_position_2,sailbot_speed_2,ais_ship",
     [
         (
-            LatLon(52.268119490007756, -136.9133983613776),
-            LatLon(51.9, -136.2),
+            HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+            HelperLatLon(latitude=51.9, longitude=-136.2),
             15.0,
-            LatLon(52.9, -137.2),
+            HelperLatLon(latitude=52.9, longitude=-137.2),
             20.0,
             HelperAISShip(
                 id=1,
@@ -252,16 +252,16 @@ def test_is_valid_no_collision_zone(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
         )
     ],
 )
 def test_update_sailbot_data(
-    ref_point: LatLon,
-    sailbot_position_1: LatLon,
+    ref_point: HelperLatLon,
+    sailbot_position_1: HelperLatLon,
     sailbot_speed_1: float,
-    sailbot_position_2: LatLon,
+    sailbot_position_2: HelperLatLon,
     sailbot_speed_2: float,
     ais_ship: HelperAISShip,
 ):
@@ -277,9 +277,9 @@ def test_update_sailbot_data(
     "reference_point_1,reference_point_2,sailbot_position,ais_ship,sailbot_speed",
     [
         (
-            LatLon(52.2, -136.9),
-            LatLon(51, -136),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=52.2, longitude=-136.9),
+            HelperLatLon(latitude=51.0, longitude=-136.0),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
@@ -287,14 +287,14 @@ def test_update_sailbot_data(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         ),
         (
-            LatLon(50.06442134644842, -130.7725487868677),
-            LatLon(49.88670956993386, -130.37061359404225),
-            LatLon(51.95785651405779, -136.26282894969611),
+            HelperLatLon(latitude=50.06442134644842, longitude=-130.7725487868677),
+            HelperLatLon(latitude=49.88670956993386, longitude=-130.37061359404225),
+            HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
             HelperAISShip(
                 id=1,
                 lat_lon=HelperLatLon(latitude=51.97917631092298, longitude=-137.1106454702385),
@@ -302,16 +302,16 @@ def test_update_sailbot_data(
                 sog=HelperSpeed(speed=20.0),
                 width=HelperDimension(dimension=20.0),
                 length=HelperDimension(dimension=100.0),
-                rot=HelperROT(rot=0.0),
+                rot=HelperROT(rot=0),
             ),
             15.0,
         ),
     ],
 )
 def test_update_reference_point(
-    reference_point_1: LatLon,
-    reference_point_2: LatLon,
-    sailbot_position: LatLon,
+    reference_point_1: HelperLatLon,
+    reference_point_2: HelperLatLon,
+    sailbot_position: HelperLatLon,
     ais_ship: HelperAISShip,
     sailbot_speed: float,
 ):
@@ -379,20 +379,20 @@ if __name__ == "__main__":
         sog=HelperSpeed(speed=18.52),
         width=HelperDimension(dimension=20.0),
         length=HelperDimension(dimension=100.0),
-        rot=HelperROT(rot=0.0),
+        rot=HelperROT(rot=0),
     )
 
     # Create a boat object
     boat1 = Boat(
-        LatLon(52.268119490007756, -136.9133983613776),
-        LatLon(51.95785651405779, -136.26282894969611),
+        HelperLatLon(latitude=52.268119490007756, longitude=-136.9133983613776),
+        HelperLatLon(latitude=51.95785651405779, longitude=-136.26282894969611),
         30.0,
         ais_ship,
     )
 
     # Choose some states for visual inspection
-    valid_state = LatLon(50.42973337261916, -134.12018940923838)
-    invalid_state = LatLon(52.174842845359755, -137.10372451905042)
+    valid_state = HelperLatLon(latitude=50.42973337261916, longitude=-134.12018940923838)
+    invalid_state = HelperLatLon(latitude=52.174842845359755, longitude=-137.10372451905042)
 
     # Extract coordinates for sailbot
     sailbot_x, sailbot_y = boat1.sailbot_position

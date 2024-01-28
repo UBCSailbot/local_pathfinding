@@ -2,6 +2,7 @@ import itertools
 import math
 
 import pytest
+from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
@@ -145,17 +146,17 @@ def test_get_euclidean_path_length_objective(cs1: tuple, cs2: tuple, expected: f
 @pytest.mark.parametrize(
     "rf, cs1,cs2",
     [
-        ((10, 10), (0, 0), (0, 0)),
+        ((10.0, 10.0), (0.0, 0.0), (0.0, 0.0)),
         ((13.206724, 29.829011), (13.208724, 29.827011), (13.216724, 29.839011)),
-        ((0, 0), (0, 0.1), (0, -0.1)),
-        ((0, 0), (0.1, 0), (-0.1, 0)),
-        ((0, 0), (0.1, 0.1), (-0.1, -0.1)),
+        ((0.0, 0.0), (0.0, 0.1), (0.0, -0.1)),
+        ((0.0, 0.0), (0.1, 0.0), (-0.1, 0.0)),
+        ((0.0, 0.0), (0.1, 0.1), (-0.1, -0.1)),
     ],
 )
 def test_get_latlon_path_length_objective(rf: tuple, cs1: tuple, cs2: tuple):
-    reference = coord_systems.LatLon(*rf)
-    s1 = coord_systems.LatLon(*cs1)
-    s2 = coord_systems.LatLon(*cs2)
+    reference = HelperLatLon(latitude=rf[0], longitude=rf[1])
+    s1 = HelperLatLon(latitude=cs1[0], longitude=cs1[1])
+    s2 = HelperLatLon(latitude=cs2[0], longitude=cs2[1])
     ls1 = coord_systems.latlon_to_xy(reference, s1)
     ls2 = coord_systems.latlon_to_xy(reference, s2)
     _, _, distance_m = coord_systems.GEODESIC.inv(
