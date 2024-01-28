@@ -128,7 +128,7 @@ class DistanceObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The distance between two points object
+            ob.Cost: The normalized distance between two points
 
         Raises:
             ValueError: If the distance method is not supported
@@ -215,7 +215,7 @@ class MinimumTurningObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The minimum turning angle in degrees
+            ob.Cost: The normalized minimum turning angle in degrees
 
         Raises:
             ValueError: If the minimum turning method is not supported
@@ -334,7 +334,7 @@ class WindObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The cost of going upwind or downwind normalized by max_motionCost
+            ob.Cost: The normalized cost of going upwind or downwind
         """
         s1_xy = cs.XY(s1.getX(), s1.getY())
         s2_xy = cs.XY(s2.getX(), s2.getY())
