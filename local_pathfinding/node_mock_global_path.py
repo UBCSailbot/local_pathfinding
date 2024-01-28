@@ -83,7 +83,7 @@ class MockGlobalPath(Node):
             callback=self.global_path_callback,
         )
         # Attributes
-        self.pos = None
+        self.pos = MOCK_GPS.lat_lon
         self.path_mod_tmstmp = None
         self.file_path = None
         self.period = pub_period_sec
@@ -94,12 +94,13 @@ class MockGlobalPath(Node):
         If the position has changed by more than gps_threshold * interval_spacing since last step,
         the force parameter set to true, bypassing any checks in the global_path_callback.
         """
-        self.get_logger().info(f"Retreiving current position from {GPS_URL}")
+        self.get_logger().info(
+            f"Retreiving current position from {GPS_URL}", throttle_duration_sec=1
+        )
 
         pos = get_pos()
         if pos is None:
-            self.log_no_pos()
-            return
+            return  # error is logged in calling function
 
         position_delta = meters_to_km(
             GEODESIC.inv(
@@ -114,8 +115,8 @@ class MockGlobalPath(Node):
 
         if position_delta > gps_threshold * interval_spacing:
             self.get_logger().info(
-                f"GPS data changed by more than {gps_threshold*interval_spacing} km. Running ",
-                "global path callback",
+                f"GPS data changed by more than {gps_threshold*interval_spacing} km. Running "
+                "global path callback"
             )
 
             self.set_parameters([rclpy.Parameter("force", rclpy.Parameter.Type.BOOL, True)])

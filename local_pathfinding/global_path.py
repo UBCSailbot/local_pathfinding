@@ -191,7 +191,7 @@ def get_pos() -> HelperLatLon:
         return None
 
     if len(position["data"]) == 0:
-        print("No position data available.")
+        print(f"Connection to {GPS_URL} successful. No position data available.")
         return None
 
     latitude = position["data"][-1]["latitude"]

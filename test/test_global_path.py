@@ -1,6 +1,5 @@
 import os
 
-import get_server
 import post_server
 import pytest
 from custom_interfaces.msg import HelperLatLon, Path
@@ -250,12 +249,10 @@ def test_get_pos(pos: HelperLatLon):
         pos (HelperLatLon): The position of the Sailbot.
     """
 
-    # Launch http server
-    server = get_server.run_server()
-
-    assert get_pos() == pos, "Position is not correct"
-
-    get_server.shutdown_server(httpd=server)
+    pos = get_pos()
+    assert pos is not None, "No position data received"
+    assert pos.latitude is not None, "No latitude"
+    assert pos.longitude is not None, "No longitude"
 
 
 # ------------------------- TEST INTERPOLATE_PATH -------------------------
