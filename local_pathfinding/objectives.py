@@ -111,7 +111,6 @@ class DistanceObjective(Objective):
         space_information,
         method: DistanceMethod,
         reference=HelperLatLon(latitude=0.0, longitude=0.0),
-        num_samples: int = 100,
     ):
         self.method = method
         if self.method == DistanceMethod.OMPL_PATH_LENGTH:
@@ -119,7 +118,7 @@ class DistanceObjective(Objective):
         elif self.method == DistanceMethod.LATLON:
             self.reference = reference
 
-        super().__init__(space_information, num_samples)
+        super().__init__(space_information, num_samples=100)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the distance between two points
@@ -197,12 +196,7 @@ class MinimumTurningObjective(Objective):
     """
 
     def __init__(
-        self,
-        space_information,
-        simple_setup,
-        heading_degrees: float,
-        method: MinimumTurningMethod,
-        num_samples: int = 100,
+        self, space_information, simple_setup, heading_degrees: float, method: MinimumTurningMethod
     ):
         self.goal = cs.XY(
             simple_setup.getGoal().getState().getX(), simple_setup.getGoal().getState().getY()
@@ -211,7 +205,7 @@ class MinimumTurningObjective(Objective):
         self.heading = math.radians(heading_degrees)
         self.method = method
 
-        super().__init__(space_information, num_samples)
+        super().__init__(space_information, num_samples=100)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the turning cost between s1, s2, heading or the goal position
@@ -325,16 +319,11 @@ class WindObjective(Objective):
         wind_direction (float): The direction of the wind in radians (-pi, pi]
     """
 
-    def __init__(
-        self,
-        space_information,
-        wind_direction_degrees: float,
-        num_samples: int = 100,
-    ):
+    def __init__(self, space_information, wind_direction_degrees: float):
         assert -180 < wind_direction_degrees <= 180
         self.wind_direction = math.radians(wind_direction_degrees)
 
-        super().__init__(space_information, num_samples)
+        super().__init__(space_information, num_samples=100)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the upwind and downwind directions of the boat in
@@ -447,16 +436,12 @@ def get_sailing_objective(
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective_1 = DistanceObjective(
-        space_information=space_information, method=DistanceMethod.LATLON, num_samples=100
+        space_information=space_information, method=DistanceMethod.LATLON
     )
     objective_2 = MinimumTurningObjective(
-        space_information,
-        simple_setup,
-        heading_degrees,
-        MinimumTurningMethod.GOAL_HEADING,
-        num_samples=100,
+        space_information, simple_setup, heading_degrees, MinimumTurningMethod.GOAL_HEADING
     )
-    objective_3 = WindObjective(space_information, wind_direction_degrees, num_samples=100)
+    objective_3 = WindObjective(space_information, wind_direction_degrees)
     objective.addObjective(objective=objective_1, weight=0.33)
     objective.addObjective(objective=objective_2, weight=0.33)
     objective.addObjective(objective=objective_3, weight=0.34)
