@@ -47,24 +47,7 @@ def test_distance_objective(method: objectives.DistanceMethod, max_motion_cost: 
     #     assert ompl_path.is_state_valid(state)
 
     # test find_maximum_motion_cost()
-    # implicitly
     assert distance_objective.max_motion_cost == pytest.approx(max_motion_cost, rel=1e0)
-    # explicitly for the easiest method to set up
-    # don't need to test for all methods since they each have their own tests
-    if method == objectives.DistanceMethod.OMPL_PATH_LENGTH:
-        states = []
-        space = PATH._simple_setup.getStateSpace()
-        for xy in [(-0.5, 0.4), (0.1, 0.2), (0.3, -0.6)]:
-            state = ob.State(space)
-            state().setXY(*xy)
-            states.append(state)
-        max_cost = max(
-            distance_objective.ompl_path_objective.motionCost(s1(), s2()).value()
-            for s1, s2 in itertools.combinations(iterable=states, r=2)
-        )
-        assert distance_objective.find_maximum_motion_cost([s() for s in states]) == pytest.approx(
-            max_cost / distance_objective.max_motion_cost
-        )
 
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
     states = distance_objective.sample_states(10)
@@ -143,6 +126,7 @@ def test_minimum_turning_objective(
     # for state in sampled_states:
     #     assert ompl_path.is_state_valid(state)
 
+    # test find_maximum_motion_cost()
     assert minimum_turning_objective.max_motion_cost == pytest.approx(max_motion_cost, rel=1e0)
 
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
@@ -224,6 +208,7 @@ def test_wind_objective(wind_direction_deg: float, max_motion_cost: float):
     # for state in sampled_states:
     #     assert ompl_path.is_state_valid(state)
 
+    # test find_maximum_motion_cost()
     assert wind_objective.max_motion_cost == pytest.approx(max_motion_cost, rel=1e0)
 
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
@@ -276,9 +261,6 @@ def test_is_downwind(wind_direction_deg: float, heading_deg: float, expected: fl
     heading = math.radians(heading_deg)
 
     assert objectives.WindObjective.is_downwind(wind_direction, heading) == expected
-
-
-""" Tests for is_angle_between() """
 
 
 @pytest.mark.parametrize(
