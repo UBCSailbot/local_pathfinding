@@ -22,6 +22,7 @@ class LocalPathState:
             navigating along.
         `wind_speed` (float): Wind speed.
         `wind_direction` (int): Wind direction.
+        `planner` (str): Planner to use for the OMPL query.
     """
 
     def __init__(
@@ -64,11 +65,7 @@ class LocalPath:
     """
 
     def __init__(self, parent_logger: RcutilsLogger):
-        """Initializes the LocalPath class.
-
-        Args:
-            `parent_logger` (RcutilsLogger): ROS logger of the parent class.
-        """
+        """Initializes the LocalPath class."""
         self._logger = parent_logger.get_child(name="local_path")
         self._ompl_path: Optional[OMPLPath] = None
         self.waypoints: Optional[List[Tuple[float, float]]] = None
