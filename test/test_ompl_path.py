@@ -1,13 +1,21 @@
 import pytest
+from custom_interfaces.msg import GPS, AISShips, Path, WindSensor
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.ompl_path as ompl_path
+from local_pathfinding.local_path import LocalPathState
 
 PATH = ompl_path.OMPLPath(
     parent_logger=RcutilsLogger(),
     max_runtime=1,
-    local_path_state=None,  # type: ignore[arg-type] # None is placeholder
+    local_path_state=LocalPathState(
+        gps=GPS(),
+        ais_ships=AISShips(),
+        global_path=Path(),
+        filtered_wind_sensor=WindSensor(),
+        planner="bitstar",
+    ),
 )
 
 

@@ -34,6 +34,9 @@ class OMPLPathState:
         self.start_state = (0.5, 0.4)
         self.goal_state = (0.5, -0.4)
 
+        if local_path_state:
+            self.planner = local_path_state.planner
+
 
 class OMPLPath:
     """Represents the general OMPL Path.
@@ -49,7 +52,6 @@ class OMPLPath:
         parent_logger: RcutilsLogger,
         max_runtime: float,
         local_path_state: LocalPathState,
-        planner: str = "rrtstar",
     ):
         """Initialize the OMPLPath Class. Attempt to solve for a path.
 
@@ -57,11 +59,9 @@ class OMPLPath:
             parent_logger (RcutilsLogger): Logger of the parent class.
             max_runtime (float): Maximum amount of time in seconds to look for a solution path.
             local_path_state (LocalPathState): State of Sailbot.
-            planner (str): Name of the planner to use.
         """
         self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
-        self.planner = planner
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
@@ -99,47 +99,6 @@ class OMPLPath:
             NotImplementedError: Method or function hasn't been implemented yet.
         """
         raise NotImplementedError
-
-    def choose_planner(self, planner: str, si: ob.SpaceInformation) -> ob.Planner:
-        """Choose the planner to use for the OMPL query.
-
-        Args:
-            planner (str): Name of the planner to use.
-            si (ob.SpaceInformation): Encapsulates the planning problem to be solved.
-
-        Returns:
-            ob.Planner: Planner to use for the OMPL query.
-        """
-
-        match planner.lower():
-            case "bfmtstar":
-                return og.BFMT(si)
-            case "bitstar":
-                return og.BITstar(si)
-            case "fmtstar":
-                return og.FMT(si)
-            case "informedrrtstar":
-                return og.InformedRRTstar(si)
-            case "prmstar":
-                return og.PRMstar(si)
-            case "rrtstar":
-                return og.RRTstar(si)
-            case "sorrtstar":
-                return og.SORRTstar(si)
-            case "rrtxstatic":
-                return og.RRTXstatic(si)
-            case "rrtsharp":
-                return og.RRTsharp(si)
-            case "lazyprmstar":
-                return og.LazyPRMstar(si)
-            case "rrtconnect":
-                return og.RRTConnect(si)
-            case "lbtrrt":
-                return og.LBTRRT(si)
-            case "lazylbtrrt":
-                return og.LazyLBTRRT(si)
-            case _:
-                ou.OMPL_ERROR("Planner-type is not implemented in allocation function.")
 
     def _init_simple_setup(self) -> og.SimpleSetup:
         """Initialize and configure the OMPL SimpleSetup object.
@@ -200,8 +159,8 @@ class OMPLPath:
         simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
-        # TODO: implement and add planner
-        simple_setup.setPlanner(self.choose_planner(self.planner, space_information))
+        planner = choose_planner(self.state.planner, space_information)
+        simple_setup.setPlanner(planner)
 
         return simple_setup
 
@@ -218,3 +177,44 @@ def is_state_valid(state: ob.SE2StateSpace) -> bool:
     # TODO: implement obstacle avoidance here
     # note: `state` is of type `SE2StateInternal`, so we don't need to use the `()` operator.
     return state.getX() < 0.6
+
+
+def choose_planner(planner: str, si: ob.SpaceInformation) -> ob.Planner:
+    """Choose the planner to use for the OMPL query.
+
+    Args:
+        planner (str): Name of the planner to use.
+        si (ob.SpaceInformation): Encapsulates the planning problem to be solved.
+
+    Returns:
+        ob.Planner: Planner to use for the OMPL query.
+    """
+    match planner.lower():
+        case "bitstar":
+            return og.BITstar(si)
+        case "bfmtstar":
+            return og.BFMT(si)
+        case "fmtstar":
+            return og.FMT(si)
+        case "informedrrtstar":
+            return og.InformedRRTstar(si)
+        case "lazylbtrrt":
+            return og.LazyLBTRRT(si)
+        case "lazyprmstar":
+            return og.LazyPRMstar(si)
+        case "lbtrrt":
+            return og.LBTRRT(si)
+        case "prmstar":
+            return og.PRMstar(si)
+        case "rrtconnect":
+            return og.RRTConnect(si)
+        case "rrtsharp":
+            return og.RRTsharp(si)
+        case "rrtstar":
+            return og.RRTstar(si)
+        case "rrtxstatic":
+            return og.RRTXstatic(si)
+        case "sorrtstar":
+            return og.SORRTstar(si)
+        case _:
+            return og.RRTStar(si)
