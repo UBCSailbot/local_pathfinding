@@ -3,7 +3,6 @@ import math
 
 import pytest
 from custom_interfaces.msg import HelperLatLon
-from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import local_pathfinding.coord_systems as coord_systems
