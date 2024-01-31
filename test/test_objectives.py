@@ -251,9 +251,9 @@ def test_speed_objective(method: objectives.SpeedObjectiveMethod):
         (-81, -81, 32.3, 0),
         # Other edge cases
         (60, -120, 10.6, 3.704347826),
-        (30, 65, 37, 6.833333333),
-        (-50, -152.7, 15.844222222),
-        (-170, 140, 14.4, 1.231521739),
+        (170, -155, 37, 6.833333333),
+        (-50, -152.7, 27.8, 15.844222222),
+        (-170, 160, 14.4, 1.231521739),
         (0, 45, 18.5, 3.7),
         # General cases
         (-20, 40, 12.0, 2.905434783),
@@ -263,10 +263,9 @@ def test_speed_objective(method: objectives.SpeedObjectiveMethod):
 def test_get_sailbot_speed(
     heading: float, wind_direction: float, wind_speed: float, expected: float
 ):
-    assert (
-        objectives.SpeedObjective.get_sailbot_speed(heading, wind_direction, wind_speed)
-        == expected
-    )
+    assert objectives.SpeedObjective.get_sailbot_speed(
+        heading, wind_direction, wind_speed
+    ) == pytest.approx(expected, abs=1e-7)
 
 
 @pytest.mark.parametrize(
