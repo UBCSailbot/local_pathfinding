@@ -7,7 +7,7 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, Type
 
 from ompl import base as ob
 from ompl import geometric as og
@@ -24,7 +24,7 @@ ou.setLogLevel(ou.LOG_WARN)
 
 
 class OMPLPathState:
-    def __init__(self, local_path_state: LocalPathState):
+    def __init__(self, local_path_state: LocalPathState, logger: RcutilsLogger):
         # TODO: derive OMPLPathState attributes from local_path_state
         self.heading_direction = 45.0
         self.wind_direction = 10.0
@@ -35,7 +35,13 @@ class OMPLPathState:
         self.goal_state = (0.5, -0.4)
 
         if local_path_state:
-            self.planner = local_path_state.planner
+            planner = local_path_state.planner
+            supported_planner, _ = get_planner_class(planner)
+            if planner != supported_planner:
+                logger.error(
+                    f"Planner {planner} is not implemented, defaulting to {supported_planner}"
+                )
+            self.planner = supported_planner
 
 
 class OMPLPath:
@@ -61,7 +67,7 @@ class OMPLPath:
             local_path_state (LocalPathState): State of Sailbot.
         """
         self._logger = parent_logger.get_child(name="ompl_path")
-        self.state = OMPLPathState(local_path_state)
+        self.state = OMPLPathState(local_path_state, self._logger)
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
@@ -159,7 +165,8 @@ class OMPLPath:
         simple_setup.setOptimizationObjective(objective)
 
         # set the planner of the simple setup object
-        planner = choose_planner(self.state.planner, space_information)
+        _, planner_class = get_planner_class(self.state.planner)
+        planner = planner_class(space_information)
         simple_setup.setPlanner(planner)
 
         return simple_setup
@@ -179,42 +186,42 @@ def is_state_valid(state: ob.SE2StateSpace) -> bool:
     return state.getX() < 0.6
 
 
-def choose_planner(planner: str, si: ob.SpaceInformation) -> ob.Planner:
+def get_planner_class(planner: str) -> Tuple[str, Type[ob.Planner]]:
     """Choose the planner to use for the OMPL query.
 
     Args:
         planner (str): Name of the planner to use.
-        si (ob.SpaceInformation): Encapsulates the planning problem to be solved.
 
     Returns:
-        ob.Planner: Planner to use for the OMPL query.
+        Tuple[str, Type[ob.Planner]]: The name and class of the planner to use for the OMPL query,
+            defaults to RRT* if `planner` is not implemented in this function.
     """
     match planner.lower():
         case "bitstar":
-            return og.BITstar(si)
+            return planner, og.BITstar
         case "bfmtstar":
-            return og.BFMT(si)
+            return planner, og.BFMT
         case "fmtstar":
-            return og.FMT(si)
+            return planner, og.FMT
         case "informedrrtstar":
-            return og.InformedRRTstar(si)
+            return planner, og.InformedRRTstar
         case "lazylbtrrt":
-            return og.LazyLBTRRT(si)
+            return planner, og.LazyLBTRRT
         case "lazyprmstar":
-            return og.LazyPRMstar(si)
+            return planner, og.LazyPRMstar
         case "lbtrrt":
-            return og.LBTRRT(si)
+            return planner, og.LBTRRT
         case "prmstar":
-            return og.PRMstar(si)
+            return planner, og.PRMstar
         case "rrtconnect":
-            return og.RRTConnect(si)
+            return planner, og.RRTConnect
         case "rrtsharp":
-            return og.RRTsharp(si)
+            return planner, og.RRTsharp
         case "rrtstar":
-            return og.RRTstar(si)
+            return planner, og.RRTstar
         case "rrtxstatic":
-            return og.RRTXstatic(si)
+            return planner, og.RRTXstatic
         case "sorrtstar":
-            return og.SORRTstar(si)
+            return planner, og.SORRTstar
         case _:
-            return og.RRTStar(si)
+            return "rrtstar", og.RRTstar
