@@ -466,7 +466,6 @@ class SpeedObjective(Objective):
 
     @staticmethod
     def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
-        # TODO: implement this function
         sailing_angle = abs(heading - wind_direction)
 
         # Find the nearest windspeed values above and below the true windspeed
