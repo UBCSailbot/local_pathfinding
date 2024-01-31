@@ -3,6 +3,7 @@
 import math
 from enum import Enum, auto
 
+import numpy as np
 from ompl import base as ob
 
 import local_pathfinding.coord_systems as cs
@@ -16,15 +17,18 @@ HIGHEST_UPWIND_ANGLE_RADIANS = math.radians(40.0)
 LOWEST_DOWNWIND_ANGLE_RADIANS = math.radians(20.0)
 
 
-BOAT_SPEED_TABLE = [
-    [0, 9.3, 18.5, 27.8, 37.0],
-    [0, 20, 30, 45, 90, 135, 180],
-    [0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0.4, 1.1, 3.2, 3.7, 2.8],
-    [0, 0.3, 1.9, 3.7, 9.3, 13.0, 9.2],
-    [0, 0.9, 3.7, 7.4, 14.8, 18.5, 13.0],
-    [0, 1.3, 5.6, 9.3, 18.5, 24.1, 18.5],
-]
+BOATSPEEDS = np.array(
+    [
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0.4, 1.1, 3.2, 3.7, 2.8],
+        [0, 0.3, 1.9, 3.7, 9.3, 13.0, 9.2],
+        [0, 0.9, 3.7, 7.4, 14.8, 18.5, 13.0],
+        [0, 1.3, 5.6, 9.3, 18.5, 24.1, 18.5],
+    ]
+)
+
+WINDSPEEDS = [0, 9.3, 18.5, 27.8, 37.0]  # The row labels
+ANGLES = [0, 20, 30, 45, 90, 135, 180]  # The column labels
 
 
 class DistanceMethod(Enum):
@@ -463,7 +467,61 @@ class SpeedObjective(Objective):
     @staticmethod
     def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
         # TODO: implement this function
-        return 0.0
+        sailing_angle = abs(heading - wind_direction)
+
+        # Find the nearest windspeed values above and below the true windspeed
+        lower_windspeed_index = max([i for i, ws in enumerate(WINDSPEEDS) if ws <= wind_speed])
+        upper_windspeed_index = (
+            lower_windspeed_index + 1
+            if lower_windspeed_index < len(WINDSPEEDS) - 1
+            else lower_windspeed_index
+        )
+
+        # Find the nearest angle values above and below the sailing angle
+        lower_angle_index = max([i for i, ang in enumerate(ANGLES) if ang <= sailing_angle])
+        upper_angle_index = (
+            lower_angle_index + 1 if lower_angle_index < len(ANGLES) - 1 else lower_angle_index
+        )
+
+        # Find the maximum angle and maximum windspeed based on the actual data in the table
+        max_angle = max(ANGLES)
+        max_windspeed = max(WINDSPEEDS)
+
+        # Handle the case of maximum angle (use the dynamic max_angle)
+        if upper_angle_index == len(ANGLES) - 1:
+            lower_angle_index = ANGLES.index(max_angle) - 1
+            upper_angle_index = ANGLES.index(max_angle)
+
+        # Handle the case of the maximum windspeed (use the dynamic max_windspeed)
+        if upper_windspeed_index == len(WINDSPEEDS) - 1:
+            lower_windspeed_index = WINDSPEEDS.index(max_windspeed) - 1
+            upper_windspeed_index = WINDSPEEDS.index(max_windspeed)
+
+        # Perform linear interpolation
+        lower_windspeed = WINDSPEEDS[lower_windspeed_index]
+        upper_windspeed = WINDSPEEDS[upper_windspeed_index]
+        lower_angle = ANGLES[lower_angle_index]
+        upper_angle = ANGLES[upper_angle_index]
+
+        boat_speed_lower = BOATSPEEDS[lower_windspeed_index][lower_angle_index]
+        boat_speed_upper = BOATSPEEDS[upper_windspeed_index][lower_angle_index]
+
+        interpolated_1 = boat_speed_lower + (wind_speed - lower_windspeed) * (
+            boat_speed_upper - boat_speed_lower
+        ) / (upper_windspeed - lower_windspeed)
+
+        boat_speed_lower = BOATSPEEDS[lower_windspeed_index][upper_angle_index]
+        boat_speed_upper = BOATSPEEDS[upper_windspeed_index][upper_angle_index]
+
+        interpolated_2 = boat_speed_lower + (wind_speed - lower_windspeed) * (
+            boat_speed_upper - boat_speed_lower
+        ) / (upper_windspeed - lower_windspeed)
+
+        interpolated_value = interpolated_1 + (sailing_angle - lower_angle) * (
+            interpolated_2 - interpolated_1
+        ) / (upper_angle - lower_angle)
+
+        return interpolated_value
 
     @staticmethod
     def get_piecewise_cost(speed: float) -> float:
