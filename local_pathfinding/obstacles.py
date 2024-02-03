@@ -4,11 +4,11 @@ import math
 from typing import Optional
 
 import numpy as np
-from custom_interfaces.msg import HelperAISShip
+from custom_interfaces.msg import HelperAISShip, HelperLatLon
 from shapely.affinity import affine_transform
 from shapely.geometry import Point, Polygon
 
-from local_pathfinding.coord_systems import XY, LatLon, latlon_to_xy, meters_to_km
+from local_pathfinding.coord_systems import XY, latlon_to_xy, meters_to_km
 
 # Constants
 PROJ_TIME_NO_COLLISION = 3  # hours
@@ -21,14 +21,16 @@ class Obstacle:
     anything which the sailbot must avoid.
 
     Attributes:
-        reference (LatLon): Lat and lon position of the next global waypoint.
+        reference (HelperLatLon): Lat and lon position of the next global waypoint.
         sailbot_position (XY): Lat and lon position of SailBot.
         sailbot_speed (float): Speed of the SailBot in kmph.
         collision_zone (Optional[Polygon]): Shapely polygon representing the
             obstacle's collision zone. Shape depends on the child class.
     """
 
-    def __init__(self, reference: LatLon, sailbot_position: LatLon, sailbot_speed: float):
+    def __init__(
+        self, reference: HelperLatLon, sailbot_position: HelperLatLon, sailbot_speed: float
+    ):
         self.reference = reference
         self.sailbot_position_latlon = sailbot_position
         self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
@@ -41,7 +43,7 @@ class Obstacle:
         """Checks if a point is contained the obstacle's collision zone.
 
         Args:
-            point (LatLon): LatLon Point representing the state point to be checked.
+            point (HelperLatLon): Point representing the state point to be checked.
 
         Returns:
             bool: True if the point is not within the obstacle's collision zone, false otherwise.
@@ -77,22 +79,22 @@ class Obstacle:
 
         self.collision_zone = collision_zone.buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
 
-    def update_sailbot_data(self, sailbot_position: LatLon, sailbot_speed: float):
+    def update_sailbot_data(self, sailbot_position: HelperLatLon, sailbot_speed: float):
         """Updates the sailbot's position and speed.
 
         Args:
-            sailbot_position (LatLon): LatLon position of the SailBot.
+            sailbot_position (HelperLatLon): Position of the SailBot.
             sailbot_speed (float): Speed of the SailBot in kmph.
         """
         self.sailbot_position_latlon = sailbot_position
         self.sailbot_position = latlon_to_xy(self.reference, sailbot_position)
         self.sailbot_speed = sailbot_speed
 
-    def update_reference_point(self, reference: LatLon):
+    def update_reference_point(self, reference: HelperLatLon):
         """Updates the reference point.
 
         Args:
-            reference (LatLon): LatLon position of the updated global waypoint.
+            reference (HelperLatLon): Position of the updated global waypoint.
         """
         self.reference = reference
         self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
@@ -114,8 +116,8 @@ class Boat(Obstacle):
 
     def __init__(
         self,
-        reference: LatLon,
-        sailbot_position: LatLon,
+        reference: HelperLatLon,
+        sailbot_position: HelperLatLon,
         sailbot_speed: float,
         ais_ship: HelperAISShip,
     ):
@@ -146,9 +148,7 @@ class Boat(Obstacle):
         length = self.length
 
         # coordinates of the center of the boat
-        position = latlon_to_xy(
-            self.reference, LatLon(ais_ship.lat_lon.latitude, ais_ship.lat_lon.longitude)
-        )
+        position = latlon_to_xy(self.reference, ais_ship.lat_lon)
 
         # Course over ground of the boat
         cog = ais_ship.cog.heading
@@ -188,9 +188,7 @@ class Boat(Obstacle):
             float: Distance the boat will travel before collision or the max projection distance
                    if a collision is not possible.
         """
-        position = latlon_to_xy(
-            self.reference, LatLon(self.ais_ship.lat_lon.latitude, self.ais_ship.lat_lon.longitude)
-        )
+        position = latlon_to_xy(self.reference, self.ais_ship.lat_lon)
 
         # vector components of the boat's speed over ground
         cog_rad = math.radians(self.ais_ship.cog.heading)
