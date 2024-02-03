@@ -3,6 +3,7 @@
 import math
 from enum import Enum, auto
 
+import numpy as np
 from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 
@@ -15,6 +16,20 @@ DOWNWIND_MULTIPLIER = 3000.0
 # Upwind downwind constants
 HIGHEST_UPWIND_ANGLE_RADIANS = math.radians(40.0)
 LOWEST_DOWNWIND_ANGLE_RADIANS = math.radians(20.0)
+
+
+BOATSPEEDS = np.array(
+    [
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0.4, 1.1, 3.2, 3.7, 2.8],
+        [0, 0.3, 1.9, 3.7, 9.3, 13.0, 9.2],
+        [0, 0.9, 3.7, 7.4, 14.8, 18.5, 13.0],
+        [0, 1.3, 5.6, 9.3, 18.5, 24.1, 18.5],
+    ]
+)
+
+WINDSPEEDS = [0, 9.3, 18.5, 27.8, 37.0]  # The row labels
+ANGLES = [0, 20, 30, 45, 90, 135, 180]  # The column labels
 
 
 class DistanceMethod(Enum):
@@ -31,6 +46,14 @@ class MinimumTurningMethod(Enum):
     GOAL_HEADING = auto()
     GOAL_PATH = auto()
     HEADING_PATH = auto()
+
+
+class SpeedObjectiveMethod(Enum):
+    """Enumeration for speed objective methods"""
+
+    SAILBOT_PIECEWISE = auto()
+    SAILBOT_CONTINUOUS = auto()
+    SAILBOT_TIME = auto()
 
 
 class Objective(ob.StateCostIntegralObjective):
@@ -386,8 +409,166 @@ class WindObjective(Objective):
             return WindObjective.is_angle_between(second_angle, middle_angle, first_angle)
 
 
+class SpeedObjective(Objective):
+    """Generates a speed objective function
+
+    Attributes:
+        wind_direction (float): The direction of the wind in radians (-pi, pi]
+        wind_speed (float): The speed of the wind in m/s
+    """
+
+    def __init__(
+        self,
+        space_information,
+        heading_direction: float,
+        wind_direction: float,
+        wind_speed: float,
+        method: SpeedObjectiveMethod,
+    ):
+        super().__init__(space_information)
+        assert -180 < wind_direction <= 180
+        self.wind_direction = math.radians(wind_direction)
+
+        assert -180 < heading_direction <= 180
+        self.heading_direction = math.radians(heading_direction)
+
+        self.wind_speed = wind_speed
+        self.method = method
+
+    def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            s1 (SE2StateInternal): The starting point of the local start state
+            s2 (SE2StateInternal): The ending point of the local goal state
+
+        Returns:
+            ob.Cost: The cost of going upwind or downwind
+        """
+
+        s1_xy = cs.XY(s1.getX(), s1.getY())
+        s2_xy = cs.XY(s2.getX(), s2.getY())
+
+        sailbot_speed = self.get_sailbot_speed(
+            self.heading_direction, self.wind_direction, self.wind_speed
+        )
+
+        if sailbot_speed == 0:
+            return ob.Cost(10000)
+
+        if self.method == SpeedObjectiveMethod.SAILBOT_TIME:
+            distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
+            time = distance / sailbot_speed
+
+            cost = ob.Cost(time)
+
+        elif self.method == SpeedObjectiveMethod.SAILBOT_PIECEWISE:
+            cost = ob.Cost(self.get_piecewise_cost(sailbot_speed))
+        elif self.method == SpeedObjectiveMethod.SAILBOT_CONTINUOUS:
+            cost = ob.Cost(self.get_continuous_cost(sailbot_speed))
+        else:
+            ValueError(f"Method {self.method} not supported")
+        return cost
+
+    @staticmethod
+    def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
+        # Get the sailing angle: [0, 180]
+        sailing_angle = abs(heading - wind_direction)
+        sailing_angle = min(sailing_angle, 360 - sailing_angle)
+
+        # Find the nearest windspeed values above and below the true windspeed
+        lower_windspeed_index = max([i for i, ws in enumerate(WINDSPEEDS) if ws <= wind_speed])
+        upper_windspeed_index = (
+            lower_windspeed_index + 1
+            if lower_windspeed_index < len(WINDSPEEDS) - 1
+            else lower_windspeed_index
+        )
+
+        # Find the nearest angle values above and below the sailing angle
+        lower_angle_index = max([i for i, ang in enumerate(ANGLES) if ang <= sailing_angle])
+        upper_angle_index = (
+            lower_angle_index + 1 if lower_angle_index < len(ANGLES) - 1 else lower_angle_index
+        )
+
+        # Find the maximum angle and maximum windspeed based on the actual data in the table
+        max_angle = max(ANGLES)
+        max_windspeed = max(WINDSPEEDS)
+
+        # Handle the case of maximum angle (use the dynamic max_angle)
+        if upper_angle_index == len(ANGLES) - 1:
+            lower_angle_index = ANGLES.index(max_angle) - 1
+            upper_angle_index = ANGLES.index(max_angle)
+
+        # Handle the case of the maximum windspeed (use the dynamic max_windspeed)
+        if upper_windspeed_index == len(WINDSPEEDS) - 1:
+            lower_windspeed_index = WINDSPEEDS.index(max_windspeed) - 1
+            upper_windspeed_index = WINDSPEEDS.index(max_windspeed)
+
+        # Perform linear interpolation
+        lower_windspeed = WINDSPEEDS[lower_windspeed_index]
+        upper_windspeed = WINDSPEEDS[upper_windspeed_index]
+        lower_angle = ANGLES[lower_angle_index]
+        upper_angle = ANGLES[upper_angle_index]
+
+        boat_speed_lower = BOATSPEEDS[lower_windspeed_index][lower_angle_index]
+        boat_speed_upper = BOATSPEEDS[upper_windspeed_index][lower_angle_index]
+
+        interpolated_1 = boat_speed_lower + (wind_speed - lower_windspeed) * (
+            boat_speed_upper - boat_speed_lower
+        ) / (upper_windspeed - lower_windspeed)
+
+        boat_speed_lower = BOATSPEEDS[lower_windspeed_index][upper_angle_index]
+        boat_speed_upper = BOATSPEEDS[upper_windspeed_index][upper_angle_index]
+
+        interpolated_2 = boat_speed_lower + (wind_speed - lower_windspeed) * (
+            boat_speed_upper - boat_speed_lower
+        ) / (upper_windspeed - lower_windspeed)
+
+        interpolated_value = interpolated_1 + (sailing_angle - lower_angle) * (
+            interpolated_2 - interpolated_1
+        ) / (upper_angle - lower_angle)
+
+        return interpolated_value
+
+    @staticmethod
+    def get_piecewise_cost(speed: float) -> float:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            speed (float): The speed of the boat in m/s
+        """
+
+        if speed < 5:
+            return 5
+        elif 5 < speed < 10:
+            return 10
+        elif 10 < speed < 15:
+            return 20
+        elif 15 < speed < 20:
+            return 50
+        else:
+            return 10000
+
+    @staticmethod
+    def get_continuous_cost(speed: float) -> float:
+        """Generates the cost associated with the speed of the boat.
+
+        Args:
+            speed (float): The speed of the boat in m/s
+        """
+        try:
+            cost = abs(1 / math.sin(math.pi * speed / 25) - 0.5)
+            return min(10000, cost)
+        except ZeroDivisionError:
+            return 10000
+
+
 def get_sailing_objective(
-    space_information, simple_setup, heading_degrees: float, wind_direction_degrees: float
+    space_information,
+    simple_setup,
+    heading_degrees: float,
+    wind_direction_degrees: float,
+    wind_speed: float,
 ) -> ob.OptimizationObjective:
     objective = ob.MultiOptimizationObjective(si=space_information)
     objective.addObjective(
@@ -402,6 +583,16 @@ def get_sailing_objective(
     )
     objective.addObjective(
         objective=WindObjective(space_information, wind_direction_degrees), weight=1.0
+    )
+    objective.addObjective(
+        objective=SpeedObjective(
+            space_information,
+            heading_degrees,
+            wind_direction_degrees,
+            wind_speed,
+            SpeedObjectiveMethod.SAILBOT_TIME,
+        ),
+        weight=1.0,
     )
 
     return objective
