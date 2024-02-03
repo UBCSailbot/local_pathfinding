@@ -209,7 +209,6 @@ def test_is_downwind(wind_direction_deg: float, heading_deg: float, expected: fl
     ],
 )
 def test_angle_between(afir: float, amid: float, asec: float, expected: float):
-
     assert (
         objectives.WindObjective.is_angle_between(
             math.radians(afir), math.radians(amid), math.radians(asec)
@@ -235,6 +234,38 @@ def test_speed_objective(method: objectives.SpeedObjectiveMethod):
         method,
     )
     assert speed_objective is not None
+
+
+@pytest.mark.parametrize(
+    "heading,wind_direction,wind_speed,expected",
+    [
+        # Corners of the table
+        (0, 0, 0, 0),
+        (-90, 90, 37.0, 18.5),
+        (0, 180, 0, 0),
+        (0, 0, 37.0, 0),
+        # Edges of table
+        (-48, 22, 0, 0),
+        (-22, 140, 0, 0),
+        (63, 63, 9.3, 0),
+        (-81, -81, 32.3, 0),
+        # Other edge cases
+        (60, -120, 10.6, 3.704347826),
+        (170, -155, 37, 6.833333333),
+        (-50, -152.7, 27.8, 15.844222222),
+        (-170, 160, 14.4, 1.231521739),
+        (0, 45, 18.5, 3.7),
+        # General cases
+        (-20, 40, 12.0, 2.905434783),
+        (12.9, -1, 5.3, 0),
+    ],
+)
+def test_get_sailbot_speed(
+    heading: float, wind_direction: float, wind_speed: float, expected: float
+):
+    assert objectives.SpeedObjective.get_sailbot_speed(
+        heading, wind_direction, wind_speed
+    ) == pytest.approx(expected, abs=1e-7)
 
 
 @pytest.mark.parametrize(
