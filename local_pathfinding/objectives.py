@@ -94,6 +94,11 @@ class Objective(ob.StateCostIntegralObjective):
 
         return sampled_states
 
+    def capping_motionCost(self, value):
+        if value > 1:
+            value == 1
+        return value
+
 
 class DistanceObjective(Objective):
     """Generates a distance objective function
@@ -147,6 +152,7 @@ class DistanceObjective(Objective):
             raise ValueError(f"Method {self.method} not supported")
 
         normalized_distance = distance / self.max_motion_cost
+        normalized_distance = self.capping_motionCost(normalized_distance)
         return ob.Cost(normalized_distance)
 
     @staticmethod
@@ -232,6 +238,7 @@ class MinimumTurningObjective(Objective):
             raise ValueError(f"Method {self.method} not supported")
 
         normalized_angle = angle / self.max_motion_cost
+        normalized_angle = self.capping_motionCost(normalized_angle)
         return ob.Cost(normalized_angle)
 
     @staticmethod
@@ -341,6 +348,7 @@ class WindObjective(Objective):
         wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
 
         normalized_wind_cost = wind_cost / self.max_motion_cost
+        normalized_wind_cost = self.capping_motionCost(normalized_wind_cost)
         return ob.Cost(normalized_wind_cost)
 
     @staticmethod
