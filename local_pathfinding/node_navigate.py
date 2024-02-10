@@ -50,8 +50,9 @@ class Sailbot(Node):
                 ("path_planner", rclpy.Parameter.Type.STRING),
             ],
         )
+        self.pub_period_sec, self.planner = 0.0, ""
 
-        pub_period_sec, _ = self.get_params()
+        self.get_params()
 
         # subscribers
         self.ais_ships_sub = self.create_subscription(
@@ -70,12 +71,9 @@ class Sailbot(Node):
             qos_profile=10,
         )
 
-        # publishers and their timers
+        # publishers
         self.desired_heading_pub = self.create_publisher(
             msg_type=DesiredHeading, topic="desired_heading", qos_profile=10
-        )
-        self.desired_heading_timer = self.create_timer(
-            timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
         )
 
         # attributes from subscribers
@@ -131,32 +129,36 @@ class Sailbot(Node):
             float: The desired heading if all subscribers are active, else a number that violates
                 the heading convention.
         """
-        _, planner = self.get_params()
+        self.get_params()
 
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
             return -1.0
 
         self.local_path.update_if_needed(
-            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor, planner
+            self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor, self.planner
         )
 
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
     def get_params(self):
-        """Get the parameters from the parameter server.
-
-        Returns:
-            float: The period of the timer that publishes the desired heading.
-            str: The path planner to use.
-        """
+        """Get the parameters from the parameter server."""
 
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
-        self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
-
         planner = self.get_parameter("path_planner").get_parameter_value().string_value
-        self.get_logger().debug(f"Got parameter: {planner=}")
+
+        # update attributes and log if parameters have changed
+        if planner != self.planner:
+            self.planner = planner
+            self.get_logger().debug(f"Got parameter: {planner=}")
+
+        if pub_period_sec != self.pub_period_sec:
+            self.pub_period_sec = pub_period_sec
+            self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
+            self.desired_heading_timer = self.create_timer(
+                timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
+            )
 
         return pub_period_sec, planner
 

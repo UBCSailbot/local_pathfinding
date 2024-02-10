@@ -20,7 +20,7 @@ PATH = ompl_path.OMPLPath(
 
 
 def test_OMPLPathState():
-    state = ompl_path.OMPLPathState(local_path_state=None)
+    state = ompl_path.OMPLPathState(local_path_state=None, logger=RcutilsLogger())
     assert state.state_domain == (-1, 1), "incorrect value for attribute state_domain"
     assert state.state_range == (-1, 1), "incorrect value for attribute start_state"
     assert state.start_state == pytest.approx(
