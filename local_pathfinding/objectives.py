@@ -54,6 +54,7 @@ class Objective(ob.StateCostIntegralObjective):
         self.space_information = space_information
 
         states = self.sample_states(num_samples)
+        # initialize to 1 so that motionCost is not normalized when finding the maximum motion cost
         self.max_motion_cost = 1.0
         self.max_motion_cost = self.find_maximum_motion_cost(states)
 
