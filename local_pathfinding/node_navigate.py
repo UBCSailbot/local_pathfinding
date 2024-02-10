@@ -31,6 +31,7 @@ class Sailbot(Node):
         lpath_data_pub (Publisher): Publish the local path in a `LPathData` msg.
 
     Publisher timers:
+        pub_period_sec (float): The period of the publisher timers.
         desired_heading_timer (Timer): Call the desired heading callback function.
         lpath_data_timer (Timer): Call the local path callback function.
 
@@ -42,6 +43,7 @@ class Sailbot(Node):
 
     Attributes:
         local_path (LocalPath): The path that `Sailbot` is following.
+        planner (str): The path planner that `Sailbot` is using.
     """
 
     def __init__(self):
@@ -54,9 +56,6 @@ class Sailbot(Node):
                 ("path_planner", rclpy.Parameter.Type.STRING),
             ],
         )
-        self.pub_period_sec, self.planner = 0.0, ""
-
-        self.get_params()
 
         # subscribers
         self.ais_ships_sub = self.create_subscription(
@@ -90,13 +89,15 @@ class Sailbot(Node):
         )
 
         # publisher timers
-        pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
-        self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
+        self.pub_period_sec = (
+            self.get_parameter("pub_period_sec").get_parameter_value().double_value
+        )
+        self.get_logger().debug(f"Got parameter: {self.pub_period_sec=}")
         self.desired_heading_timer = self.create_timer(
-            timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
+            timer_period_sec=self.pub_period_sec, callback=self.desired_heading_callback
         )
         self.lpath_data_timer = self.create_timer(
-            timer_period_sec=pub_period_sec, callback=self.lpath_data_callback
+            timer_period_sec=self.pub_period_sec, callback=self.lpath_data_callback
         )
 
         # attributes from subscribers
@@ -107,6 +108,8 @@ class Sailbot(Node):
 
         # attributes
         self.local_path = LocalPath(parent_logger=self.get_logger())
+        self.planner = self.get_parameter("path_planner").get_parameter_value().string_value
+        self.get_logger().debug(f"Got parameter: {self.planner=}")
 
     # subscriber callbacks
 
@@ -133,6 +136,8 @@ class Sailbot(Node):
 
         Warn if not following the heading conventions in custom_interfaces/msg/HelperHeading.msg.
         """
+        self.update_params()
+
         desired_heading = self.get_desired_heading()
         if desired_heading < 0 or 360 <= desired_heading:
             self.get_logger().warning(f"Heading {desired_heading} not in [0, 360)")
@@ -166,8 +171,6 @@ class Sailbot(Node):
             self._log_inactive_subs_warning()
             return -1.0
 
-        self.get_params()
-
         self.local_path.update_if_needed(
             self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor, self.planner
         )
@@ -175,25 +178,25 @@ class Sailbot(Node):
         # TODO: create function to compute the heading from current position to next local waypoint
         return 0.0
 
-    def get_params(self):
-        """Get the parameters from the parameter server."""
-
+    def update_params(self):
+        """Update instance variables that depend on parameters if they have changed."""
         pub_period_sec = self.get_parameter("pub_period_sec").get_parameter_value().double_value
-        planner = self.get_parameter("path_planner").get_parameter_value().string_value
-
-        # update attributes and log if parameters have changed
-        if planner != self.planner:
-            self.planner = planner
-            self.get_logger().debug(f"Got parameter: {planner=}")
-
         if pub_period_sec != self.pub_period_sec:
+            self.get_logger().debug(
+                f"Updating pub period and timers from {self.pub_period_sec} to {pub_period_sec}"
+            )
             self.pub_period_sec = pub_period_sec
-            self.get_logger().debug(f"Got parameter: {pub_period_sec=}")
             self.desired_heading_timer = self.create_timer(
-                timer_period_sec=pub_period_sec, callback=self.desired_heading_callback
+                timer_period_sec=self.pub_period_sec, callback=self.desired_heading_callback
+            )
+            self.lpath_data_timer = self.create_timer(
+                timer_period_sec=self.pub_period_sec, callback=self.lpath_data_callback
             )
 
-        return pub_period_sec, planner
+        planner = self.get_parameter("path_planner").get_parameter_value().string_value
+        if planner != self.planner:
+            self.get_logger().debug(f"Updating planner from {self.planner} to {planner}")
+            self.planner = planner
 
     def _all_subs_active(self) -> bool:
         return True  # TODO: this line is a placeholder, delete when mocks can be run
