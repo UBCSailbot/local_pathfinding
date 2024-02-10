@@ -3,6 +3,7 @@ from custom_interfaces.msg import GPS, AISShips, Path, WindSensor
 from ompl import base as ob
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.coord_systems as cs
 import local_pathfinding.ompl_path as ompl_path
 from local_pathfinding.local_path import LocalPathState
 
@@ -42,11 +43,18 @@ def test_OMPLPath_get_cost():
 
 def test_OMPLPath_get_waypoint():
     waypoints = PATH.get_waypoints()
-    assert waypoints[0] == pytest.approx(
-        PATH.state.start_state
+
+    waypoint_XY = cs.XY(*PATH.state.start_state)
+    start_state_latlon = cs.xy_to_latlon(PATH.state.reference_latlon, waypoint_XY)
+
+    test_start = waypoints[0]
+    test_goal = waypoints[-1]
+
+    assert (test_start.latitude, test_start.longitude) == pytest.approx(
+        (start_state_latlon.latitude, start_state_latlon.longitude), abs=1e-2
     ), "first waypoint should be start state"
-    assert waypoints[-1] == pytest.approx(
-        PATH.state.goal_state
+    assert (test_goal.latitude, test_goal.longitude) == pytest.approx(
+        (PATH.state.reference_latlon.latitude, PATH.state.reference_latlon.longitude), abs=1e-2
     ), "last waypoint should be goal state"
 
 
