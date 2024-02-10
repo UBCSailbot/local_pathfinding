@@ -162,11 +162,11 @@ class Sailbot(Node):
             float: The desired heading if all subscribers are active, else a number that violates
                 the heading convention.
         """
-        self.get_params()
-
         if not self._all_subs_active():
             self._log_inactive_subs_warning()
             return -1.0
+
+        self.get_params()
 
         self.local_path.update_if_needed(
             self.gps, self.ais_ships, self.global_path, self.filtered_wind_sensor, self.planner
