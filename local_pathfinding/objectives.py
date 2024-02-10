@@ -94,19 +94,16 @@ class Objective(ob.StateCostIntegralObjective):
 
         return sampled_states
 
-    def normalization(self, cost):
-        """Normalizes cost using max_motion_cost and caps it at 1
+    def normalization(self, cost: float) -> float:
+        """Normalizes cost using max_motion_cost and caps it at 1.
 
         Args:
-            cost (float): motionCost value from an objective function
+            cost (float): motionCost value from an objective function.
         Returns:
-            float: normalized cost between 0 to 1
+            float: normalized cost between 0 to 1.
         """
         normalized_cost = cost / self.max_motion_cost
-        if normalized_cost > 1:
-            return 1
-        else:
-            return normalized_cost
+        return min(normalized_cost, 1.0)
 
 
 class DistanceObjective(Objective):
