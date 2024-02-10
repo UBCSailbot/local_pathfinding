@@ -94,10 +94,19 @@ class Objective(ob.StateCostIntegralObjective):
 
         return sampled_states
 
-    def capping_motionCost(self, value):
-        if value > 1:
-            value == 1
-        return value
+    def normalization(self, cost):
+        """Normalizes cost using max_motion_cost and caps it at 1
+
+        Args:
+            cost (float): motionCost value from an objective function
+        Returns:
+            float: normalized cost between 0 to 1
+        """
+        normalized_cost = cost / self.max_motion_cost
+        if normalized_cost > 1:
+            return 1
+        else:
+            return normalized_cost
 
 
 class DistanceObjective(Objective):
@@ -151,9 +160,7 @@ class DistanceObjective(Objective):
         else:
             raise ValueError(f"Method {self.method} not supported")
 
-        normalized_distance = distance / self.max_motion_cost
-        normalized_distance = self.capping_motionCost(normalized_distance)
-        return ob.Cost(normalized_distance)
+        return ob.Cost(self.normalization(distance))
 
     @staticmethod
     def get_euclidean_path_length_objective(s1: cs.XY, s2: cs.XY) -> float:
@@ -237,9 +244,7 @@ class MinimumTurningObjective(Objective):
         else:
             raise ValueError(f"Method {self.method} not supported")
 
-        normalized_angle = angle / self.max_motion_cost
-        normalized_angle = self.capping_motionCost(normalized_angle)
-        return ob.Cost(normalized_angle)
+        return ob.Cost(self.normalization(angle))
 
     @staticmethod
     def goal_heading_turn_cost(s1: cs.XY, goal: cs.XY, heading: float) -> float:
@@ -347,9 +352,7 @@ class WindObjective(Objective):
         s2_xy = cs.XY(s2.getX(), s2.getY())
         wind_cost = WindObjective.wind_direction_cost(s1_xy, s2_xy, self.wind_direction)
 
-        normalized_wind_cost = wind_cost / self.max_motion_cost
-        normalized_wind_cost = self.capping_motionCost(normalized_wind_cost)
-        return ob.Cost(normalized_wind_cost)
+        return ob.Cost(self.normalization(wind_cost))
 
     @staticmethod
     def wind_direction_cost(s1: cs.XY, s2: cs.XY, wind_direction: float) -> float:

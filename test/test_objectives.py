@@ -51,7 +51,7 @@ def test_distance_objective(method: objectives.DistanceMethod, max_motion_cost: 
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
     states = distance_objective.sample_states(10)
     for s1, s2 in itertools.combinations(iterable=states, r=2):
-        assert 0 <= distance_objective.motionCost(s1, s2).value() < 1
+        assert 0 <= distance_objective.motionCost(s1, s2).value() <= 1
 
 
 @pytest.mark.parametrize(
@@ -131,7 +131,7 @@ def test_minimum_turning_objective(
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
     states = minimum_turning_objective.sample_states(10)
     for s1, s2 in itertools.combinations(iterable=states, r=2):
-        assert 0 <= minimum_turning_objective.motionCost(s1, s2).value() < 1
+        assert 0 <= minimum_turning_objective.motionCost(s1, s2).value() <= 1
 
 
 @pytest.mark.parametrize(
@@ -213,7 +213,7 @@ def test_wind_objective(wind_direction_deg: float, max_motion_cost: float):
     # test if the motionCost() is normalized between 0 and 1 for 10 random samples
     states = wind_objective.sample_states(10)
     for s1, s2 in itertools.combinations(iterable=states, r=2):
-        assert 0 <= wind_objective.motionCost(s1, s2).value() < 1
+        assert 0 <= wind_objective.motionCost(s1, s2).value() <= 1
 
 
 @pytest.mark.parametrize(
