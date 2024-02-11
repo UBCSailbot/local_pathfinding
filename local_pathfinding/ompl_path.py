@@ -7,13 +7,15 @@ https://ompl.kavrakilab.org/api_overview.html.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List
 
+from custom_interfaces.msg import HelperLatLon
 from ompl import base as ob
 from ompl import geometric as og
 from ompl import util as ou
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
+import local_pathfinding.coord_systems as cs
 from local_pathfinding.objectives import get_sailing_objective
 
 if TYPE_CHECKING:
@@ -28,11 +30,18 @@ class OMPLPathState:
         # TODO: derive OMPLPathState attributes from local_path_state
         self.heading_direction = 45.0
         self.wind_direction = 10.0
+        self.wind_speed = 1.0
 
         self.state_domain = (-1, 1)
         self.state_range = (-1, 1)
         self.start_state = (0.5, 0.4)
         self.goal_state = (0.5, -0.4)
+
+        self.reference_latlon = (
+            local_path_state.global_path[-1]
+            if local_path_state and len(local_path_state.global_path) > 0
+            else HelperLatLon(latitude=0.0, longitude=0.0)
+        )
 
 
 class OMPLPath:
@@ -75,7 +84,7 @@ class OMPLPath:
         """
         raise NotImplementedError
 
-    def get_waypoints(self) -> List[Tuple[float, float]]:
+    def get_waypoints(self) -> List[HelperLatLon]:
         """Get a list of waypoints for the boat to follow.
 
         Returns:
@@ -87,7 +96,18 @@ class OMPLPath:
             return []
 
         solution_path = self._simple_setup.getSolutionPath()
-        waypoints = [(state.getX(), state.getY()) for state in solution_path.getStates()]
+
+        waypoints = []
+
+        for state in solution_path.getStates():
+            waypoint_XY = cs.XY(state.getX(), state.getY())
+            waypoint_latlon = cs.xy_to_latlon(self.state.reference_latlon, waypoint_XY)
+            waypoints.append(
+                HelperLatLon(
+                    latitude=waypoint_latlon.latitude, longitude=waypoint_latlon.longitude
+                )
+            )
+
         return waypoints
 
     def update_objectives(self):
@@ -152,6 +172,7 @@ class OMPLPath:
             simple_setup,
             self.state.heading_direction,
             self.state.wind_direction,
+            self.state.wind_speed,
         )
         simple_setup.setOptimizationObjective(objective)
 
