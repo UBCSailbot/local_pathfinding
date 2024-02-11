@@ -479,7 +479,6 @@ class SpeedObjective(Objective):
         wind_speed: float,
         method: SpeedObjectiveMethod,
     ):
-        super().__init__(space_information)
         assert -180 < wind_direction <= 180
         self.wind_direction = math.radians(wind_direction)
 
@@ -488,6 +487,7 @@ class SpeedObjective(Objective):
 
         self.wind_speed = wind_speed
         self.method = method
+        super().__init__(space_information, num_samples=100)
 
     def motionCost(self, s1: ob.SE2StateSpace, s2: ob.SE2StateSpace) -> ob.Cost:
         """Generates the cost associated with the speed of the boat.
@@ -508,7 +508,7 @@ class SpeedObjective(Objective):
         )
 
         if sailbot_speed == 0:
-            return ob.Cost(10000)
+            return ob.Cost(1.0)
 
         if self.method == SpeedObjectiveMethod.SAILBOT_TIME:
             distance = DistanceObjective.get_euclidean_path_length_objective(s1_xy, s2_xy)
@@ -522,7 +522,7 @@ class SpeedObjective(Objective):
             cost = ob.Cost(self.get_continuous_cost(sailbot_speed))
         else:
             ValueError(f"Method {self.method} not supported")
-        return cost
+        return ob.Cost(self.normalization(cost.value()))
 
     @staticmethod
     def get_sailbot_speed(heading: float, wind_direction: float, wind_speed: float) -> float:
@@ -631,14 +631,15 @@ def get_sailing_objective(
     objective_2 = MinimumTurningObjective(
         space_information, simple_setup, heading_degrees, MinimumTurningMethod.GOAL_HEADING
     )
-    objective_4 = SpeedObjective(
-        space_information,
-        heading_degrees,
-        wind_direction_degrees,
-        wind_speed,
-        SpeedObjectiveMethod.SAILBOT_TIME,
-    )
     objective_3 = WindObjective(space_information, wind_direction_degrees)
+    objective_4 = SpeedObjective(
+        space_information=space_information,
+        heading_direction=heading_degrees,
+        wind_direction=wind_direction_degrees,
+        wind_speed=wind_speed,
+        method=SpeedObjectiveMethod.SAILBOT_TIME,
+    )
+
     objective.addObjective(objective=objective_1, weight=0.25)
     objective.addObjective(objective=objective_2, weight=0.25)
     objective.addObjective(objective=objective_3, weight=0.25)
