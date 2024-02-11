@@ -174,8 +174,17 @@ class Sailbot(Node):
         return self.ais_ships and self.gps and self.global_path and self.filtered_wind_sensor
 
     def _log_inactive_subs_warning(self):
-        # TODO: log which subscribers are inactive
-        self.get_logger().warning("There are inactive subscribers")
+        """
+        Logs a warning message for each inactive subscriber.
+        """
+        if self.ais_ships_sub is None:
+            self.get_logger().warning("AIS Ships subscriber not active")
+        if self.gps_sub is None:
+            self.get_logger().warning("GPS subscriber not active")
+        if self.global_path_sub is None:
+            self.get_logger().warning("Global Path subscriber not active")
+        if self.filtered_wind_sensor_sub is None:
+            self.get_logger().warning("Filtered Wind Sensor subscriber not active")
 
 
 if __name__ == "__main__":
