@@ -150,9 +150,15 @@ def post_path(path: Path) -> bool:
         bool: Whether or not the global path was successfully posted.
     """
     waypoints = [
-        {"lat": float(item.latitude), "lon": float(item.longitude)} for item in path.waypoints
+        {"latitude": float(item.latitude), "longitude": float(item.longitude)}
+        for item in path.waypoints
     ]
-    data = {"waypoints": waypoints}
+
+    # the timestamp format will be <last 2 digits of year>-<month>-<day> <hour>:<minute>:<seconds>
+    timestamp = datetime.now().strftime("%y-%m-%d %H:%M:%S")
+
+    data = {"waypoints": waypoints, "timestamp": timestamp}
+
     json_data = json.dumps(data).encode("utf-8")
     try:
         urlopen(PATH_URL, json_data)
