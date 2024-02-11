@@ -497,7 +497,7 @@ class SpeedObjective(Objective):
             s2 (SE2StateInternal): The ending point of the local goal state
 
         Returns:
-            ob.Cost: The cost of going upwind or downwind
+            ob.Cost: The normalized cost of going upwind or downwind
         """
 
         s1_xy = cs.XY(s1.getX(), s1.getY())
