@@ -1,5 +1,6 @@
 """Describes obstacles which the Sailbot must avoid: Boats and Land"""
 
+import csv
 import math
 from typing import Optional
 
@@ -16,25 +17,48 @@ COLLISION_ZONE_SAFETY_BUFFER = 0.5  # km
 COLLISION_ZONE_STRETCH_FACTOR = 1.5  # This factor changes the scope/width of the collision cone
 
 
+def csv_to_polygon(reference: HelperLatLon, source: str) -> Polygon:
+    """Converts a single csv files containing land mass points into a shapely polygon.
+        Polygons for land masses are instantiated in place with no further positioning required.
+
+    Args:
+        reference (HelperLatLon): Lat and lon position of the next global waypoint.
+        source (str): Path to the csv file containing coordinates for a particular land mass
+
+    Returns:
+        Polygon: A polygon representation of the land mass stored in the csv file.
+    """
+
+    with open(source, "r") as src:
+        reader = csv.reader(src)
+        # skip header
+        reader.__next__()
+        lat_lons = [[float(row[0]), float(row[1])] for row in reader]
+
+    xy_points = [
+        [
+            latlon_to_xy(reference=reference, latlon=row[0]),
+            latlon_to_xy(reference=reference, latlon=row[0]),
+        ]
+        for row in lat_lons
+    ]
+
+    return Polygon(xy_points)
+
+
 class Obstacle:
     """This class describes general obstacle objects which are
     anything which the sailbot must avoid.
 
     Attributes:
         reference (HelperLatLon): Lat and lon position of the next global waypoint.
-        sailbot_position (XY): Lat and lon position of SailBot.
-        sailbot_speed (float): Speed of the SailBot in kmph.
         collision_zone (Optional[Polygon]): Shapely polygon representing the
             obstacle's collision zone. Shape depends on the child class.
     """
 
-    def __init__(
-        self, reference: HelperLatLon, sailbot_position: HelperLatLon, sailbot_speed: float
-    ):
+    def __init__(self, reference: HelperLatLon):
+
         self.reference = reference
-        self.sailbot_position_latlon = sailbot_position
-        self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
-        self.sailbot_speed = sailbot_speed
 
         # Defined later by the child class
         self.collision_zone = None
@@ -59,36 +83,30 @@ class Obstacle:
 
         return not self.collision_zone.contains(point)
 
-    def update_collision_zone(self, collision_zone: Polygon, offset: XY, angle: float):
+    def update_collision_zone(
+        self, collision_zone: Polygon, offset: XY = (0, 0), angle: float = 0
+    ):
         """Updates the collision zone of the obstacle. Called by the child classes.
 
         Args:
             collision_zone (Polygon): Shapely Polygon representing the obstacle's collision zone.
-            offset (XY): position of the collision zone relative to the reference point.
-            angle (float): rotation angle of the collision zone in degrees.
+            offset (Optional[XY]): position of the collision zone relative to the reference point.
+            angle (Optional[float]): rotation angle of the collision zone in degrees.
         """
-        dx, dy = offset
-        angle_rad = math.radians(angle)
-        sin_theta = math.sin(angle_rad)
-        cos_theta = math.cos(angle_rad)
+        # skip the affine transform if no offset or angle is given
+        if not (offset == (0, 0) and angle == 0):
 
-        # coefficient matrix for the 2D affine transformation of the collision zone
-        transformation = np.array([cos_theta, -sin_theta, sin_theta, cos_theta, dx, dy])
+            dx, dy = offset
+            angle_rad = math.radians(angle)
+            sin_theta = math.sin(angle_rad)
+            cos_theta = math.cos(angle_rad)
 
-        collision_zone = affine_transform(collision_zone, transformation)
+            # coefficient matrix for the 2D affine transformation of the collision zone
+            transformation = np.array([cos_theta, -sin_theta, sin_theta, cos_theta, dx, dy])
+
+            collision_zone = affine_transform(collision_zone, transformation)
 
         self.collision_zone = collision_zone.buffer(COLLISION_ZONE_SAFETY_BUFFER, join_style=2)
-
-    def update_sailbot_data(self, sailbot_position: HelperLatLon, sailbot_speed: float):
-        """Updates the sailbot's position and speed.
-
-        Args:
-            sailbot_position (HelperLatLon): Position of the SailBot.
-            sailbot_speed (float): Speed of the SailBot in kmph.
-        """
-        self.sailbot_position_latlon = sailbot_position
-        self.sailbot_position = latlon_to_xy(self.reference, sailbot_position)
-        self.sailbot_speed = sailbot_speed
 
     def update_reference_point(self, reference: HelperLatLon):
         """Updates the reference point.
@@ -97,11 +115,36 @@ class Obstacle:
             reference (HelperLatLon): Position of the updated global waypoint.
         """
         self.reference = reference
-        self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
 
         if isinstance(self, Boat):
             # regenerate collision zone with updated reference point
             self.update_boat_collision_zone()
+            self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
+
+        if isinstance(self, Land):
+            self.update_land_collision_zone()
+
+
+class Land(Obstacle):
+    """
+    Describes Land objects which Sailbot must avoid.
+    Land masses are stored in the local pathfinding directory as lat lon coordinates in csv files
+    """
+
+    def __init__(self, reference: HelperLatLon, source: str):
+
+        super().__init__(reference)
+        self.source = source
+        self.update_land_collision_zone()
+
+    def update_land_collision_zone(self):
+        """Updates the collision zone of the land obstacle to reflect
+        a change in reference point"""
+
+        # build land collision zone in place
+        collision_zone = csv_to_polygon(self.source)
+
+        self.update_collision_zone(collision_zone=collision_zone)
 
 
 class Boat(Obstacle):
@@ -110,6 +153,8 @@ class Boat(Obstacle):
 
     Attributes:
        ais_ship (HelperAISShip): AIS Ship message containing information about the boat.
+       sailbot_position (XY): Lat and lon position of SailBot.
+       sailbot_speed (float): Speed of the SailBot in kmph.
        width (float): Width of the boat in km.
        length (float): Length of the boat in km.
     """
@@ -121,12 +166,26 @@ class Boat(Obstacle):
         sailbot_speed: float,
         ais_ship: HelperAISShip,
     ):
-        super().__init__(reference, sailbot_position, sailbot_speed)
+        super().__init__(reference)
 
         self.ais_ship = ais_ship
+        self.sailbot_position_latlon = sailbot_position
+        self.sailbot_position = latlon_to_xy(self.reference, self.sailbot_position_latlon)
+        self.sailbot_speed = sailbot_speed
         self.width = meters_to_km(self.ais_ship.width.dimension)
         self.length = meters_to_km(self.ais_ship.length.dimension)
         self.update_boat_collision_zone()
+
+    def update_sailbot_data(self, sailbot_position: HelperLatLon, sailbot_speed: float):
+        """Updates the sailbot's position and speed.
+
+        Args:
+            sailbot_position (HelperLatLon): Position of the SailBot.
+            sailbot_speed (float): Speed of the SailBot in kmph.
+        """
+        self.sailbot_position_latlon = sailbot_position
+        self.sailbot_position = latlon_to_xy(self.reference, sailbot_position)
+        self.sailbot_speed = sailbot_speed
 
     def update_boat_collision_zone(self, ais_ship: Optional[HelperAISShip] = None):
         """Sets or regenerates a Shapely Polygon that represents the boat's collision zone,
