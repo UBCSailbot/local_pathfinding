@@ -1,9 +1,9 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
-import custom_interfaces.msg as ci
 import rclpy
 from rclpy.node import Node
 
+import custom_interfaces.msg as ci
 from local_pathfinding.local_path import LocalPath
 
 
@@ -206,14 +206,18 @@ class Sailbot(Node):
         """
         Logs a warning message for each inactive subscriber.
         """
+        inactive_subs = []
         if self.ais_ships_sub is None:
-            self.get_logger().warning("AIS Ships subscriber not active")
+            inactive_subs.append("AIS Ships")
         if self.gps_sub is None:
-            self.get_logger().warning("GPS subscriber not active")
+            inactive_subs.append("GPS")
         if self.global_path_sub is None:
-            self.get_logger().warning("Global Path subscriber not active")
+            inactive_subs.append("Global Path")
         if self.filtered_wind_sensor_sub is None:
-            self.get_logger().warning("Filtered Wind Sensor subscriber not active")
+            inactive_subs.append("Filtered Wind Sensor")
+        if len(inactive_subs) == 0:
+            return
+        self._logger.warning("Inactive Subscribers: " + ", ".join(inactive_subs))
 
 
 if __name__ == "__main__":
