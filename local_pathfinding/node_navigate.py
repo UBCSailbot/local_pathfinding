@@ -1,9 +1,11 @@
 """The main node of the local_pathfinding package, represented by the `Sailbot` class."""
 
-import custom_interfaces.msg as ci
+import math
+
 import rclpy
 from rclpy.node import Node
 
+import custom_interfaces.msg as ci
 from local_pathfinding.local_path import LocalPath
 
 
@@ -176,7 +178,22 @@ class Sailbot(Node):
         )
 
         # TODO: create function to compute the heading from current position to next local waypoint
-        return 0.0
+        # Find index of self.gps in current waypoints
+        current_waypoint = self.gps.lat_lon
+        next_waypoint = None
+        waypoints = self.local_path.waypoints
+        for i in range(len(waypoints)):
+            if waypoints[i] == current_waypoint and i != len(waypoints) - 1:
+                next_waypoint = waypoints[i+1]
+                break
+        if next_waypoint is None:
+            return 0.0
+        heading = math.atan2(
+            (next_waypoint.longitude-current_waypoint.longitude) *
+            math.cos(current_waypoint.latitude),
+            (next_waypoint.latitude-current_waypoint.latitude)
+        )
+        return heading
 
     def update_params(self):
         """Update instance variables that depend on parameters if they have changed."""
