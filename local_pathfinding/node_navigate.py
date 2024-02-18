@@ -208,13 +208,13 @@ class Sailbot(Node):
         """
         inactive_subs = []
         if self.ais_ships_sub is None:
-            inactive_subs.append("AISShips")
+            inactive_subs.append("ais_ships")
         if self.gps_sub is None:
-            inactive_subs.append("GPS")
+            inactive_subs.append("gps")
         if self.global_path_sub is None:
-            inactive_subs.append("Path")
+            inactive_subs.append("global_path")
         if self.filtered_wind_sensor_sub is None:
-            inactive_subs.append("WindSensor")
+            inactive_subs.append("filtered_wind_sensor")
         if len(inactive_subs) == 0:
             return
         self._logger.warning("Inactive Subscribers: " + ", ".join(inactive_subs))
