@@ -188,10 +188,10 @@ class Sailbot(Node):
         if next_waypoint is None:
             return 0.0
         heading = GEODESIC.inv(
-            current_waypoint.longitude,
-            current_waypoint.latitude,
-            next_waypoint.longitude,
-            next_waypoint.latitude,
+            lats1=current_waypoint.latitude,
+            lons1=current_waypoint.longitude,
+            lats2=next_waypoint.latitude,
+            lons2=next_waypoint.longitude,
         )[0]
         return heading
 
