@@ -5,6 +5,7 @@ VS Code currently can't read these bindings, so LSP features (autocomplete, go t
 won't work). The C++ API is documented on the OMPL website:
 https://ompl.kavrakilab.org/api_overview.html.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List
@@ -68,6 +69,7 @@ class OMPLPath:
         """
         self._logger = parent_logger.get_child(name="ompl_path")
         self.state = OMPLPathState(local_path_state)
+        self.local_state = local_path_state
         self._simple_setup = self._init_simple_setup()
         self.solved = self._simple_setup.solve(time=max_runtime)  # time is in seconds
 
